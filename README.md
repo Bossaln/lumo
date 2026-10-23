@@ -46,6 +46,10 @@ real sun. Double-tap the right <kbd>⌘</kbd> key to open the warehouse in a big
   <img src="docs/images/warehouse.png" width="704" alt="The pixel warehouse at night (preview rendering)">
 </p>
 
+**A shelf for your files.** Drag files from Finder, Mail or any other app to the notch and it opens with two targets:
+drop them on **AirDrop** to send them to a device nearby, or on the **shelf** to park them for a moment and drag them
+out again later. notchai only remembers where the files are; nothing is copied or moved.
+
 **Almost everything is a setting.** True black background so the notch blends into the camera cutout, agent colors,
 signal style, animations, glow, sounds, which tab opens on hover, music sources, warehouse size and lighting, and more.
 

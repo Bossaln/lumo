@@ -104,6 +104,7 @@ private func everyFieldChanged() -> AppSettings {
     s.musicCoverTransition = .flip
     s.officeHotkey = false
     s.developerOptions = true
+    s.shelfEnabled = false
     return s
 }
 

@@ -1,21 +1,29 @@
 import AppKit
 import NotchaiCore
 
-
 /// Menüleisten-Symbol mit Menü und optionalem "Wartet"-Punkt.
 @MainActor
-final class StatusItemController {
+final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
     private var mainInsertIndex = 0
-    private let dotColor: NSColor
+    /// Punkt oben rechts am Symbol. Eine eigene kleine Ebene: Das Symbol bleibt ein Vorlagenbild, das macOS selbst
+    /// in der Farbe der Menüleiste zeichnet, und beim Klicken muss nichts neu gemalt werden.
+    private let dot = NSView()
     private var settingsAction: @MainActor () -> Void = {}
+    /// Meldet, wie lange das Menü nach dem Klick zum Öffnen brauchte (Seite „Entwickler“).
+    var onMenuOpen: ((TimeInterval) -> Void)?
 
-    init() {
-        let rgb = ColorHex.parse("#E0764A") ?? RGB(r: 0.88, g: 0.46, b: 0.29)
-        dotColor = NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1)
-        setWaitingDot(false)
+    override init() {
+        super.init()
+        if let button = statusItem.button {
+            let image = NSImage(systemSymbolName: "rectangle.topthird.inset.filled", accessibilityDescription: "notchai")
+            image?.isTemplate = true
+            button.image = image
+            installDot(on: button)
+        }
         buildMenu()
+        menu.delegate = self
         statusItem.menu = menu
     }
 
@@ -26,6 +34,23 @@ final class StatusItemController {
         mainInsertIndex = menu.items.count
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "notchai beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+    }
+
+    private func installDot(on button: NSStatusBarButton) {
+        let rgb = ColorHex.parse("#E0764A") ?? RGB(r: 0.88, g: 0.46, b: 0.29)
+        dot.wantsLayer = true
+        dot.layer?.backgroundColor = NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1).cgColor
+        dot.layer?.cornerRadius = 3
+        dot.isHidden = true
+        dot.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(dot)
+        // Oben rechts am 18-pt-Symbol, das mittig im Knopf steht.
+        NSLayoutConstraint.activate([
+            dot.widthAnchor.constraint(equalToConstant: 6),
+            dot.heightAnchor.constraint(equalToConstant: 6),
+            dot.centerXAnchor.constraint(equalTo: button.centerXAnchor, constant: 6),
+            dot.centerYAnchor.constraint(equalTo: button.centerYAnchor, constant: -6),
+        ])
     }
 
     func setSettingsAction(_ action: @escaping @MainActor () -> Void) {
@@ -53,33 +78,13 @@ final class StatusItemController {
 
     /// Zeigt oder versteckt den kleinen Punkt über dem Symbol.
     func setWaitingDot(_ visible: Bool) {
-        statusItem.button?.image = makeImage(withDot: visible)
+        dot.isHidden = !visible
     }
 
-    private func makeImage(withDot: Bool) -> NSImage? {
-        guard let base = NSImage(systemSymbolName: "rectangle.topthird.inset.filled", accessibilityDescription: "notchai") else { return nil }
-        guard withDot else {
-            base.isTemplate = true
-            return base
-        }
-        let size = NSSize(width: 18, height: 18)
-        let dotColor = self.dotColor
-        let image = NSImage(size: size, flipped: false) { rect in
-            // Symbol in Menüleistenfarbe zeichnen, dann Punkt oben rechts.
-            let tinted = base.copy() as! NSImage
-            tinted.isTemplate = false
-            tinted.lockFocus()
-            NSColor.labelColor.set()
-            NSRect(origin: .zero, size: tinted.size).fill(using: .sourceAtop)
-            tinted.unlockFocus()
-            let s = tinted.size
-            tinted.draw(in: NSRect(x: (rect.width - s.width) / 2, y: (rect.height - s.height) / 2, width: s.width, height: s.height))
-            dotColor.setFill()
-            NSBezierPath(ovalIn: NSRect(x: rect.maxX - 6, y: rect.maxY - 6, width: 6, height: 6)).fill()
-            return true
-        }
-        image.isTemplate = false
-        return image
+    func menuWillOpen(_ menu: NSMenu) {
+        // Zeitstempel der Ereignisse zählen wie `systemUptime` ab dem Start des Macs.
+        guard let event = NSApp.currentEvent else { return }
+        onMenuOpen?(ProcessInfo.processInfo.systemUptime - event.timestamp)
     }
 }
 

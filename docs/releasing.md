@@ -65,9 +65,15 @@ Workflow warnt ebenfalls.
 ## Signatur und Gatekeeper
 
 - notchai ist mit dem eigenen Zertifikat signiert, aber nicht von Apple notarisiert. Der Cask entfernt deshalb nach
-  der Installation die Quarantäne-Markierung (`postflight`), sonst würde Gatekeeper die App sperren. Homebrew erlaubt
-  das in eigenen Taps; im offiziellen Verzeichnis (`brew install notchai` ohne Tap) sind seit dem 1. 9. 2026 nur noch
-  Apps erlaubt, die Gatekeeper bestehen.
+  der Installation die Quarantäne-Markierung, sonst würde Gatekeeper die App sperren. Homebrew erlaubt das in eigenen
+  Taps; im offiziellen Verzeichnis (`brew install notchai` ohne Tap) sind seit dem 1. 9. 2026 nur noch Apps erlaubt,
+  die Gatekeeper bestehen.
+- **Homebrew 7** (September 2026) warnt bei jedem Cask mit `postflight do … end`: „Calling `postflight` is deprecated!
+  Use `postflight_steps` instead.“ `postflight_steps` erlaubt nur feste Schritte ohne eigenen Ruby-Code und läuft in
+  einer Sandbox mit eigenem Pseudo-Terminal. Der Cask ruft darin `xattr` und das Programm `notchai-welcome` aus dem
+  App-Bundle auf; das schreibt den fahrenden GT-R direkt nach `/dev/tty` (die Sandbox erlaubt das, Homebrew reicht die
+  Zeichen sofort weiter). Beide Schritte dürfen scheitern (`must_succeed: false`), die Installation bricht dann nicht
+  ab. Ältere Homebrew-Versionen ohne `postflight_steps` bekommen weiter den alten `postflight`-Block.
 - Weil jede Version dieselbe Signatur trägt, behält macOS die Freigaben (Bedienungshilfen, Automation) über Updates.
 - **Später ins offizielle Homebrew:** Dafür braucht es eine Apple Developer ID (99 $ pro Jahr), Notarisierung im
   Release-Workflow und genug Bekanntheit (bei eigener Einreichung mindestens 225 Sterne, 90 Forks oder 90 Beobachter;

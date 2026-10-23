@@ -7,11 +7,14 @@ let package = Package(
     products: [
         .executable(name: "notchai", targets: ["Notchai"]),
         .executable(name: "notchai-hook", targets: ["notchai-hook"]),
+        .executable(name: "notchai-welcome", targets: ["notchai-welcome"]),
     ],
     targets: [
         .target(name: "NotchaiCore", path: "Sources/NotchaiCore"),
         // Das Programm, das Claude Code und Codex als Hook aufrufen (siehe `HookClient`).
         .executableTarget(name: "notchai-hook", dependencies: ["NotchaiCore"], path: "Sources/notchai-hook"),
+        // Der fahrende GT-R nach `brew install` und `brew upgrade` (siehe `InstallGreeting`).
+        .executableTarget(name: "notchai-welcome", dependencies: ["NotchaiCore"], path: "Sources/notchai-welcome"),
         .executableTarget(
             name: "Notchai",
             dependencies: ["NotchaiCore"],

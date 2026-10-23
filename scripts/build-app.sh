@@ -18,6 +18,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/notchai" "$APP/Contents/MacOS/notchai"
 # Das Hook-Programm reist im Bundle mit; die App kopiert es beim Start an seinen festen Ort.
 cp "$BIN_DIR/notchai-hook" "$APP/Contents/MacOS/notchai-hook"
+# Der fahrende GT-R nach `brew install` (Cask: postflight_steps).
+cp "$BIN_DIR/notchai-welcome" "$APP/Contents/MacOS/notchai-welcome"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
@@ -42,6 +44,7 @@ IDENTITY="${IDENTITY:--}"
 sign() { codesign --force --timestamp=none --sign "$IDENTITY" "$@"; }
 # Eingebettete Programme vor dem Bundle signieren.
 sign "$APP/Contents/MacOS/notchai-hook"
+sign "$APP/Contents/MacOS/notchai-welcome"
 sign "$APP"
 if [ "$IDENTITY" = "-" ]; then
   echo "Signiert: ad hoc"

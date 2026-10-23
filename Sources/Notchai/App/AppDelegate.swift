@@ -14,15 +14,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var officeHotkey: OfficeHotkey?
     private var setupWindow: SetupWindowController?
     private var updateItem: NSMenuItem?
+    private let responsiveness = ResponsivenessMonitor()
+    /// Hält App Nap fern: Agenten warten auf die Antwort der Notch, und ein Klick in die Menüleiste soll sofort wirken.
+    private var activity: NSObjectProtocol?
     /// Wartet irgendeine Session auf den Besitzer (laut Session-Buch)?
     private var sessionsWaiting = false
     private var dotVisible: Bool?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: .userInitiatedAllowingIdleSystemSleep,
+            reason: "notchai beantwortet Fragen und Freigaben von Claude Code und Codex sofort")
         let home = FileManager.default.homeDirectoryForCurrentUser
         let statusItemController = StatusItemController()
         self.statusItemController = statusItemController
-        let model = AppModel(settingsStore: SettingsStore(fileURL: SettingsStore.defaultFileURL()))
+        let model = AppModel(settingsStore: SettingsStore(fileURL: SettingsStore.defaultFileURL()),
+                             shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
         self.model = model
         let setup = SetupController(home: home)
         let updates = UpdateController(settingsStore: model.settingsStore)
@@ -72,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.officeHotkey = officeHotkey
 
         settingsWindowController.configure(
-            settingsStore: model.settingsStore, setup: setup, updates: updates,
+            settingsStore: model.settingsStore, shelfStore: model.shelfStore, setup: setup, updates: updates,
             developer: makeDeveloperTools(model: model, setupWindow: setupWindow),
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })
@@ -84,6 +91,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemController.addMenuItem("Einrichtung …") { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
+
+        // Wie schnell notchai reagiert: Die Seite „Entwickler“ listet jeden spürbaren Hänger.
+        responsiveness.context = { [weak model, weak office] in
+            let parts = [model?.diagnosticContext() ?? "", office?.isOpen == true ? "Büro offen" : "",
+                         settingsWindowController.isVisible ? "Einstellungen offen" : ""]
+            return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+        }
+        statusItemController.onMenuOpen = { [weak self] delay in self?.responsiveness.menuOpened(after: delay) }
+        observeDeveloperOptions()
 
         // Beim ersten Start leuchtet der Bildschirm auf, das Leuchten zieht sich in die Notch zusammen, und der
         // Assistent richtet alles ein (jeder Schritt lässt sich überspringen).
@@ -138,9 +154,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Entwickler
 
+    /// Die Messung der Reaktionszeit läuft nur, solange die Entwickleroptionen an sind.
+    private func observeDeveloperOptions() {
+        guard let model else { return }
+        withObservationTracking {
+            if model.settingsStore.settings.developerOptions {
+                responsiveness.start()
+            } else {
+                responsiveness.stop()
+            }
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in self?.observeDeveloperOptions() }
+        }
+    }
+
     /// Werkzeuge der Seite „Entwickler“ in den Einstellungen.
     private func makeDeveloperTools(model: AppModel, setupWindow: SetupWindowController) -> DeveloperTools {
-        let developer = DeveloperTools()
+        let developer = DeveloperTools(responsiveness: responsiveness)
         developer.raiseSignal = { [weak model] in model?.raiseSignal($0) }
         developer.closeSignal = { [weak model] in model?.clearActiveSignal() }
         developer.restyleSignal = { [weak model] in

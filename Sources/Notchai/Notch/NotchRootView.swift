@@ -136,6 +136,11 @@ struct NotchRootView: View {
                     .padding(.bottom, 16)
                 case .office:
                     OfficeTabView(model: model)
+                case .shelf:
+                    ShelfTabView(model: model)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 10)
+                        .padding(.bottom, 16)
                 }
             }
             .id(tab)

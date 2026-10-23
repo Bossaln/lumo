@@ -6,6 +6,8 @@ import ServiceManagement
 /// Die App füllt sie beim Start; die Seite selbst kennt weder Hooks noch Musik.
 @MainActor
 final class DeveloperTools {
+    /// Hänger der App (Menüleiste, Notch); misst nur mit eingeschalteten Entwickleroptionen.
+    let responsiveness: ResponsivenessMonitor
     var raiseSignal: (SignalContent) -> Void = { _ in }
     var closeSignal: () -> Void = {}
     /// Zeigt ein offenes Signal in der neu gewählten Form.
@@ -16,6 +18,10 @@ final class DeveloperTools {
     var showWelcome: () -> Void = {}
     /// Fragt nach und setzt notchai dann komplett zurück.
     var resetApp: () -> Void = {}
+
+    init(responsiveness: ResponsivenessMonitor? = nil) {
+        self.responsiveness = responsiveness ?? ResponsivenessMonitor()
+    }
 
     static var logsFolder: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Logs/notchai", directoryHint: .isDirectory)

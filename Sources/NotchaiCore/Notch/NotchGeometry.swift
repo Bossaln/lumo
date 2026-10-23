@@ -45,6 +45,12 @@ public enum NotchGeometry {
                       width: width, height: s.topInset)
     }
 
+    /// Bereich, in dem gezogene Dateien die Ablage öffnen: die sichtbare Form, seitlich und nach unten erweitert,
+    /// damit man die Notch nicht genau treffen muss.
+    public static func dropZone(around frame: CGRect) -> CGRect {
+        CGRect(x: frame.minX - 60, y: frame.minY - 50, width: frame.width + 120, height: frame.height + 50)
+    }
+
     /// Rahmen der Darstellung: mittig zur Notch, oben bündig mit dem Bildschirmrand.
     public static func frame(for p: NotchPresentation, screen s: ScreenInfo, islandSideWidth: CGFloat) -> CGRect? {
         guard let notch = notchRect(s) else { return nil }

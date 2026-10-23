@@ -7,6 +7,7 @@ import SwiftUI
 /// ein Kopf mit großem Symbol und darunter die Abschnitte. Alles speichert direkt in `SettingsStore`.
 struct SettingsView: View {
     let settingsStore: SettingsStore
+    let shelfStore: ShelfStore
     let windowController: SettingsWindowController
     let setup: SetupController
     let updates: UpdateController
@@ -71,6 +72,7 @@ struct SettingsView: View {
         case .sessions: sessionsPane
         case .music: musicPane
         case .office: officePane
+        case .shelf: shelfPane
         case .developer:
             // Wird die Seite ausgeschaltet, während sie offen ist, geht es zurück zu „Allgemein“.
             if settingsStore.settings.developerOptions { developerPane } else { generalPane }
@@ -546,6 +548,39 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Ablage
+
+    private var shelfPane: some View {
+        let count = shelfStore.shelf.items.count
+        return SettingsPage(pane: .shelf) {
+            Section("Dateien in die Notch ziehen") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Ablage aktivieren", isOn: setting(\.shelfEnabled))
+                    Text("Ziehst du Dateien aus dem Finder, Mail oder einer anderen App zur Notch, klappt sie auf und "
+                        + "zeigt zwei Ziele: AirDrop sendet an ein Gerät in der Nähe, die Ablage hebt sie kurz auf.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Section("Abgelegte Dateien") {
+                LabeledContent("In der Ablage") {
+                    Text(count == 1 ? "1 Datei" : "\(count) Dateien")
+                        .monospacedDigit()
+                }
+                LabeledContent("Ablage leeren") {
+                    Button("Leeren") { shelfStore.removeAll() }
+                        .disabled(count == 0)
+                }
+                Text("notchai merkt sich nur, wo die Dateien liegen; kopiert oder verschoben wird nichts. Wer eine Datei "
+                    + "aus der Notch zieht, bekommt eine Kopie. Gelöschte Dateien verschwinden von selbst aus der Ablage.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     // MARK: - Entwickler
 
     private var developerPane: some View {
@@ -580,6 +615,24 @@ struct SettingsView: View {
                 }
                 LabeledContent("Protokolle") { Button("Im Finder zeigen") { DeveloperTools.reveal(DeveloperTools.logsFolder) } }
                 LabeledContent("Daten von notchai") { Button("Im Finder zeigen") { DeveloperTools.reveal(DeveloperTools.dataFolder) } }
+            }
+            Section("Reaktion") {
+                let log = developer.responsiveness.log
+                LabeledContent("Hänger") {
+                    Text(log.summary)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Liste der Hänger") {
+                    Button("Kopieren") { DeveloperTools.copy(log.report(), empty: log.summary) }
+                        .disabled(log.count == 0)
+                }
+                Text("Misst, solange die Entwickleroptionen an sind, wie schnell notchai reagiert, auch wie lange das Menü "
+                    + "in der Menüleiste nach dem Klick braucht. Jeder Hänger ab 100 ms steht mit Uhrzeit und Zustand der "
+                    + "Notch in der Liste.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Section("Einrichtung") {
                 LabeledContent("Begrüßung und Einrichtung") { Button("Erneut zeigen", action: developer.showWelcome) }

@@ -227,6 +227,8 @@ struct SetupAssistantView: View {
                        text: "Cover, Titel, Spulen und Steuerung für Spotify, Musik und fast jeden anderen Player.")
             FeatureRow(symbol: "building.2.fill", color: Self.rgb(0.25, 0.8, 0.55), title: "Lagerhalle",
                        text: "Deine Agenten als Pixel-Figuren in einer Halle mit Autos, Couch und Kühlschrank. Zweimal rechte ⌘ öffnet sie.")
+            FeatureRow(symbol: "tray.full.fill", color: Self.rgb(1.0, 0.68, 0.12), title: "Ablage",
+                       text: "Zieh Dateien auf die Notch: per AirDrop senden oder kurz ablegen und später wieder herausziehen.")
             InfoBox(symbol: "hand.raised.fill", text: "Läuft notchai nicht, arbeiten Claude Code und Codex genau wie vorher weiter. Es verlassen keine Daten deinen Mac.")
         }
     }
@@ -350,7 +352,9 @@ struct SetupAssistantView: View {
     private var doneStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             FeatureRow(symbol: "cursorarrow.motionlines", color: Self.rgb(0.62, 0.4, 1.0), title: "Notch aufklappen",
-                       text: "Fahr mit der Maus an die Notch: Dort warten Musik, Sessions und die Lagerhalle.")
+                       text: "Fahr mit der Maus an die Notch: Dort warten Musik, Sessions, die Lagerhalle und die Ablage.")
+            FeatureRow(symbol: "tray.and.arrow.down.fill", color: Self.rgb(1.0, 0.68, 0.12), title: "Dateien ablegen",
+                       text: "Zieh eine Datei zur Notch und lass sie auf AirDrop oder der Ablage los.")
             FeatureRow(symbol: "command", color: Self.rgb(0.25, 0.8, 0.55), title: "Lagerhalle",
                        text: "Zweimal kurz die rechte ⌘-Taste drücken öffnet die Halle groß.")
             FeatureRow(symbol: "gearshape.fill", color: Self.rgb(0.55, 0.55, 0.6), title: "Einstellungen",

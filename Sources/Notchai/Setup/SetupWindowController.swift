@@ -49,7 +49,7 @@ final class SetupWindowController: NSObject, NSWindowDelegate {
         window?.center()
         NSApp.setActivationPolicy(.regular)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 
     private func finish() {
