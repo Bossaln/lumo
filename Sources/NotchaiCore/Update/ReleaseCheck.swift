@@ -28,6 +28,14 @@ public enum ReleaseCheck {
         return false
     }
 
+    /// Shell-Befehl für das Update über Homebrew. Erst `brew update`: Sonst kennt Homebrew die neue Version aus dem
+    /// Tap bis zu 24 Stunden lang nicht. Homebrew beendet notchai beim Upgrade selbst (`uninstall quit:` im Cask);
+    /// nur nach erfolgreichem Upgrade öffnet der Befehl die neue Version.
+    public static func homebrewUpgradeScript(brew: String, log: String, app: String) -> String {
+        let brew = ShellQuote.quote(brew), log = ShellQuote.quote(log)
+        return "\(brew) update >> \(log) 2>&1; \(brew) upgrade --cask notchai >> \(log) 2>&1 && open \(ShellQuote.quote(app))"
+    }
+
     private static func plain(_ version: String) -> String {
         version.hasPrefix("v") ? String(version.dropFirst()) : version
     }
