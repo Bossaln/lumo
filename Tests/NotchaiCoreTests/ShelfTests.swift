@@ -157,3 +157,14 @@ private func dragResults(mouseDown: Int?, insideNotchai: Bool = false, _ moves: 
     #expect(s.mode == .idle)
     #expect(!s.isReceivingFiles)
 }
+
+@Test func dragsStartedInNotchaiAreNotWatched() {
+    // Spulen im Musik-Reiter oder eine Datei aus der Ablage ziehen: kein Blick in den Drag-Zwischenspeicher nötig.
+    var tracker = FileDragTracker()
+    tracker.mouseDown(changeCount: 0, insideNotchai: true)
+    #expect(!tracker.isWatching)
+    tracker.mouseDown(changeCount: 4, insideNotchai: false)
+    #expect(tracker.isWatching)
+    _ = tracker.mouseUp()
+    #expect(tracker.isWatching)
+}

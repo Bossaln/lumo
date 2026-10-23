@@ -9,6 +9,9 @@ public struct FileDragTracker: Sendable {
 
     public init() {}
 
+    /// Lohnt ein Blick in den Drag-Zwischenspeicher? Nicht, wenn das Ziehen in notchai begann.
+    public var isWatching: Bool { !startedInNotchai }
+
     public mutating func mouseDown(changeCount: Int, insideNotchai: Bool) {
         isDraggingFiles = false
         changeCountAtStart = changeCount

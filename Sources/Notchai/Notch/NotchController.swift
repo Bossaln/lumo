@@ -154,6 +154,7 @@ final class NotchController {
     private func trackFileDrag() {
         guard model.settingsStore.settings.shelfEnabled, model.screen != nil else { return }
         if !fileDrag.isDraggingFiles {
+            guard fileDrag.isWatching else { return }
             let now = Date()
             guard now.timeIntervalSince(lastDragCheck) >= 0.08 else { return }
             lastDragCheck = now
