@@ -66,29 +66,50 @@ public struct SpectrumAnalyzer: Sendable {
 }
 
 /// Macht aus dem Spektrum die Höhen der Balken (0…1): je Balken ein Frequenzband (logarithmisch verteilt, tief
-/// links), dessen Lautstärke sich selbst einpegelt. So schlagen die Balken auch bei leiser Musik voll aus, und der
-/// Bass verdeckt die Höhen nicht. Hoch geht es schnell, runter weich.
+/// links). Hoch geht es schnell, runter weich; über jedem Balken schwebt seine Spitze und sinkt langsam nach.
+///
+/// Eingepegelt wird je nach `Leveling`: je Band (wenige Balken schlagen auch bei leiser Musik voll aus, der Bass
+/// verdeckt die Höhen nicht) oder gemeinsam (viele Balken zeigen die Form des Klangs wie ein echter Visualizer).
 public struct VisualizerBars: Sendable {
+    public enum Leveling: Hashable, Sendable {
+        /// Jedes Band pegelt sich selbst ein.
+        case perBand
+        /// Alle Bänder teilen sich einen Pegel; die Höhen werden leicht angehoben, wie man sie hört.
+        case shared
+    }
+
     public static let lowestFrequency = 50.0
     public static let highestFrequency = 12_000.0
     /// Darunter gilt ein Band als still (Energie in dB, voller Sinus = −6 dB).
     static let silence = -70.0
     /// So viele dB unter dem bisher Lautesten steht ein Balken unten.
     static let range = 24.0
+    static let sharedRange = 30.0
+    /// Anhebung je Oktave über der tiefsten Frequenz, bei gemeinsamer Pegelung.
+    static let tiltPerOctave = 1.5
     /// So schnell sinkt das bisher Lauteste, damit sich die Balken an leisere Stellen anpassen.
-    static let peakDecayPerSecond = 4.0
+    static let loudestDecayPerSecond = 4.0
     /// Zeitkonstanten (Sekunden) für Steigen und Fallen.
     static let attack = 0.03
     static let release = 0.12
+    /// So schnell sinkt eine Spitze (Balkenhöhen pro Sekunde).
+    static let peakFallPerSecond = 0.8
 
     public let count: Int
+    public let leveling: Leveling
     /// Grenzen der Bänder in Frequenz-Indizes (count + 1 Werte, aufsteigend).
     public let bandEdges: [Int]
     public private(set) var levels: [Double]
-    private var peaks: [Double?]
+    /// Spitzen über den Balken (0…1), nie unter dem Balken.
+    public private(set) var peaks: [Double]
+    /// Anhebung je Band in dB (nur bei gemeinsamer Pegelung).
+    private let tilt: [Double]
+    /// Bisher Lautestes je Band (bzw. gemeinsam an Stelle 0), in dB.
+    private var loudest: [Double?]
 
-    public init(count: Int, sampleRate: Double, fftSize: Int) {
+    public init(count: Int, sampleRate: Double, fftSize: Int, leveling: Leveling = .perBand) {
         self.count = count
+        self.leveling = leveling
         let bins = fftSize / 2
         let binWidth = sampleRate / Double(fftSize)
         let ratio = pow(Self.highestFrequency / Self.lowestFrequency, 1 / Double(max(count, 1)))
@@ -101,34 +122,61 @@ public struct VisualizerBars: Sendable {
             edges.append(bin)
         }
         bandEdges = edges
+        tilt = (0..<count).map { index in
+            guard leveling == .shared else { return 0 }
+            // Mitte des Bandes in Oktaven über der tiefsten Frequenz.
+            return Self.tiltPerOctave * (Double(index) + 0.5) * log2(ratio)
+        }
         levels = [Double](repeating: 0, count: count)
-        peaks = [Double?](repeating: nil, count: count)
+        peaks = [Double](repeating: 0, count: count)
+        loudest = [Double?](repeating: nil, count: count)
     }
 
     /// Neue Höhen aus dem Spektrum eines Bildes; `dt` ist die Zeit seit dem letzten Bild.
     @discardableResult
     public mutating func update(magnitudes: [Float], dt: TimeInterval) -> [Double] {
         let dt = max(dt, 0)
-        for band in 0..<count {
+        let decibels = (0..<count).map { band -> Double in
             let lower = bandEdges[band], upper = min(bandEdges[band + 1], magnitudes.count)
             var energy = 0.0
             if lower < upper {
                 for bin in lower..<upper { energy += Double(magnitudes[bin] * magnitudes[bin]) }
             }
-            let decibels = 10 * log10(energy + 1e-20)
-            var target = 0.0
-            if decibels > Self.silence {
-                let decayed = (peaks[band] ?? decibels) - Self.peakDecayPerSecond * dt
-                let peak = max(decibels, decayed, Self.silence + Self.range)
-                peaks[band] = peak
-                target = min(max((decibels - (peak - Self.range)) / Self.range, 0), 1)
+            return 10 * log10(energy + 1e-20)
+        }
+        let targets: [Double]
+        switch leveling {
+        case .perBand:
+            targets = (0..<count).map { band in
+                level(decibels[band], slot: band, range: Self.range, loudestNow: decibels[band], dt: dt)
             }
-            let constant = target > levels[band] ? Self.attack : Self.release
-            let blend = 1 - exp(-dt / constant)
-            levels[band] += (target - levels[band]) * blend
+        case .shared:
+            let shown = zip(decibels, tilt).map { $0 > Self.silence ? $0 + $1 : $0 }
+            let loudestNow = shown.filter { $0 > Self.silence }.max() ?? Self.silence
+            // Den gemeinsamen Pegel einmal je Bild nachführen, dann alle Bänder daran messen.
+            _ = level(loudestNow, slot: 0, range: Self.sharedRange, loudestNow: loudestNow, dt: dt)
+            targets = shown.map { value in
+                guard value > Self.silence, let reference = loudest[0] else { return 0 }
+                return min(max((value - (reference - Self.sharedRange)) / Self.sharedRange, 0), 1)
+            }
+        }
+        for band in 0..<count {
+            let constant = targets[band] > levels[band] ? Self.attack : Self.release
+            levels[band] += (targets[band] - levels[band]) * (1 - exp(-dt / constant))
             if levels[band] < 0.001 { levels[band] = 0 }
+            peaks[band] = max(levels[band], peaks[band] - Self.peakFallPerSecond * dt)
+            if peaks[band] < 0.001 { peaks[band] = 0 }
         }
         return levels
+    }
+
+    /// Führt das bisher Lauteste an Stelle `slot` nach und misst `value` daran (0…1); Stille ergibt 0.
+    private mutating func level(_ value: Double, slot: Int, range: Double, loudestNow: Double, dt: TimeInterval) -> Double {
+        guard value > Self.silence else { return 0 }
+        let decayed = (loudest[slot] ?? loudestNow) - Self.loudestDecayPerSecond * dt
+        let reference = max(loudestNow, decayed, Self.silence + range)
+        loudest[slot] = reference
+        return min(max((value - (reference - range)) / range, 0), 1)
     }
 }
 

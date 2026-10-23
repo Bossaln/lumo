@@ -80,6 +80,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var musicTrackChangeSeconds: Double = 3
     /// Balken neben der Kamera: echt aus dem Ton oder animiert.
     public var musicVisualizer: MusicVisualizerMode = .audio
+    /// Zweimal ⌃ öffnet eine Schnellnotiz in der Notch.
+    public var notesHotkey: Bool = true
 
     public static let `default` = AppSettings()
 
@@ -116,7 +118,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case launchAtLogin, islandSideWidth, setupCompleted, checkForUpdates, notchBounce
         case musicSourceMode, musicBrowserMusic, musicIncludePodcasts, musicLoadArtwork, musicSourceRules, musicKnownSources
         case panelOpenBehavior, musicArtworkBackground, musicCoverTransition, officeHotkey, developerOptions
-        case shelfEnabled, language, musicTrackChangeStyle, musicTrackChangeSeconds, musicVisualizer
+        case shelfEnabled, language, musicTrackChangeStyle, musicTrackChangeSeconds, musicVisualizer, notesHotkey
     }
 
     public init(from decoder: Decoder) throws {
@@ -185,6 +187,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         let seconds = Self.trackChangeSecondsRange
         s.musicTrackChangeSeconds = min(max(s.musicTrackChangeSeconds, seconds.lowerBound), seconds.upperBound)
         option(.musicVisualizer, &s.musicVisualizer)
+        value(.notesHotkey, &s.notesHotkey)
         let range = Self.islandSideWidthRange
         s.islandSideWidth = min(max(s.islandSideWidth, range.lowerBound), range.upperBound)
         self = s

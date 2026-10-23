@@ -158,6 +158,11 @@ struct NotchRootView: View {
                         .padding(.horizontal, 22)
                         .padding(.top, 10)
                         .padding(.bottom, 16)
+                case .notes:
+                    NotesTabView(model: model)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 10)
+                        .padding(.bottom, 16)
                 }
             }
             .id(tab)

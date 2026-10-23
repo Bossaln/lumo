@@ -39,8 +39,8 @@ public enum NotchGeometry {
     public static let screenMargin: CGFloat = 20
     /// Breite je Seite der eingeklappten Musikanzeige.
     public static let compactSideWidth: CGFloat = 46
-    /// Neuer Titel, seitlich: Breite je Seite (rechts ist Platz für etwa 22 Zeichen Titel).
-    public static let trackSideWidth: CGFloat = 150
+    /// Neuer Titel, seitlich: Breite je Seite (links Cover und gut 15 Zeichen Titel, rechts der Visualizer).
+    public static let trackSideWidth: CGFloat = 170
     /// Neuer Titel, ausgefahren: Breite und Höhe unter der Kamera.
     public static let trackBannerWidth: CGFloat = 400
     public static let trackBannerExtraHeight: CGFloat = 72

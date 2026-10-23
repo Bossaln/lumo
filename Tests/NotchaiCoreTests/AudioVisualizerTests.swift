@@ -110,6 +110,48 @@ private func run(_ bars: inout VisualizerBars, frames: Int, signal: (Int) -> [Fl
     }
 }
 
+// MARK: - Spektrum mit vielen Balken
+
+@Test func manyBarsStillHaveDistinctBands() {
+    let bars = VisualizerBars(count: 20, sampleRate: rate, fftSize: size, leveling: .shared)
+    let edges = bars.bandEdges
+    #expect(edges.count == 21)
+    #expect(zip(edges, edges.dropFirst()).allSatisfy { $0 < $1 })
+    #expect(edges.last! <= size / 2)
+}
+
+@Test func sharedLevelingKeepsTheShapeOfTheSound() {
+    // Lauter Bass und leise Höhen: Wie ein echter Visualizer steht der Bass oben, die Höhen sichtbar darunter.
+    // Je Band eingepegelt stünden beide ganz oben.
+    var bars = VisualizerBars(count: 16, sampleRate: rate, fftSize: size, leveling: .shared)
+    let levels = run(&bars, frames: 40) { start in
+        zip(sine(90, start: start), sine(6_000, amplitude: 0.05, start: start)).map { $0 + $1 }
+    }
+    // 90 Hz liegt bei 16 Balken im zweiten Band.
+    #expect(levels[0...2].max()! > 0.9)
+    let treble = levels[10...].max()!
+    #expect(treble > 0.2 && treble < 0.8)
+    // Dazwischen ist es still.
+    #expect(levels[6] < 0.1)
+}
+
+@Test func peaksHoldAndFallSlowly() {
+    var bars = VisualizerBars(count: 3, sampleRate: rate, fftSize: size)
+    var analyzer = SpectrumAnalyzer(size: size)
+    for frame in 0..<30 {
+        bars.update(magnitudes: analyzer.magnitudes(of: sine(90, start: frame * 800)), dt: 1.0 / 60)
+    }
+    #expect(bars.peaks[0] > 0.9)
+    let silence = analyzer.magnitudes(of: [Float](repeating: 0, count: size))
+    for _ in 0..<30 { bars.update(magnitudes: silence, dt: 1.0 / 60) }
+    // Nach einer halben Sekunde ist der Balken unten, seine Spitze schwebt noch darüber …
+    #expect(bars.levels[0] < 0.05)
+    #expect(bars.peaks[0] > 0.4)
+    // … und ist nach zwei Sekunden auch unten.
+    for _ in 0..<90 { bars.update(magnitudes: silence, dt: 1.0 / 60) }
+    #expect(bars.peaks[0] == 0)
+}
+
 /// Kleiner, fester Zufallsgenerator für Testsignale.
 private struct SplitMix {
     var state: UInt64

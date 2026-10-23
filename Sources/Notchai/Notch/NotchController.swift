@@ -34,6 +34,7 @@ final class NotchController {
         self.model = model
         panel = NotchPanel(rootView: NotchRootView(model: model))
         panel.keyPolicy = { [weak model] in model?.acceptsKeyboard ?? false }
+        model.onReleaseKeyboard = { [weak self] in self?.releaseKeyboard() }
 
         // Globale Maus-Monitore brauchen keine Bedienungshilfen-Berechtigung. Gedrückte Maustaste und Ziehen
         // zählen mit: So merkt die Notch, wenn jemand Dateien zu ihr zieht (Reiter „Ablage“).
@@ -244,6 +245,17 @@ final class NotchController {
         } else {
             releaseKeyboardIfNeeded()
         }
+    }
+
+    /// Zweimal ⌃: Die Notch öffnet den Reiter „Notizen“ und bekommt die Tastatur, ohne dass notchai die vordere
+    /// App ablöst. Gespeichert (↩) oder abgebrochen (Escape, Klick woandershin) klappt sie wieder zu.
+    func openNote() {
+        guard model.screen != nil else { return }
+        model.send(.noteShortcut(pointerInside: pointerInside))
+        guard model.notch.isWritingNote else { return }
+        panel.makeKey()
+        // Ohne Tastatur ließe sich nichts schreiben; dann gleich wieder zu.
+        if !panel.isKeyWindow { model.send(.editingEnded) }
     }
 
     /// Liegt der Zeiger über dem Knopfbereich einer sichtbaren Island?

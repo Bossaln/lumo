@@ -18,20 +18,28 @@ struct TrackChangeThumbnail: View {
             case .island:
                 NotchShape(bottomRadius: 6, topCornerRadius: 3)
                     .fill(Color.black)
-                    .frame(width: 100, height: 14)
+                    .frame(width: 104, height: 14)
                     .overlay {
                         HStack(spacing: 0) {
-                            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .fill(Self.cover)
-                                .frame(width: 9, height: 9)
-                            Spacer()
-                            // Platz der Kamera, rechts daneben Titel und Interpret.
-                            Color.clear.frame(width: 26)
-                            VStack(alignment: .leading, spacing: 1.5) {
-                                Capsule().fill(Color.white).frame(width: 22, height: 2.5)
-                                Capsule().fill(Color.white.opacity(0.45)).frame(width: 14, height: 2)
+                            // Links Cover, Titel und Interpret, rechts der Visualizer; dazwischen die Kamera.
+                            HStack(spacing: 3) {
+                                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                    .fill(Self.cover)
+                                    .frame(width: 9, height: 9)
+                                VStack(alignment: .leading, spacing: 1.5) {
+                                    Capsule().fill(Color.white).frame(width: 18, height: 2.5)
+                                    Capsule().fill(Color.white.opacity(0.45)).frame(width: 12, height: 2)
+                                }
                             }
-                            Spacer()
+                            Spacer(minLength: 0)
+                            Color.clear.frame(width: 26)
+                            Spacer(minLength: 0)
+                            HStack(alignment: .bottom, spacing: 1) {
+                                ForEach(Array([4.0, 7, 9, 6, 8, 5, 6, 4, 3, 4, 2].enumerated()), id: \.offset) { _, height in
+                                    RoundedRectangle(cornerRadius: 0.5).fill(Self.pink).frame(width: 1.4, height: height)
+                                }
+                            }
+                            .frame(height: 9, alignment: .bottom)
                         }
                         .padding(.horizontal, 7)
                     }

@@ -11,6 +11,12 @@ final class AppModel {
     let settingsStore: SettingsStore
     /// Reiter „Ablage“: abgelegte Dateien.
     let shelfStore: ShelfStore
+    /// Reiter „Notizen“: Schnellnotizen.
+    let noteStore: NoteStore
+    /// Angefangene Notiz; übersteht Zu- und Aufklappen.
+    var noteDraft = ""
+    /// Gibt die Tastatur an die vorige App zurück (`NotchController`).
+    @ObservationIgnored var onReleaseKeyboard: (() -> Void)?
     /// Bildschirm mit Notch; `nil`, wenn keiner angeschlossen oder aufgeklappt ist.
     var screen: ScreenInfo?
     /// Von SwiftUI gemessene Höhe des Panel-Inhalts je Reiter. So klappt das Panel gleich auf die richtige Höhe
@@ -80,6 +86,8 @@ final class AppModel {
     /// Höhen der Balken aus dem echten Ton (`MusicVisualizer`): Anzahl und Zeitpunkt des Bildes rein, Höhen raus;
     /// `nil` heißt „kein echter Ton“, dann tanzen die Balken von selbst.
     @ObservationIgnored var musicLevels: ((Int, TimeInterval) -> [Double]?)?
+    /// Wie `musicLevels`, für den Visualizer mit vielen Balken: gemeinsam eingepegelt, mit Spitzen.
+    @ObservationIgnored var musicSpectrum: ((Int, TimeInterval) -> MusicVisualizer.Spectrum?)?
     /// Neuer Titel, den die Notch gerade kurz ausgefahren zeigt (`TrackChangeStyle`).
     private(set) var trackAnnouncement: TrackAnnouncement?
     @ObservationIgnored private var announcementTask: Task<Void, Never>?
@@ -96,15 +104,19 @@ final class AppModel {
     /// Öffnet das große Büro.
     @ObservationIgnored var onOpenOffice: (() -> Void)?
 
-    init(settingsStore: SettingsStore, shelfStore: ShelfStore) {
+    init(settingsStore: SettingsStore, shelfStore: ShelfStore, noteStore: NoteStore) {
         self.settingsStore = settingsStore
         self.shelfStore = shelfStore
+        self.noteStore = noteStore
     }
 
     func send(_ e: NotchEvent) {
         let settings = settingsStore.settings
         // Was der Besitzer selbst öffnet und jedes Signal gehen vor; der neue Titel weicht sofort.
-        if e == .hoverBegan || e == .signalRaised || e == .fileDragEntered { endTrackAnnouncement() }
+        switch e {
+        case .hoverBegan, .signalRaised, .fileDragEntered, .noteShortcut: endTrackAnnouncement()
+        default: break
+        }
         if e == .hoverBegan, notch.mode == .idle {
             // Aufklappen dort, wo gerade etwas passiert (oder im zuletzt gewählten Reiter).
             notch.openTab = PanelTabChoice.tab(behavior: settings.panelOpenBehavior, lastTab: notch.lastTab,
@@ -134,6 +146,7 @@ final class AppModel {
         case .sessions: 170
         case .office: OfficeTabView.previewSize.height + 52
         case .shelf: 176
+        case .notes: 190
         }
     }
 
@@ -220,6 +233,14 @@ final class AppModel {
     func setReplyDraft(_ text: String, for sessionID: String) {
         guard replyDrafts[sessionID, default: ""] != text else { return }
         replyDrafts[sessionID] = text
+    }
+
+    /// Speichert die angefangene Notiz und gibt die Tastatur zurück; kam die Notiz über zweimal ⌃, klappt die Notch
+    /// danach zu.
+    func saveNote() {
+        guard noteStore.add(noteDraft) != nil else { return }
+        noteDraft = ""
+        onReleaseKeyboard?()
     }
 
     /// Schickt den Entwurf an die Session und schließt das Antwortfeld.
@@ -331,10 +352,10 @@ final class AppModel {
         settingsStore.settings.sessionViewStyle == .circles && !sessions.isEmpty
     }
 
-    /// Im aufgeklappten Panel ist ein Antwortfeld offen.
+    /// Im aufgeklappten Panel ist ein Antwortfeld offen, oder der Reiter „Notizen“ mit seinem Notizfeld.
     var panelAcceptsText: Bool {
-        guard case .panel = notch.mode else { return false }
-        return replyTargetID != nil
+        guard case .panel(let tab) = notch.mode else { return false }
+        return replyTargetID != nil || tab == .notes
     }
 
     /// Darf das Panel die Tastatur bekommen? Nur für ein sichtbares Antwortfeld.

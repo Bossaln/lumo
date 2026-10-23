@@ -36,7 +36,8 @@ front, or reply to it directly. Works with the Claude desktop app, the terminal,
 **Now playing.** Spotify, Apple Music and most other players: cover art, title, a progress bar you can scrub,
 playback controls, a backdrop in the colors of the cover and a soft glow. While music plays, a compact view sits right
 next to the camera, with bars that move to the actual audio. When the next track starts, the notch briefly pops out
-with its cover and title – sideways next to the camera or dropped down below it, for two, three or five seconds.
+with its cover and title and a spectrum visualizer – sideways next to the camera or dropped down below it, for two,
+three or five seconds.
 
 **A pixel warehouse for your agents.** Every session becomes a little character in a warehouse with two tuned cars,
 a couch, a fridge full of energy drinks, a projector and a bed. Characters sit at their desks while working, wait
@@ -50,6 +51,10 @@ real sun. Double-tap the right <kbd>⌘</kbd> key to open the warehouse in a big
 **A shelf for your files.** Drag files from Finder, Mail or any other app to the notch and it opens with two targets:
 drop them on **AirDrop** to send them to a device nearby, or on the **shelf** to park them for a moment and drag them
 out again later. notchai only remembers where the files are; nothing is copied or moved.
+
+**Quick notes.** Press <kbd>⌃</kbd> twice in any app and the notch opens with a note field. Type, press
+<kbd>↩</kbd> and it closes again; <kbd>Esc</kbd> closes without saving and keeps the draft. Your notes live in the
+notch's "Notes" tab – click one to copy it. They stay on your Mac.
 
 **Almost everything is a setting.** True black background so the notch blends into the camera cutout, agent colors,
 signal style, animations, glow, sounds, which tab opens on hover, music sources, warehouse size and lighting, and more.

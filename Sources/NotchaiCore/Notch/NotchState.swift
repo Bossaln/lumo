@@ -1,6 +1,6 @@
 /// Reiter des aufgeklappten Panels. Die Einstellungen öffnen sich über die Menüleiste.
 public enum PanelTab: String, CaseIterable, Sendable {
-    case music, sessions, office, shelf
+    case music, sessions, office, shelf, notes
 
     public var title: String {
         switch self {
@@ -8,6 +8,7 @@ public enum PanelTab: String, CaseIterable, Sendable {
         case .sessions: L("Sessions")
         case .office: L("Büro")
         case .shelf: L("Ablage")
+        case .notes: L("Notizen")
         }
     }
 }
@@ -26,6 +27,10 @@ public enum NotchEvent: Equatable, Sendable {
     case editingBegan, editingEnded
     /// Dateien werden über die Notch gezogen bzw. losgelassen (abgelegt oder abgebrochen).
     case fileDragEntered, fileDragEnded
+    /// Zweimal ⌃: Die Notch öffnet sich zum Schreiben einer Schnellnotiz.
+    case noteShortcut(pointerInside: Bool)
+    /// Das Notizfeld im Reiter „Notizen“ hat den Fokus bekommen bzw. verloren.
+    case noteFieldFocused(Bool)
 }
 
 /// Reiner Zustandsautomat der Notch. Nicht genannte Kombinationen lassen den Modus unverändert.
@@ -41,6 +46,10 @@ public struct NotchState: Equatable, Sendable {
     public private(set) var isReceivingFiles = false
     /// Der Zeiger ging, während getippt wurde; zugeklappt wird, sobald das Tippen endet.
     private var collapseAfterEditing = false
+    /// Im Reiter „Notizen“ wird geschrieben; die Notch bleibt offen, bis das Panel die Tastatur abgibt.
+    public private(set) var isWritingNote = false
+    /// Der Zeiger ist nicht (mehr) über der Notch; zugeklappt wird, sobald die Notiz fertig ist.
+    private var collapseAfterNote = false
 
     public init() {}
 
@@ -48,6 +57,7 @@ public struct NotchState: Equatable, Sendable {
         switch event {
         case .hoverBegan:
             collapseAfterEditing = false
+            collapseAfterNote = false
             switch mode {
             case .idle:
                 mode = .panel(openTab ?? lastTab)
@@ -57,6 +67,8 @@ public struct NotchState: Equatable, Sendable {
             }
         case .hoverEnded:
             switch mode {
+            // Eine halb geschriebene Notiz bleibt offen und behält die Tastatur.
+            case .panel where isWritingNote: collapseAfterNote = true
             case .panel:
                 mode = hasPendingSignal ? .signal(style) : .idle
                 isReceivingFiles = false
@@ -79,21 +91,45 @@ public struct NotchState: Equatable, Sendable {
             if case .panel = mode {
                 mode = .panel(tab)
                 lastTab = tab
+                if tab != .notes { isWritingNote = false }
             }
         case .editingBegan:
             if case .signal = mode { isEditing = true }
         case .editingEnded:
             endEditing(style: style)
+            endNote(style: style)
         case .fileDragEntered:
-            // Eine halb getippte Antwort geht vor; die Ablage öffnet sich nicht darüber.
-            guard !isEditing else { break }
+            // Eine halb getippte Antwort oder Notiz geht vor; die Ablage öffnet sich nicht darüber.
+            guard !isEditing, !isWritingNote else { break }
             collapseAfterEditing = false
             mode = .panel(.shelf)
             isReceivingFiles = true
         case .fileDragEnded:
             // Offen bleibt die Ablage, bis der Zeiger sie verlässt (`hoverEnded`).
             isReceivingFiles = false
+        case .noteFieldFocused(let focused):
+            // Nur das Notizfeld zählt als Schreiben; ein Klick auf eine gespeicherte Notiz hält die Notch nicht auf.
+            if focused, mode == .panel(.notes) {
+                isWritingNote = true
+            } else if !focused {
+                endNote(style: style)
+            }
+        case .noteShortcut(let pointerInside):
+            // Eine halb getippte Antwort an einen Agenten geht vor.
+            guard !isEditing else { break }
+            mode = .panel(.notes)
+            isReceivingFiles = false
+            isWritingNote = true
+            collapseAfterNote = !pointerInside
         }
+    }
+
+    /// Die Notiz ist fertig (gespeichert, Escape, Klick woandershin); war der Zeiger weg, klappt die Notch zu.
+    private mutating func endNote(style: SignalStyle) {
+        guard isWritingNote else { return }
+        isWritingNote = false
+        if collapseAfterNote, case .panel = mode { mode = hasPendingSignal ? .signal(style) : .idle }
+        collapseAfterNote = false
     }
 
     /// Beendet das Tippen und holt ein dabei aufgeschobenes Zuklappen nach.
