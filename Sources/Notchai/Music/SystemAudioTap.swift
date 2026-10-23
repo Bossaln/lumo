@@ -121,11 +121,14 @@ final class SystemAudioTap: @unchecked Sendable {
                                    mElement: kAudioObjectPropertyElementMain)
     }
 
+    /// Liest einen Wert fester Größe (Zahl, Struktur); Texte über `readString`.
     private static func read<T>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
                                 into value: inout T) -> OSStatus {
         var address = address(selector)
         var size = UInt32(MemoryLayout<T>.size)
-        return AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value)
+        return withUnsafeMutableBytes(of: &value) { bytes in
+            AudioObjectGetPropertyData(object, &address, 0, nil, &size, bytes.baseAddress!)
+        }
     }
 
     private static func readString(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector) -> String? {
