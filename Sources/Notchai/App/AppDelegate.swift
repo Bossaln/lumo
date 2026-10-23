@@ -73,6 +73,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let visualizer = MusicVisualizer()
         self.visualizer = visualizer
         model.musicLevels = { [weak visualizer] count, time in visualizer?.levels(count: count, at: time) }
+        model.musicSpectrum = { [weak visualizer] count, time in
+            visualizer?.spectrum(count: count, leveling: .shared, at: time)
+        }
         visualizer.start(model: model)
 
         // Lagerhalle: ein Klick auf eine Figur holt das Fenster ihrer Session nach vorn und schließt das Büro.

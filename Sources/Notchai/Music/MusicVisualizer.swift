@@ -21,6 +21,17 @@ final class MusicVisualizer {
 
     private(set) var status: Status = .idle
 
+    /// Höhen der Balken und ihre Spitzen (je 0…1).
+    struct Spectrum {
+        let levels: [Double]
+        let peaks: [Double]
+    }
+
+    private struct BarsKey: Hashable {
+        let count: Int
+        let leveling: VisualizerBars.Leveling
+    }
+
     static let fftSize = 1024
     /// So lange darf nach dem Start nur Stille kommen, bis notchai eine fehlende Freigabe vermutet.
     private static let silenceUntilHint: TimeInterval = 5
@@ -37,8 +48,8 @@ final class MusicVisualizer {
     @ObservationIgnored private var sampleRate = 48_000.0
     @ObservationIgnored private var analyzer = SpectrumAnalyzer(size: MusicVisualizer.fftSize)
     @ObservationIgnored private var samples = [Float](repeating: 0, count: MusicVisualizer.fftSize)
-    @ObservationIgnored private var bars: [Int: VisualizerBars] = [:]
-    @ObservationIgnored private var lastFrame: [Int: (time: TimeInterval, levels: [Double])] = [:]
+    @ObservationIgnored private var bars: [BarsKey: VisualizerBars] = [:]
+    @ObservationIgnored private var lastFrame: [BarsKey: (time: TimeInterval, spectrum: Spectrum)] = [:]
     @ObservationIgnored private var watchdog: Timer?
     @ObservationIgnored private var startedAt = Date.distantPast
     @ObservationIgnored private var lastFrameCount = 0
@@ -149,16 +160,25 @@ final class MusicVisualizer {
 
     /// Höhen von `count` Balken (0…1) für das Bild zur Zeit `time`; `nil` ohne echten Ton.
     func levels(count: Int, at time: TimeInterval) -> [Double]? {
+        spectrum(count: count, leveling: .perBand, at: time)?.levels
+    }
+
+    /// Höhen und Spitzen von `count` Balken für das Bild zur Zeit `time`; `nil` ohne echten Ton.
+    /// Zeichnen zwei Ansichten im selben Bild dieselben Balken, rechnet notchai nur einmal.
+    func spectrum(count: Int, leveling: VisualizerBars.Leveling, at time: TimeInterval) -> Spectrum? {
         guard status == .running, ring.hasHeardSound else { return nil }
-        if let last = lastFrame[count], last.time == time { return last.levels }
+        let key = BarsKey(count: count, leveling: leveling)
+        if let last = lastFrame[key], last.time == time { return last.spectrum }
         guard ring.copyLatest(into: &samples) else { return nil }
         let magnitudes = analyzer.magnitudes(of: samples)
-        var bands = bars[count] ?? VisualizerBars(count: count, sampleRate: sampleRate, fftSize: Self.fftSize)
+        var bands = bars[key] ?? VisualizerBars(count: count, sampleRate: sampleRate, fftSize: Self.fftSize,
+                                                leveling: leveling)
         // Nach einer Pause im Zeichnen nicht mit einem riesigen Schritt weitermachen.
-        let dt = lastFrame[count].map { min(max(time - $0.time, 0), 0.1) } ?? 1.0 / 60
-        let levels = bands.update(magnitudes: magnitudes, dt: dt)
-        bars[count] = bands
-        lastFrame[count] = (time, levels)
-        return levels
+        let dt = lastFrame[key].map { min(max(time - $0.time, 0), 0.1) } ?? 1.0 / 60
+        bands.update(magnitudes: magnitudes, dt: dt)
+        bars[key] = bands
+        let spectrum = Spectrum(levels: bands.levels, peaks: bands.peaks)
+        lastFrame[key] = (time, spectrum)
+        return spectrum
     }
 }

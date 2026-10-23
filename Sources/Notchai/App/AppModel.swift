@@ -80,6 +80,8 @@ final class AppModel {
     /// Höhen der Balken aus dem echten Ton (`MusicVisualizer`): Anzahl und Zeitpunkt des Bildes rein, Höhen raus;
     /// `nil` heißt „kein echter Ton“, dann tanzen die Balken von selbst.
     @ObservationIgnored var musicLevels: ((Int, TimeInterval) -> [Double]?)?
+    /// Wie `musicLevels`, für den Visualizer mit vielen Balken: gemeinsam eingepegelt, mit Spitzen.
+    @ObservationIgnored var musicSpectrum: ((Int, TimeInterval) -> MusicVisualizer.Spectrum?)?
     /// Neuer Titel, den die Notch gerade kurz ausgefahren zeigt (`TrackChangeStyle`).
     private(set) var trackAnnouncement: TrackAnnouncement?
     @ObservationIgnored private var announcementTask: Task<Void, Never>?

@@ -69,7 +69,7 @@ extension Localization {
         "Beim Aufklappen zeigen": "When opening, show",
         "Beim Darüberfahren klappt eine Liste aller Sessions auf: Titel, Projekt, letzter Schritt.": "Hovering expands a list of all sessions: title, project, last step.",
         "Beim nächsten Titel fährt die Notch kurz nach unten aus, mit großem Cover, Titel und Interpret.": "When the next track starts, the notch briefly drops down with large cover art, title and artist.",
-        "Beim nächsten Titel fährt die Notch kurz zur Seite aus: links das Cover, rechts Titel und Interpret.": "When the next track starts, the notch briefly widens: cover art on the left, title and artist on the right.",
+        "Beim nächsten Titel fährt die Notch kurz zur Seite aus: links Cover, Titel und Interpret, rechts ein Visualizer zur Musik.": "When the next track starts, the notch briefly widens: cover art, title and artist on the left, a visualizer moving with the music on the right.",
         "Beim nächsten Titel wechselt nur das Cover neben der Kamera.": "When the next track starts, only the cover art next to the camera changes.",
         "Beleuchtung": "Lighting",
         "Berechtigungen": "Permissions",

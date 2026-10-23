@@ -467,7 +467,7 @@ struct SettingsView: View {
 
     private var trackChangeHint: String {
         switch settingsStore.settings.musicTrackChangeStyle {
-        case .island: L("Beim nächsten Titel fährt die Notch kurz zur Seite aus: links das Cover, rechts Titel und Interpret.")
+        case .island: L("Beim nächsten Titel fährt die Notch kurz zur Seite aus: links Cover, Titel und Interpret, rechts ein Visualizer zur Musik.")
         case .banner: L("Beim nächsten Titel fährt die Notch kurz nach unten aus, mit großem Cover, Titel und Interpret.")
         case .off: L("Beim nächsten Titel wechselt nur das Cover neben der Kamera.")
         }

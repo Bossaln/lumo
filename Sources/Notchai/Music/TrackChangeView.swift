@@ -13,7 +13,8 @@ struct TrackAnnouncement {
     let glow: RGB?
 }
 
-/// Neuer Titel, seitlich: links neben der Kamera das Cover und die Balken, rechts Titel und Interpret.
+/// Neuer Titel, seitlich: links neben der Kamera Cover, Titel und Interpret, rechts ein Visualizer mit vielen
+/// schmalen Balken. Danach klappt die Notch zurück in die gewohnte Musikanzeige.
 struct TrackChangeSidesView: View {
     let model: AppModel
     let announcement: TrackAnnouncement
@@ -28,37 +29,38 @@ struct TrackChangeSidesView: View {
         let cover = min(24, max(16, height - 10))
         HStack(spacing: 0) {
             Color.clear.frame(width: ear)
-            HStack(spacing: 0) {
+            HStack(spacing: 8) {
                 MusicArtwork(image: announcement.artwork, appIcon: announcement.appIcon, size: cover, cornerRadius: 6)
-                Spacer(minLength: 8)
-                DancingBars(color: Color(glow: announcement.glow), playing: model.displayedMusicPlaying,
-                            levels: model.musicLevels)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(announcement.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                    if let artist = announcement.artist, !artist.isEmpty {
+                        Text(artist)
+                            .font(.system(size: 10.5, weight: .regular))
+                            .foregroundStyle(PanelTabBar.gray)
+                    }
+                }
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.leading, 8)
-            .padding(.trailing, 14)
+            .padding(.trailing, 10)
             .frame(width: inner)
             Color.clear.frame(width: notchWidth)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(announcement.title)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                if let artist = announcement.artist, !artist.isEmpty {
-                    Text(artist)
-                        .font(.system(size: 10.5, weight: .regular))
-                        .foregroundStyle(PanelTabBar.gray)
-                }
-            }
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.leading, 12)
-            .padding(.trailing, 10)
-            .frame(width: inner, alignment: .leading)
+            SpectrumBars(color: Color(glow: announcement.glow), playing: model.displayedMusicPlaying,
+                         spectrum: model.musicSpectrum)
+                .frame(height: max(10, height - 14))
+                .padding(.leading, 12)
+                .padding(.trailing, 10)
+                .frame(width: inner)
             Color.clear.frame(width: ear)
         }
     }
 }
 
-/// Neuer Titel, ausgefahren: unter der Kamera ein großes Cover, Titel, Interpret und rechts die Balken.
+/// Neuer Titel, ausgefahren: unter der Kamera ein großes Cover, Titel, Interpret und rechts ein Visualizer.
 struct TrackChangeBannerView: View {
     let model: AppModel
     let announcement: TrackAnnouncement
@@ -85,8 +87,9 @@ struct TrackChangeBannerView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                DancingBars(color: Color(glow: announcement.glow), playing: model.displayedMusicPlaying, count: 4,
-                            levels: model.musicLevels)
+                SpectrumBars(color: Color(glow: announcement.glow), playing: model.displayedMusicPlaying, count: 16,
+                             spectrum: model.musicSpectrum)
+                    .frame(width: 84, height: 34)
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 10)
