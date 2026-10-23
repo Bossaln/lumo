@@ -145,7 +145,7 @@ struct SetupAssistantView: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.primary.opacity(0.1)).frame(width: 150, height: 5)
                 Capsule().fill(LinearGradient(colors: [claude, codex], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: max(8, 150 * step.progress), height: 5)
+                    .frame(width: CGFloat(max(8, 150 * step.progress)), height: 5)
             }
             .animation(.spring(response: 0.45, dampingFraction: 0.85), value: step)
             Text("Schritt \(step.rawValue + 1) von \(SetupStep.allCases.count)")

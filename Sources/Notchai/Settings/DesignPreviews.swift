@@ -104,11 +104,11 @@ struct SignalStylePicker: View {
 
 /// Auswahl des Hintergrunds als Karten mit der Notch in der jeweiligen Farbe.
 struct BackgroundPicker: View {
-    @Binding var selection: BackgroundStyle
+    @Binding var selection: NotchaiCore.BackgroundStyle
     let customHex: String
 
     var body: some View {
-        ChoiceCards(options: [(BackgroundStyle.black, "Schwarz"), (.darkGray, "Dunkelgrau"), (.custom, "Eigene Farbe")],
+        ChoiceCards(options: [(NotchaiCore.BackgroundStyle.black, "Schwarz"), (.darkGray, "Dunkelgrau"), (.custom, "Eigene Farbe")],
                     selection: $selection) { style in
             MiniNotch(width: 84, height: 24, background: color(for: style)) {
                 HStack(spacing: 4) {
@@ -120,7 +120,7 @@ struct BackgroundPicker: View {
         }
     }
 
-    private func color(for style: BackgroundStyle) -> Color {
+    private func color(for style: NotchaiCore.BackgroundStyle) -> Color {
         var settings = AppSettings.default
         settings.background = style
         settings.customBackgroundHex = customHex
