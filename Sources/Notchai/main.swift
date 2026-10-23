@@ -5,7 +5,6 @@ MainActor.assumeIsolated {
     let delegate = AppDelegate()
     app.delegate = delegate
     app.setActivationPolicy(.accessory)
-    // Sichtbar nur, solange das Einstellungsfenster die App nach vorn holt (⌘W, ⌘C/⌘V/⌘A …).
-    app.mainMenu = MainMenu.make()
+    // Das Hauptmenü (⌘W, ⌘C/⌘V/⌘A …) setzt der AppDelegate, sobald die Sprache feststeht.
     app.run()
 }

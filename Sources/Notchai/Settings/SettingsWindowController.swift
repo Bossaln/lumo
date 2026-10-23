@@ -28,6 +28,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.tryOut = tryOut
     }
 
+    /// Fenstertitel in der aktuellen Sprache (nach einem Sprachwechsel).
+    func relocalize() {
+        window?.title = L("notchai-Einstellungen")
+    }
+
     /// Das Einstellungsfenster ist gerade zu sehen.
     var isVisible: Bool { window?.isVisible == true }
 
@@ -43,7 +48,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 backing: .buffered,
                 defer: false
             )
-            window.title = "notchai-Einstellungen"
+            window.title = L("notchai-Einstellungen")
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
@@ -84,13 +89,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         refreshLaunchAtLoginSetting()
         switch SMAppService.mainApp.status {
         case .requiresApproval:
-            return "Bitte notchai unter Systemeinstellungen › Allgemein › Anmeldeobjekte erlauben."
+            return L("Bitte notchai unter Systemeinstellungen › Allgemein › Anmeldeobjekte erlauben.")
         case .notFound:
-            return "macOS findet notchai nicht als Anmeldeobjekt."
+            return L("macOS findet notchai nicht als Anmeldeobjekt.")
         case .notRegistered, .enabled:
             return nil
         @unknown default:
-            return "macOS meldet einen unbekannten Status für das Anmeldeobjekt."
+            return L("macOS meldet einen unbekannten Status für das Anmeldeobjekt.")
         }
     }
 

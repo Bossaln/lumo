@@ -4,10 +4,10 @@ public enum PanelTab: String, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .music: "Musik"
-        case .sessions: "Sessions"
-        case .office: "Büro"
-        case .shelf: "Ablage"
+        case .music: L("Musik")
+        case .sessions: L("Sessions")
+        case .office: L("Büro")
+        case .shelf: L("Ablage")
         }
     }
 }

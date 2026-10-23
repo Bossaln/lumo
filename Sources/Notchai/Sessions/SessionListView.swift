@@ -13,7 +13,7 @@ struct SessionListView: View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             VStack(alignment: .leading, spacing: 2) {
                 if model.sessions.isEmpty {
-                    Text("Keine aktiven Sessions")
+                    Text(L("Keine aktiven Sessions"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SessionPalette.secondary)
                         .frame(maxWidth: .infinity, minHeight: 90)
@@ -22,7 +22,7 @@ struct SessionListView: View {
                         SessionRowView(session: session, now: context.date, model: model)
                     }
                     if model.sessions.count > Self.maxRows {
-                        Text("+ \(model.sessions.count - Self.maxRows) weitere")
+                        Text(L("+ {0} weitere", model.sessions.count - Self.maxRows))
                             .font(.system(size: 11.5, weight: .semibold))
                             .foregroundStyle(SessionPalette.secondary)
                             .padding(.leading, 26)

@@ -32,8 +32,8 @@ public enum CoordinateInput: Sendable {
     /// Hinweis unter dem Feld, wenn die Eingabe nicht übernommen wird.
     public var invalidHint: String {
         switch self {
-        case .latitude: "Breitengrad: Zahl von −90 bis 90, z. B. 52,52"
-        case .longitude: "Längengrad: Zahl von −180 bis 180, z. B. 13,40"
+        case .latitude: L("Breitengrad: Zahl von −90 bis 90, z. B. 52,52")
+        case .longitude: L("Längengrad: Zahl von −180 bis 180, z. B. 13,40")
         }
     }
 

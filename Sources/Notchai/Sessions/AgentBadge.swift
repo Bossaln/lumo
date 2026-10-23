@@ -74,12 +74,12 @@ enum SessionPalette {
 
     static func statusText(_ session: AgentSession) -> String {
         switch session.status {
-        case .working: session.lastStep ?? "Arbeitet"
-        case .waitingApproval: "Wartet auf Freigabe"
-        case .waitingAnswer: "Wartet auf dich"
-        case .done: session.lastStep ?? "Fertig"
-        case .ready: "Bereit"
-        case .error: session.lastStep ?? "Fehler"
+        case .working: session.lastStep ?? L("Arbeitet")
+        case .waitingApproval: L("Wartet auf Freigabe")
+        case .waitingAnswer: L("Wartet auf dich")
+        case .done: session.lastStep ?? L("Fertig")
+        case .ready: L("Bereit")
+        case .error: session.lastStep ?? L("Fehler")
         }
     }
 }

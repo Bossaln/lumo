@@ -45,7 +45,7 @@ struct SkipButton: View {
         }
         .buttonStyle(NotchControlButtonStyle())
         .frame(width: 40, height: 40)
-        .accessibilityLabel(direction == .forward ? "Weiter" : "Zurück")
+        .accessibilityLabel(direction == .forward ? L("Nächster Titel") : L("Vorheriger Titel"))
     }
 
     private func play() {
@@ -131,7 +131,7 @@ struct PlayPauseButton: View {
         .buttonStyle(NotchControlButtonStyle())
         .frame(width: 40, height: 40)
         .animation(.spring(response: 0.36, dampingFraction: 0.7), value: playing)
-        .accessibilityLabel(playing ? "Pause" : "Abspielen")
+        .accessibilityLabel(playing ? L("Pause") : L("Abspielen"))
     }
 }
 

@@ -38,7 +38,7 @@ final class ResponsivenessMonitor {
 
     /// Das Menü in der Menüleiste öffnete erst `delay` Sekunden nach dem Klick.
     func menuOpened(after delay: TimeInterval) {
-        record(delay, what: "Menüleiste: Menü nach dem Klick")
+        record(delay, what: L("Menüleiste: Menü nach dem Klick"))
     }
 
     private func record(_ delay: TimeInterval, what: String?) {

@@ -47,6 +47,8 @@ struct NotchRootView: View {
             .animation(animation, value: presentation)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .ignoresSafeArea()
+            // Neue Sprache: alles neu aufbauen, damit jeder Text sie zeigt.
+            .id(settings.language)
     }
 
     /// Im Reiter „Musik“: das Cover verschwommen als Hintergrund (Einstellung `musicArtworkBackground`).

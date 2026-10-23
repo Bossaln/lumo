@@ -4,11 +4,11 @@ public enum PlayerKind: String, Sendable, CaseIterable {
 
     public var label: String {
         switch self {
-        case .musicService: "Musikdienst"
-        case .browser: "Browser"
-        case .video: "Video"
-        case .podcast: "Podcast"
-        case .other: "Sonstiges"
+        case .musicService: L("Musikdienst")
+        case .browser: L("Browser")
+        case .video: L("Video")
+        case .podcast: L("Podcast")
+        case .other: L("Sonstiges")
         }
     }
 }

@@ -316,12 +316,12 @@ final class AppModel {
         var parts: [String] = []
         switch notch.mode {
         case .idle:
-            parts.append(showsCirclesWhileIdle ? "Notch: Kreise" : showsCompactMusic ? "Notch: Musik eingeklappt" : "Notch: zu")
+            parts.append(showsCirclesWhileIdle ? L("Notch: Kreise") : showsCompactMusic ? L("Notch: Musik eingeklappt") : L("Notch: zu"))
         case .signal(let style): parts.append("Notch: Signal (\(style.rawValue))")
         case .panel(let tab): parts.append("Notch: \(tab.title)")
         }
-        if nowPlaying?.isPlaying == true { parts.append("Musik spielt") }
-        if !sessions.isEmpty { parts.append(sessions.count == 1 ? "1 Session" : "\(sessions.count) Sessions") }
+        if nowPlaying?.isPlaying == true { parts.append(L("Musik spielt")) }
+        if !sessions.isEmpty { parts.append(sessions.count == 1 ? L("1 Session") : L("{0} Sessions", sessions.count)) }
         return parts.joined(separator: " · ")
     }
 

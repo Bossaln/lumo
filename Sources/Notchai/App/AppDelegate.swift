@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let responsiveness = ResponsivenessMonitor()
     /// Hält App Nap fern: Agenten warten auf die Antwort der Notch, und ein Klick in die Menüleiste soll sofort wirken.
     private var activity: NSObjectProtocol?
+    /// Sprache, in der Menüs und Fenstertitel gerade stehen.
+    private var appliedLanguage: AppLanguage?
     /// Wartet irgendeine Session auf den Besitzer (laut Session-Buch)?
     private var sessionsWaiting = false
     private var dotVisible: Bool?
@@ -26,10 +28,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             options: .userInitiatedAllowingIdleSystemSleep,
             reason: "notchai beantwortet Fragen und Freigaben von Claude Code und Codex sofort")
         let home = FileManager.default.homeDirectoryForCurrentUser
+        let settingsStore = SettingsStore(fileURL: SettingsStore.defaultFileURL())
+        // Die Sprache steht fest, bevor irgendein Text entsteht (Menüs, Notch, Fenster).
+        LanguageSwitch.apply(settingsStore.settings)
+        appliedLanguage = Localization.language
+        NSApp.mainMenu = MainMenu.make()
         let statusItemController = StatusItemController()
         self.statusItemController = statusItemController
-        let model = AppModel(settingsStore: SettingsStore(fileURL: SettingsStore.defaultFileURL()),
-                             shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
+        let model = AppModel(settingsStore: settingsStore, shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
         self.model = model
         let setup = SetupController(home: home)
         let updates = UpdateController(settingsStore: model.settingsStore)
@@ -84,22 +90,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })
 
-        updateItem = statusItemController.addMenuItem("Nach Updates suchen …") { [weak self] in
-            self?.updateMenuAction()
+        updateItem = statusItemController.addMenuItem({ [weak updates] in Self.menuTitle(for: updates?.state ?? .idle) }) {
+            [weak self] in self?.updateMenuAction()
         }
-        statusItemController.addMenuItem("Büro öffnen") { [weak office] in office?.open() }
-        statusItemController.addMenuItem("Einrichtung …") { [weak setupWindow] in setupWindow?.show() }
+        statusItemController.addMenuItem({ L("Büro öffnen") }) { [weak office] in office?.open() }
+        statusItemController.addMenuItem({ L("Einrichtung …") }) { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
 
         // Wie schnell notchai reagiert: Die Seite „Entwickler“ listet jeden spürbaren Hänger.
         responsiveness.context = { [weak model, weak office] in
-            let parts = [model?.diagnosticContext() ?? "", office?.isOpen == true ? "Büro offen" : "",
-                         settingsWindowController.isVisible ? "Einstellungen offen" : ""]
+            let parts = [model?.diagnosticContext() ?? "", office?.isOpen == true ? L("Büro offen") : "",
+                         settingsWindowController.isVisible ? L("Einstellungen offen") : ""]
             return parts.filter { !$0.isEmpty }.joined(separator: " · ")
         }
         statusItemController.onMenuOpen = { [weak self] delay in self?.responsiveness.menuOpened(after: delay) }
         observeDeveloperOptions()
+        observeLanguage()
 
         // Beim ersten Start leuchtet der Bildschirm auf, das Leuchten zieht sich in die Notch zusammen, und der
         // Assistent richtet alles ein (jeder Schritt lässt sich überspringen).
@@ -146,13 +153,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch state {
         case .available(let offer): "Update installieren (\(offer.count) neu) …"
         case .releaseAvailable(let offer): "Update auf \(offer.version) installieren …"
-        case .checking: "Suche nach Updates …"
-        case .installing: "Update wird installiert …"
-        default: "Nach Updates suchen …"
+        case .checking: L("Suche nach Updates …")
+        case .installing: L("Update wird installiert …")
+        default: L("Nach Updates suchen …")
         }
     }
 
     // MARK: - Entwickler
+
+    /// Nach einem Sprachwechsel bekommen Menüs und Fenstertitel die neuen Texte (die SwiftUI-Ansichten bauen sich
+    /// selbst neu auf).
+    private func observeLanguage() {
+        guard let model else { return }
+        withObservationTracking {
+            _ = model.settingsStore.settings.language
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, let model = self.model else { return }
+                // Beobachtet werden alle Einstellungen; neu beschriftet wird nur bei einer anderen Sprache.
+                LanguageSwitch.apply(model.settingsStore.settings)
+                if Localization.language != appliedLanguage {
+                    appliedLanguage = Localization.language
+                    NSApp.mainMenu = MainMenu.make()
+                    statusItemController?.relocalize()
+                    SettingsWindowController.shared.relocalize()
+                    setupWindow?.relocalize()
+                }
+                observeLanguage()
+            }
+        }
+    }
 
     /// Die Messung der Reaktionszeit läuft nur, solange die Entwickleroptionen an sind.
     private func observeDeveloperOptions() {

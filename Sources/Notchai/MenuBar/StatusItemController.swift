@@ -11,6 +11,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// in der Farbe der Menüleiste zeichnet, und beim Klicken muss nichts neu gemalt werden.
     private let dot = NSView()
     private var settingsAction: @MainActor () -> Void = {}
+    /// Einträge samt ihrem Titel; nach einem Sprachwechsel bekommen sie ihn neu (`relocalize`).
+    private var titles: [(item: NSMenuItem, title: () -> String)] = []
     /// Meldet, wie lange das Menü nach dem Klick zum Öffnen brauchte (Seite „Entwickler“).
     var onMenuOpen: ((TimeInterval) -> Void)?
 
@@ -28,12 +30,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func buildMenu() {
-        let settings = NSMenuItem(title: "Einstellungen …", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L("Einstellungen …"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
+        titles.append((settings, { L("Einstellungen …") }))
         mainInsertIndex = menu.items.count
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "notchai beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let quit = NSMenuItem(title: L("notchai beenden"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(quit)
+        titles.append((quit, { L("notchai beenden") }))
     }
 
     private func installDot(on button: NSStatusBarButton) {
@@ -67,13 +72,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         mainInsertIndex += 1
     }
 
-    /// Bequemer Weg für Einträge, die nur eine Closure ausführen. Gibt den Eintrag zurück, damit sich
-    /// sein Titel später ändern lässt (etwa „Update installieren …“).
+    /// Bequemer Weg für Einträge, die nur eine Closure ausführen. `title` liefert den Titel in der aktuellen
+    /// Sprache. Gibt den Eintrag zurück, damit sich sein Titel später ändern lässt (etwa „Update installieren …“).
     @discardableResult
-    func addMenuItem(_ title: String, action: @escaping @MainActor () -> Void) -> NSMenuItem {
-        let item = ClosureMenuItem(title: title, handler: action)
+    func addMenuItem(_ title: @escaping () -> String, action: @escaping @MainActor () -> Void) -> NSMenuItem {
+        let item = ClosureMenuItem(title: title(), handler: action)
         addMenuItem(item)
+        titles.append((item, title))
         return item
+    }
+
+    /// Alle Titel neu, nach einem Wechsel der Sprache.
+    func relocalize() {
+        for entry in titles { entry.item.title = entry.title() }
     }
 
     /// Zeigt oder versteckt den kleinen Punkt über dem Symbol.

@@ -53,7 +53,7 @@ public enum NowPlayingProbe {
             row[key]?.stringValue.flatMap { $0.isEmpty ? nil : $0 }
         }
         let bundleId = text("bundleId")
-        let source = PlayerSource(bundleId: bundleId, name: text("app") ?? bundleId ?? "Unbekannt")
+        let source = PlayerSource(bundleId: bundleId, name: text("app") ?? bundleId ?? L("Unbekannt"))
         let duration = row["duration"]?.numberValue.flatMap { $0 > 0 ? $0 : nil }
         return NowPlaying(source: source, title: title, artist: text("artist"), album: text("album"),
                           duration: duration, elapsed: row["position"]?.numberValue, timestamp: now,

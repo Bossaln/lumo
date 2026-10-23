@@ -4,8 +4,8 @@ public enum MusicSourceMode: String, Codable, Equatable, Sendable, CaseIterable 
 
     public var label: String {
         switch self {
-        case .musicServices: "Nur Musikdienste"
-        case .allPlayers: "Alles, was abspielt"
+        case .musicServices: L("Nur Musikdienste")
+        case .allPlayers: L("Alles, was abspielt")
         }
     }
 }
@@ -43,11 +43,11 @@ public enum MusicFilter {
 
     /// Was „Automatisch“ für eine App dieser Art gerade bedeutet (Liste „Erkannte Player“).
     public static func automaticSummary(for kind: PlayerKind, settings: AppSettings) -> String {
-        let shown = "wird gezeigt", hidden = "wird nicht gezeigt"
+        let shown = L("wird gezeigt"), hidden = L("wird nicht gezeigt")
         guard settings.musicSourceMode == .musicServices else { return shown }
         switch kind {
         case .musicService: return shown
-        case .browser: return settings.musicBrowserMusic ? "nur Musik (mit Album)" : hidden
+        case .browser: return settings.musicBrowserMusic ? L("nur Musik (mit Album)") : hidden
         case .podcast: return settings.musicIncludePodcasts ? shown : hidden
         case .video, .other: return hidden
         }

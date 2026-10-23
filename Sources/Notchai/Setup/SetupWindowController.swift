@@ -34,7 +34,7 @@ final class SetupWindowController: NSObject, NSWindowDelegate {
             // Wie die Systemeinstellungen: Die farbige Leiste reicht bis unter die Ampel.
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
                                   styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-            window.title = "notchai einrichten"
+            window.title = L("notchai einrichten")
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.isReleasedWhenClosed = false
@@ -50,6 +50,11 @@ final class SetupWindowController: NSObject, NSWindowDelegate {
         NSApp.setActivationPolicy(.regular)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate()
+    }
+
+    /// Fenstertitel in der aktuellen Sprache (nach einem Sprachwechsel).
+    func relocalize() {
+        window?.title = L("notchai einrichten")
     }
 
     private func finish() {

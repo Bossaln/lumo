@@ -14,9 +14,9 @@ final class ReplySender {
         /// Kurzer Hinweis für die Notch.
         var notice: String {
             switch self {
-            case .sent: "Gesendet"
-            case .focusedAndCopied: "In der Zwischenablage – mit ⌘V einfügen"
-            case .copied: "In der Zwischenablage"
+            case .sent: L("Gesendet")
+            case .focusedAndCopied: L("In der Zwischenablage – mit ⌘V einfügen")
+            case .copied: L("In der Zwischenablage")
             case .failed(let reason): "Nicht gesendet: \(reason)"
             }
         }
@@ -33,13 +33,13 @@ final class ReplySender {
         case .codexQueue(let threadId):
             guard let codex = locate("codex", ExecutableLocator.codexCandidates(home: home)) else {
                 copy(text)
-                return .failed("codex nicht gefunden, Text liegt in der Zwischenablage")
+                return .failed(L("codex nicht gefunden, Text liegt in der Zwischenablage"))
             }
             return await run(codex, ["queue", "--thread", threadId, "--message", text])
         case .cmuxPaste(let surface):
             guard let cmux = locate("cmux", ExecutableLocator.cmuxCandidates) else {
                 copy(text)
-                return .failed("cmux nicht gefunden, Text liegt in der Zwischenablage")
+                return .failed(L("cmux nicht gefunden, Text liegt in der Zwischenablage"))
             }
             return await run(cmux, ["paste", "--surface", surface, "--submit", text])
         case .focusAndClipboard(let bundleId, let autoSend):

@@ -15,10 +15,10 @@ struct OfficeTabView: View {
         let settings = model.settingsStore.settings
         if !settings.officeEnabled {
             VStack(spacing: 10) {
-                Text("Das Büro ist ausgeschaltet.")
+                Text(L("Das Büro ist ausgeschaltet."))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(PanelTabBar.gray)
-                Button("Einstellungen öffnen") { model.openSettings() }
+                Button(L("Einstellungen öffnen")) { model.openSettings() }
                     .buttonStyle(.plain)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.white)
@@ -41,7 +41,7 @@ struct OfficeTabView: View {
         HStack(spacing: 4) {
             Image(systemName: "arrow.up.left.and.arrow.down.right")
                 .font(.system(size: 8, weight: .bold))
-            Text(hotkey ? "Groß öffnen: klicken oder 2× rechte ⌘" : "Klicken, um groß zu öffnen")
+            Text(hotkey ? L("Groß öffnen: klicken oder 2× rechte ⌘") : L("Klicken, um groß zu öffnen"))
                 .font(.system(size: 9, weight: .medium))
         }
         .foregroundStyle(Color.white.opacity(0.75))

@@ -20,8 +20,8 @@
 brew install --cask bossaln/tap/notchai
 ```
 
-> [!NOTE]
-> The interface is currently in **German**. An English translation is welcome – see [Contributing](#contributing).
+notchai speaks **English** and **German** – pick your language in the first step of the setup or later in
+**Settings › General**.
 
 ## What it does
 
@@ -102,18 +102,18 @@ xattr -dr com.apple.quarantine /Applications/notchai.app
 
 ## First launch
 
-1. Your screen edges light up and the glow pulls into the notch, which keeps glowing until setup is done. A setup assistant connects **Claude Code** and **Codex** and lets you try the notch styles, colors and session views right away.
+1. Your screen edges light up and the glow pulls into the notch, which keeps glowing until setup is done. A setup assistant asks for your language, connects **Claude Code** and **Codex** and lets you try the notch styles, colors and session views right away.
 2. **Codex** only runs hooks you trusted: start `codex` once in a terminal and choose **"Trust all and continue"**.
 3. Optional permissions, only needed for these features
    (System Settings › Privacy & Security):
    - **Accessibility** – double-tap right <kbd>⌘</kbd> for the warehouse, typing replies into a session's window
    - **Automation** – cover art and playback controls for Spotify and Music
 
-Everything else is in **Settings** (menu bar icon › Einstellungen). Turn on **Allgemein › Entwickleroptionen** for a developer page with test signals, raw diagnostics and a full reset to a fresh install.
+Everything else is in **Settings** (menu bar icon › Settings). Turn on **General › Developer options** for a developer page with test signals, raw diagnostics, a responsiveness log and a full reset to a fresh install.
 
 ## Uninstall
 
-1. In notchai: **Einstellungen › Agenten › „Alles entfernen“** removes the hooks from Claude Code and Codex.
+1. In notchai: **Settings › Agents › Remove All** removes the hooks from Claude Code and Codex.
 2. Then:
 
    ```sh
@@ -149,9 +149,12 @@ A build made from a source folder updates itself from that folder: the update bu
 ## Contributing
 
 Issues and pull requests are welcome. Please add tests for new logic in `NotchaiCore` (Swift Testing:
-`import Testing`, `@Test`, `#expect`). Code comments and the interface are German for now; an English
-localization of the interface would be a great contribution. How releases are made is described in
+`import Testing`, `@Test`, `#expect`). Code comments are German. Interface texts are written in German in the code
+(`L("…")`) and translated in [`English.swift`](Sources/NotchaiCore/Localization/English.swift); a test makes sure
+every text has a translation, so another language is mostly one more table. How releases are made is described in
 [`docs/releasing.md`](docs/releasing.md).
+
+If notchai saves you a few window switches, a ⭐ on GitHub helps other people find it.
 
 ## License
 

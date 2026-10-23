@@ -13,10 +13,11 @@ struct SetupAssistantView: View {
     let tryOut: () -> Void
     let finish: () -> Void
 
-    @ViewState private var step: SetupStep = .welcome
+    @ViewState private var step: SetupStep = .language
 
-    private static let claudeEvents = "SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, StopFailure, SubagentStart, SubagentStop (nur melden) sowie PermissionRequest und AskUserQuestion (Freigaben und Fragen in der Notch beantworten)"
-    private static let codexEvents = "SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop (nur melden) sowie PermissionRequest"
+    /// Hook-Ereignisse, die notchai nur meldet (ohne die, auf die es antwortet).
+    private static let claudeEvents = "SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, StopFailure, SubagentStart, SubagentStop"
+    private static let codexEvents = "SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop"
 
     var body: some View {
         HStack(spacing: 0) {
@@ -42,6 +43,8 @@ struct SetupAssistantView: View {
             }
         }
         .frame(width: 820, height: 580)
+        // Neue Sprache: alles neu aufbauen, damit jeder Text sie zeigt.
+        .id(settingsStore.settings.language)
         .onAppear { setup.refresh() }
     }
 
@@ -70,7 +73,7 @@ struct SetupAssistantView: View {
                         Text("notchai")
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(Color.white)
-                        Text("Einrichtung")
+                        Text(L("Einrichtung"))
                             .font(.system(size: 12))
                             .foregroundStyle(Color.white.opacity(0.6))
                     }
@@ -148,17 +151,17 @@ struct SetupAssistantView: View {
                     .frame(width: CGFloat(max(8, 150 * step.progress)), height: 5)
             }
             .animation(.spring(response: 0.45, dampingFraction: 0.85), value: step)
-            Text("Schritt \(step.rawValue + 1) von \(SetupStep.allCases.count)")
+            Text(L("Schritt {0} von {1}", step.rawValue + 1, SetupStep.allCases.count))
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Spacer()
-            if step == .welcome {
-                Button("Später") { finish() }
+            if step == .language {
+                Button(L("Später")) { finish() }
             } else if let previous = step.previous, step != .done {
-                Button("Zurück") { go(to: previous) }
+                Button(L("Zurück")) { go(to: previous) }
             }
             if step == .claude || step == .codex {
-                Button("Überspringen") { advance() }
+                Button(L("Überspringen")) { advance() }
             }
             primaryButton
                 .buttonStyle(.borderedProminent)
@@ -171,29 +174,29 @@ struct SetupAssistantView: View {
     private var primaryButton: some View {
         switch step {
         case .welcome:
-            Button("Los geht's") { advance() }
+            Button(L("Los geht's")) { advance() }
         case .claude:
             if setup.status?.claudeInstalled == true {
-                Button("Weiter") { advance() }
+                Button(L("Weiter")) { advance() }
             } else {
-                Button("Claude Code verbinden") {
+                Button(L("Claude Code verbinden")) {
                     setup.connectClaude()
                     if setup.status?.claudeInstalled == true { advance() }
                 }
             }
         case .codex:
             if setup.status?.codexInstalled == true {
-                Button("Weiter") { advance() }
+                Button(L("Weiter")) { advance() }
             } else {
-                Button("Codex verbinden") {
+                Button(L("Codex verbinden")) {
                     setup.connectCodex()
                     if setup.status?.codexInstalled == true { advance() }
                 }
             }
         case .done:
-            Button("Fertig") { finish() }
+            Button(L("Fertig")) { finish() }
         default:
-            Button("Weiter") { advance() }
+            Button(L("Weiter")) { advance() }
         }
     }
 
@@ -206,6 +209,7 @@ struct SetupAssistantView: View {
     @ViewBuilder
     private var content: some View {
         switch step {
+        case .language: languageStep
         case .welcome: welcome
         case .claude: claudeStep
         case .codex: codexStep
@@ -217,30 +221,44 @@ struct SetupAssistantView: View {
         }
     }
 
+    /// Zwei große Karten; ein Klick wechselt sofort, auch alle weiteren Schritte erscheinen dann in der Sprache.
+    private var languageStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                ForEach(AppLanguage.allCases, id: \.self) { language in
+                    LanguageCard(language: language, selected: Localization.language == language) {
+                        LanguageSwitch.set(language, in: settingsStore)
+                    }
+                }
+            }
+            InfoBox(symbol: "globe", text: L("Du kannst die Sprache jederzeit unter Einstellungen › Allgemein ändern."))
+        }
+    }
+
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 14) {
-            FeatureRow(symbol: "bell.badge.fill", color: Self.rgb(1.0, 0.55, 0.25), title: "Signale",
-                       text: "Fragen, Freigaben, „Fertig“ und Fehler erscheinen direkt in der Notch. Erlauben, ablehnen oder antworten, ohne das Fenster zu wechseln.")
-            FeatureRow(symbol: "rectangle.stack.fill", color: Self.rgb(0.35, 0.6, 1.0), title: "Sessions",
-                       text: "Alle laufenden Claude-Code- und Codex-Sessions auf einen Blick, mit letztem Schritt und Antwortfeld.")
-            FeatureRow(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: "Musik",
-                       text: "Cover, Titel, Spulen und Steuerung für Spotify, Musik und fast jeden anderen Player.")
-            FeatureRow(symbol: "building.2.fill", color: Self.rgb(0.25, 0.8, 0.55), title: "Lagerhalle",
-                       text: "Deine Agenten als Pixel-Figuren in einer Halle mit Autos, Couch und Kühlschrank. Zweimal rechte ⌘ öffnet sie.")
-            FeatureRow(symbol: "tray.full.fill", color: Self.rgb(1.0, 0.68, 0.12), title: "Ablage",
-                       text: "Zieh Dateien auf die Notch: per AirDrop senden oder kurz ablegen und später wieder herausziehen.")
-            InfoBox(symbol: "hand.raised.fill", text: "Läuft notchai nicht, arbeiten Claude Code und Codex genau wie vorher weiter. Es verlassen keine Daten deinen Mac.")
+            FeatureRow(symbol: "bell.badge.fill", color: Self.rgb(1.0, 0.55, 0.25), title: L("Signale"),
+                       text: L("Fragen, Freigaben, „Fertig“ und Fehler erscheinen direkt in der Notch. Erlauben, ablehnen oder antworten, ohne das Fenster zu wechseln."))
+            FeatureRow(symbol: "rectangle.stack.fill", color: Self.rgb(0.35, 0.6, 1.0), title: L("Sessions"),
+                       text: L("Alle laufenden Claude-Code- und Codex-Sessions auf einen Blick, mit letztem Schritt und Antwortfeld."))
+            FeatureRow(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: L("Musik"),
+                       text: L("Cover, Titel, Spulen und Steuerung für Spotify, Musik und fast jeden anderen Player."))
+            FeatureRow(symbol: "building.2.fill", color: Self.rgb(0.25, 0.8, 0.55), title: L("Lagerhalle"),
+                       text: L("Deine Agenten als Pixel-Figuren in einer Halle mit Autos, Couch und Kühlschrank. Zweimal rechte ⌘ öffnet sie."))
+            FeatureRow(symbol: "tray.full.fill", color: Self.rgb(1.0, 0.68, 0.12), title: L("Ablage"),
+                       text: L("Zieh Dateien auf die Notch: per AirDrop senden oder kurz ablegen und später wieder herausziehen."))
+            InfoBox(symbol: "hand.raised.fill", text: L("Läuft notchai nicht, arbeiten Claude Code und Codex genau wie vorher weiter. Es verlassen keine Daten deinen Mac."))
         }
     }
 
     private var claudeStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("notchai trägt in ~/.claude/settings.json eigene Hooks ein. So sieht die Notch, was Claude Code tut, und kann Freigaben und Fragen direkt beantworten.")
+            Text(L("notchai trägt in ~/.claude/settings.json eigene Hooks ein. So sieht die Notch, was Claude Code tut, und kann Freigaben und Fragen direkt beantworten."))
                 .fixedSize(horizontal: false, vertical: true)
             ConnectionCard(agent: .claude, name: "Claude Code", color: claude,
                            installed: setup.status?.claudeInstalled ?? false, connect: setup.connectClaude)
-            InfoBox(symbol: "lock.shield.fill", text: "Vorher legt notchai eine Sicherung an. Fremde Einträge bleiben unverändert, und unter Einstellungen › Agenten lässt sich alles mit einem Knopf wieder entfernen.")
-            Text("Ereignisse: " + Self.claudeEvents)
+            InfoBox(symbol: "lock.shield.fill", text: L("Vorher legt notchai eine Sicherung an. Fremde Einträge bleiben unverändert, und unter Einstellungen › Agenten lässt sich alles mit einem Knopf wieder entfernen."))
+            Text(L("Ereignisse: {0} (nur melden) sowie PermissionRequest und AskUserQuestion (Freigaben und Fragen in der Notch beantworten)", Self.claudeEvents))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -250,12 +268,12 @@ struct SetupAssistantView: View {
 
     private var codexStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("notchai trägt in ~/.codex/hooks.json eigene Hooks ein. Die config.toml bleibt unberührt.")
+            Text(L("notchai trägt in ~/.codex/hooks.json eigene Hooks ein. Die config.toml bleibt unberührt."))
                 .fixedSize(horizontal: false, vertical: true)
             ConnectionCard(agent: .codex, name: "Codex", color: codex,
                            installed: setup.status?.codexInstalled ?? false, connect: setup.connectCodex)
-            InfoBox(symbol: "terminal.fill", text: "Codex führt neue Hooks erst aus, wenn du sie einmal bestätigt hast: Starte danach codex im Terminal und wähle bei „Hooks need review“ „Trust all and continue“.")
-            Text("Ereignisse: " + Self.codexEvents)
+            InfoBox(symbol: "terminal.fill", text: L("Codex führt neue Hooks erst aus, wenn du sie einmal bestätigt hast: Starte danach codex im Terminal und wähle bei „Hooks need review“ „Trust all and continue“."))
+            Text(L("Ereignisse: {0} (nur melden) sowie PermissionRequest", Self.codexEvents))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -282,7 +300,7 @@ struct SetupAssistantView: View {
                 .fixedSize(horizontal: false, vertical: true)
             NotchPreviewCard(settings: settings)
             HStack {
-                Text("Fahr mit dem Zeiger über die Vorschau oder probier es in der echten Notch aus.")
+                Text(L("Fahr mit dem Zeiger über die Vorschau oder probier es in der echten Notch aus."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -296,7 +314,7 @@ struct SetupAssistantView: View {
             SectionTitle("Hintergrund")
             BackgroundPicker(selection: settingsStore.binding(\.background), customHex: settings.customBackgroundHex)
             if settings.background == .custom {
-                ColorPicker("Eigene Hintergrundfarbe", selection: settingsStore.colorBinding(\.customBackgroundHex), supportsOpacity: false)
+                ColorPicker(L("Eigene Hintergrundfarbe"), selection: settingsStore.colorBinding(\.customBackgroundHex), supportsOpacity: false)
             }
             SectionTitle("Agentenfarben")
             HStack(alignment: .center, spacing: 20) {
@@ -309,10 +327,10 @@ struct SetupAssistantView: View {
                 .frame(width: 170)
             }
             SectionTitle("Leuchten")
-            Toggle("Leuchten bei Signalen", isOn: settingsStore.binding(\.glowEnabled))
+            Toggle(L("Leuchten bei Signalen"), isOn: settingsStore.binding(\.glowEnabled))
             if settings.glowEnabled {
                 HStack {
-                    Text("Stärke")
+                    Text(L("Stärke"))
                     Slider(value: settingsStore.binding(\.glowIntensity), in: 0...1)
                 }
             }
@@ -330,7 +348,7 @@ struct SetupAssistantView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            InfoBox(symbol: "bell.badge.fill", text: "Fragt dich ein Agent etwas oder braucht eine Freigabe, meldet sich die Notch von selbst – egal welche Ansicht du wählst.")
+            InfoBox(symbol: "bell.badge.fill", text: L("Fragt dich ein Agent etwas oder braucht eine Freigabe, meldet sich die Notch von selbst – egal welche Ansicht du wählst."))
         }
     }
 
@@ -338,27 +356,27 @@ struct SetupAssistantView: View {
         VStack(alignment: .leading, spacing: 14) {
             // Den Status alle zwei Sekunden neu lesen: Die Freigabe passiert in den Systemeinstellungen.
             TimelineView(.periodic(from: .now, by: 2)) { _ in
-                PermissionCard(symbol: "accessibility", color: Self.rgb(0.25, 0.55, 1.0), title: "Bedienungshilfen",
-                               text: "Für zweimal rechte ⌘ (Lagerhalle) und um Antworten direkt in das Fenster einer Session zu tippen.",
+                PermissionCard(symbol: "accessibility", color: Self.rgb(0.25, 0.55, 1.0), title: L("Bedienungshilfen"),
+                               text: L("Für zweimal rechte ⌘ (Lagerhalle) und um Antworten direkt in das Fenster einer Session zu tippen."),
                                granted: AXIsProcessTrusted(), action: OfficeHotkey.openAccessibilitySettings)
             }
-            PermissionCard(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: "Automation",
-                           text: "Für Cover und Steuerung von Spotify und Musik. macOS fragt beim ersten Abspielen selbst nach.",
+            PermissionCard(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: L("Automation"),
+                           text: L("Für Cover und Steuerung von Spotify und Musik. macOS fragt beim ersten Abspielen selbst nach."),
                            granted: nil, action: nil)
-            InfoBox(symbol: "checkmark.shield.fill", text: "Beides ist freiwillig. Ohne Berechtigung öffnest du die Lagerhalle über den Reiter „Büro“, und Antworten landen in der Zwischenablage.")
+            InfoBox(symbol: "checkmark.shield.fill", text: L("Beides ist freiwillig. Ohne Berechtigung öffnest du die Lagerhalle über den Reiter „Büro“, und Antworten landen in der Zwischenablage."))
         }
     }
 
     private var doneStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            FeatureRow(symbol: "cursorarrow.motionlines", color: Self.rgb(0.62, 0.4, 1.0), title: "Notch aufklappen",
-                       text: "Fahr mit der Maus an die Notch: Dort warten Musik, Sessions, die Lagerhalle und die Ablage.")
-            FeatureRow(symbol: "tray.and.arrow.down.fill", color: Self.rgb(1.0, 0.68, 0.12), title: "Dateien ablegen",
-                       text: "Zieh eine Datei zur Notch und lass sie auf AirDrop oder der Ablage los.")
-            FeatureRow(symbol: "command", color: Self.rgb(0.25, 0.8, 0.55), title: "Lagerhalle",
-                       text: "Zweimal kurz die rechte ⌘-Taste drücken öffnet die Halle groß.")
-            FeatureRow(symbol: "gearshape.fill", color: Self.rgb(0.55, 0.55, 0.6), title: "Einstellungen",
-                       text: "Über das notchai-Symbol in der Menüleiste änderst du alles, was du hier gewählt hast.")
+            FeatureRow(symbol: "cursorarrow.motionlines", color: Self.rgb(0.62, 0.4, 1.0), title: L("Notch aufklappen"),
+                       text: L("Fahr mit der Maus an die Notch: Dort warten Musik, Sessions, die Lagerhalle und die Ablage."))
+            FeatureRow(symbol: "tray.and.arrow.down.fill", color: Self.rgb(1.0, 0.68, 0.12), title: L("Dateien ablegen"),
+                       text: L("Zieh eine Datei zur Notch und lass sie auf AirDrop oder der Ablage los."))
+            FeatureRow(symbol: "command", color: Self.rgb(0.25, 0.8, 0.55), title: L("Lagerhalle"),
+                       text: L("Zweimal kurz die rechte ⌘-Taste drücken öffnet die Halle groß."))
+            FeatureRow(symbol: "gearshape.fill", color: Self.rgb(0.55, 0.55, 0.6), title: L("Einstellungen"),
+                       text: L("Über das notchai-Symbol in der Menüleiste änderst du alles, was du hier gewählt hast."))
         }
     }
 
@@ -391,37 +409,41 @@ private struct StepInfo {
     private static func of(_ step: SetupStep) -> StepInfo {
         let rgb = SetupAssistantView.rgb
         switch step {
+        case .language:
+            return StepInfo(title: L("Sprache"), short: L("Sprache"),
+                     subtitle: L("In welcher Sprache soll notchai mit dir sprechen?"),
+                     symbol: "globe", colors: (rgb(0.30, 0.70, 1.0), rgb(0.20, 0.38, 0.95)))
         case .welcome:
-            return StepInfo(title: "Willkommen bei notchai", short: "Willkommen",
-                     subtitle: "Deine Notch wird zur Steuerzentrale für Claude Code und Codex.",
+            return StepInfo(title: L("Willkommen bei notchai"), short: L("Willkommen"),
+                     subtitle: L("Deine Notch wird zur Steuerzentrale für Claude Code und Codex."),
                      symbol: "sparkles", colors: (rgb(1.0, 0.42, 0.62), rgb(0.62, 0.35, 1.0)))
         case .claude:
-            return StepInfo(title: "Claude Code verbinden", short: "Claude Code",
-                     subtitle: "Damit Fragen und Freigaben direkt in der Notch landen.",
+            return StepInfo(title: L("Claude Code verbinden"), short: "Claude Code",
+                     subtitle: L("Damit Fragen und Freigaben direkt in der Notch landen."),
                      symbol: "terminal.fill", colors: (rgb(0.98, 0.58, 0.36), rgb(0.86, 0.38, 0.22)))
         case .codex:
-            return StepInfo(title: "Codex verbinden", short: "Codex",
-                     subtitle: "Auch Codex meldet sich dann in der Notch.",
+            return StepInfo(title: L("Codex verbinden"), short: "Codex",
+                     subtitle: L("Auch Codex meldet sich dann in der Notch."),
                      symbol: "chevron.left.forwardslash.chevron.right", colors: (rgb(0.48, 0.64, 1.0), rgb(0.25, 0.40, 0.92)))
         case .signalStyle:
-            return StepInfo(title: "So meldet sich die Notch", short: "Signale",
-                     subtitle: "Wähle, wie Signale aussehen, und probier es gleich aus.",
+            return StepInfo(title: L("So meldet sich die Notch"), short: L("Signale"),
+                     subtitle: L("Wähle, wie Signale aussehen, und probier es gleich aus."),
                      symbol: "rectangle.topthird.inset.filled", colors: (rgb(0.32, 0.32, 0.36), rgb(0.06, 0.06, 0.07)))
         case .appearance:
-            return StepInfo(title: "Farben und Leuchten", short: "Farben",
-                     subtitle: "Hintergrund, Agentenfarben und das Leuchten bei Signalen.",
+            return StepInfo(title: L("Farben und Leuchten"), short: L("Farben"),
+                     subtitle: L("Hintergrund, Agentenfarben und das Leuchten bei Signalen."),
                      symbol: "paintpalette.fill", colors: (rgb(1.0, 0.62, 0.22), rgb(0.95, 0.30, 0.45)))
         case .sessions:
-            return StepInfo(title: "Deine Sessions", short: "Sessions",
-                     subtitle: "Wie die Notch deine laufenden Sessions zeigt.",
+            return StepInfo(title: L("Deine Sessions"), short: "Sessions",
+                     subtitle: L("Wie die Notch deine laufenden Sessions zeigt."),
                      symbol: "rectangle.stack.fill", colors: (rgb(1.0, 0.66, 0.12), rgb(0.98, 0.42, 0.0)))
         case .permissions:
-            return StepInfo(title: "Berechtigungen", short: "Berechtigungen",
-                     subtitle: "Freiwillig – für Tastenkürzel, Antworten und Musik.",
+            return StepInfo(title: L("Berechtigungen"), short: L("Berechtigungen"),
+                     subtitle: L("Freiwillig – für Tastenkürzel, Antworten und Musik."),
                      symbol: "lock.shield.fill", colors: (rgb(0.30, 0.82, 0.62), rgb(0.08, 0.58, 0.45)))
         case .done:
-            return StepInfo(title: "Alles bereit", short: "Fertig",
-                     subtitle: "notchai läuft. Die Notch hört gleich auf zu leuchten – viel Spaß!",
+            return StepInfo(title: L("Alles bereit"), short: L("Fertig"),
+                     subtitle: L("notchai läuft. Die Notch hört gleich auf zu leuchten – viel Spaß!"),
                      symbol: "checkmark.seal.fill", colors: (rgb(0.35, 0.85, 0.45), rgb(0.12, 0.62, 0.30)))
         }
     }
@@ -525,7 +547,7 @@ private struct ConnectionCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(name)
                     .font(.system(size: 15, weight: .semibold))
-                StatusBadge(text: installed ? "Verbunden" : "Noch nicht verbunden",
+                StatusBadge(text: installed ? L("Verbunden") : L("Noch nicht verbunden"),
                             color: installed ? Color.green : Color.gray)
             }
             Spacer()
@@ -534,7 +556,7 @@ private struct ConnectionCard: View {
                     .font(.system(size: 22))
                     .foregroundStyle(Color.green)
             } else {
-                Button("Verbinden", action: connect)
+                Button(L("Verbinden"), action: connect)
             }
         }
         .padding(14)
@@ -569,17 +591,71 @@ private struct PermissionCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let granted {
-                    StatusBadge(text: granted ? "Erlaubt" : "Nicht erlaubt", color: granted ? Color.green : Color.orange)
+                    StatusBadge(text: granted ? L("Erlaubt") : L("Nicht erlaubt"), color: granted ? Color.green : Color.orange)
                 } else {
-                    StatusBadge(text: "Fragt macOS beim ersten Abspielen", color: Color.gray)
+                    StatusBadge(text: L("Fragt macOS beim ersten Abspielen"), color: Color.gray)
                 }
             }
             Spacer()
             if let action, granted != true {
-                Button("Erlauben …", action: action)
+                Button(L("Erlauben …"), action: action)
             }
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.05)))
+    }
+}
+
+/// Karte für eine Sprache: Kürzel, Name und ein Gruß in der Sprache selbst.
+private struct LanguageCard: View {
+    let language: AppLanguage
+    let selected: Bool
+    let choose: () -> Void
+
+    @ViewState private var hovering = false
+
+    /// Der Gruß steht immer in der Sprache der Karte, nicht in der gerade eingestellten.
+    private var greeting: String {
+        switch language {
+        case .german: "Hallo! Die Notch spricht Deutsch."
+        case .english: "Hi! The notch speaks English."
+        }
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        Button(action: choose) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(language.rawValue.uppercased())
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(LinearGradient(
+                            colors: language == .german ? [SetupAssistantView.rgb(1.0, 0.55, 0.25), SetupAssistantView.rgb(0.92, 0.25, 0.30)]
+                                : [SetupAssistantView.rgb(0.30, 0.70, 1.0), SetupAssistantView.rgb(0.20, 0.38, 0.95)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    Spacer()
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(selected ? Color.accentColor : Color.secondary.opacity(0.5))
+                }
+                Text(language.nativeName)
+                    .font(.system(size: 18, weight: .bold))
+                Text(greeting)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(shape.fill(selected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(hovering ? 0.07 : 0.04)))
+            .overlay(shape.strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 2 : 1))
+            .scaleEffect(hovering && !selected ? 1.02 : 1)
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) { hovering = inside }
+        }
     }
 }

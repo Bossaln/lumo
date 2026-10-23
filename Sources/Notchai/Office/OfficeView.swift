@@ -31,7 +31,7 @@ struct OfficeView: View {
                     label(for: agent, scale: scale)
                 }
                 if director.frame != nil, director.agents.isEmpty {
-                    Text("Noch ist niemand da. Starte Claude Code oder Codex.")
+                    Text(L("Noch ist niemand da. Starte Claude Code oder Codex."))
                         .font(.system(size: compact ? 9 : 12, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.8))
                         .padding(.horizontal, compact ? 7 : 11)
@@ -160,7 +160,7 @@ private struct OfficeHoverCard: View {
                     .foregroundStyle(Color.white.opacity(0.55))
                     .lineLimit(1)
             }
-            Text("Klicken: Fenster nach vorn holen")
+            Text(L("Klicken: Fenster nach vorn holen"))
                 .font(.system(size: 9))
                 .foregroundStyle(Color.white.opacity(0.4))
         }
@@ -172,14 +172,14 @@ private struct OfficeHoverCard: View {
 
     private var status: String {
         switch agent.activity {
-        case .working: "arbeitet"
-        case .waiting: "wartet auf dich"
-        case .failed: "Fehler"
-        case .fetchingDrink: "holt sich ein Red Bull"
-        case .chilling: "chillt"
-        case .sleeping: "schläft"
-        case .wandering: "schaut sich um"
-        case .leaving: "geht"
+        case .working: L("arbeitet")
+        case .waiting: L("wartet auf dich")
+        case .failed: L("Fehler")
+        case .fetchingDrink: L("holt sich ein Red Bull")
+        case .chilling: L("chillt")
+        case .sleeping: L("schläft")
+        case .wandering: L("schaut sich um")
+        case .leaving: L("geht")
         }
     }
 }

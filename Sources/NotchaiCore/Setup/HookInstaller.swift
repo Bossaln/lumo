@@ -17,7 +17,7 @@ public enum HookInstallerError: Error, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .unreadable(let path): "„\(path)“ ist kein lesbares JSON und wurde nicht verändert."
+        case .unreadable(let path): L("„{0}“ ist kein lesbares JSON und wurde nicht verändert.", path)
         }
     }
 }

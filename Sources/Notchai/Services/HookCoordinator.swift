@@ -185,7 +185,7 @@ final class HookCoordinator {
         case .permission(let tool, let summary):
             let isShell = ["Bash", "exec_command", "shell"].contains(tool)
             return SignalContent(id: entry.request.requestId, agent: session.agent, title: title(session),
-                                 subtitle: isShell ? "Möchte ausführen:" : "Möchte \(tool) verwenden:",
+                                 subtitle: isShell ? L("Möchte ausführen:") : L("Möchte {0} verwenden:", tool),
                                  detail: summary, kind: .permission)
         case .question(let question):
             let more = question.moreCount > 0 ? " (+\(question.moreCount) weitere)" : ""
@@ -197,14 +197,14 @@ final class HookCoordinator {
     /// Der Agent wartet, ohne dass notchai die Frage kennt (`Notification`): Antwort geht über `ReplySender`.
     private func attentionSignal(_ key: String) -> SignalContent? {
         guard let session = book.sessions[key] else { return nil }
-        return SignalContent(agent: session.agent, title: title(session), subtitle: "Wartet auf dich",
+        return SignalContent(agent: session.agent, title: title(session), subtitle: L("Wartet auf dich"),
                              kind: .question(options: []))
     }
 
     private func statusSignal(_ key: String, trigger: SignalTrigger) -> SignalContent? {
         guard let session = book.sessions[key] else { return nil }
         let kind: SignalKind = trigger == .error ? .error : .done
-        let fallback = trigger == .error ? "Fehler" : "Fertig"
+        let fallback = trigger == .error ? L("Fehler") : L("Fertig")
         return SignalContent(agent: session.agent, title: title(session), subtitle: session.lastStep ?? fallback, kind: kind)
     }
 
@@ -216,7 +216,7 @@ final class HookCoordinator {
             let output: String
             switch (entry.request.kind, action) {
             case (.permission, .allow): output = HookOutput.permissionAllow()
-            case (.permission, .deny): output = HookOutput.permissionDeny(message: "In notchai abgelehnt")
+            case (.permission, .deny): output = HookOutput.permissionDeny(message: L("In notchai abgelehnt"))
             case (.question(let question), .answer(let text)):
                 output = HookOutput.questionAnswer(toolInput: entry.request.toolInput ?? .object([:]),
                                                    answers: [question.question: text])

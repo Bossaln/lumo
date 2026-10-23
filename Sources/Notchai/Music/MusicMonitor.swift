@@ -40,7 +40,7 @@ final class MusicMonitor {
 
     // Prüfhilfe für `docs/now-playing.md` (Entwickler-Seite der Einstellungen).
     private var lastProbeOutput = "–"
-    private var lastProbeDetails = "noch keine Abfrage"
+    private var lastProbeDetails = L("noch keine Abfrage")
     private var recentNotifications: [String] = []
 
     init(model: AppModel) {
@@ -316,16 +316,11 @@ final class MusicMonitor {
 
     /// Letzte JXA-Ausgabe und Benachrichtigungen samt aller Schlüssel (Entwickler-Seite der Einstellungen).
     func rawDataText() -> String {
-        let shown = model.nowPlaying.map { "\($0.title) – \($0.source.name) (\($0.source.key)), spielt: \($0.isPlaying)" }
-        return """
-        JXA-Abfrage (\(lastProbeDetails)):
-        \(lastProbeOutput.isEmpty ? "(leer)" : lastProbeOutput)
-
-        Benachrichtigungen (Spotify, Musik):
-        \(recentNotifications.isEmpty ? "(noch keine)" : recentNotifications.joined(separator: "\n"))
-
-        Angezeigt: \(shown ?? "nichts")
-        Erkannte Player: \(store.seenSources.map { "\($0.name) [\($0.key)] – \(PlayerCatalog.kind(of: $0).label)" }.joined(separator: "; "))
-        """
+        let shown = model.nowPlaying.map { L("{0} – {1} ({2}), spielt: {3}", $0.title, $0.source.name, $0.source.key, $0.isPlaying) }
+        let players = store.seenSources.map { "\($0.name) [\($0.key)] – \(PlayerCatalog.kind(of: $0).label)" }
+        return L("JXA-Abfrage ({0}):\n{1}\n\nBenachrichtigungen (Spotify, Musik):\n{2}\n\nAngezeigt: {3}\nErkannte Player: {4}",
+                 lastProbeDetails, lastProbeOutput.isEmpty ? L("(leer)") : lastProbeOutput,
+                 recentNotifications.isEmpty ? L("(noch keine)") : recentNotifications.joined(separator: "\n"),
+                 shown ?? L("nichts"), players.joined(separator: "; "))
     }
 }

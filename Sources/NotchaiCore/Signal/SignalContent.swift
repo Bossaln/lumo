@@ -45,10 +45,10 @@ public enum SignalKind: Equatable, Sendable {
     /// Kurzer Hinweis rechts in der Island.
     public var islandPrompt: String {
         switch self {
-        case .permission: "Erlauben?"
-        case .question: "Frage"
-        case .done: "Fertig"
-        case .error: "Fehler"
+        case .permission: L("Erlauben?")
+        case .question: L("Frage")
+        case .done: L("Fertig")
+        case .error: L("Fehler")
         }
     }
 

@@ -76,7 +76,7 @@ struct SessionCirclesPanel: View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             VStack(alignment: .leading, spacing: 10) {
                 if sessions.isEmpty {
-                    Text("Keine aktiven Sessions")
+                    Text(L("Keine aktiven Sessions"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SessionPalette.secondary)
                         .frame(maxWidth: .infinity, minHeight: 90)
