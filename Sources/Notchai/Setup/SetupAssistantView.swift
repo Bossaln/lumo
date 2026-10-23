@@ -13,7 +13,7 @@ struct SetupAssistantView: View {
     let tryOut: () -> Void
     let finish: () -> Void
 
-    @ViewState private var step: SetupStep = .welcome
+    @ViewState private var step: SetupStep = .language
 
     /// Hook-Ereignisse, die notchai nur meldet (ohne die, auf die es antwortet).
     private static let claudeEvents = "SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, StopFailure, SubagentStart, SubagentStop"
@@ -43,6 +43,8 @@ struct SetupAssistantView: View {
             }
         }
         .frame(width: 820, height: 580)
+        // Neue Sprache: alles neu aufbauen, damit jeder Text sie zeigt.
+        .id(settingsStore.settings.language)
         .onAppear { setup.refresh() }
     }
 
@@ -153,7 +155,7 @@ struct SetupAssistantView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Spacer()
-            if step == .welcome {
+            if step == .language {
                 Button(L("Später")) { finish() }
             } else if let previous = step.previous, step != .done {
                 Button(L("Zurück")) { go(to: previous) }
@@ -207,6 +209,7 @@ struct SetupAssistantView: View {
     @ViewBuilder
     private var content: some View {
         switch step {
+        case .language: languageStep
         case .welcome: welcome
         case .claude: claudeStep
         case .codex: codexStep
@@ -215,6 +218,20 @@ struct SetupAssistantView: View {
         case .sessions: sessionsStep
         case .permissions: permissionsStep
         case .done: doneStep
+        }
+    }
+
+    /// Zwei große Karten; ein Klick wechselt sofort, auch alle weiteren Schritte erscheinen dann in der Sprache.
+    private var languageStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                ForEach(AppLanguage.allCases, id: \.self) { language in
+                    LanguageCard(language: language, selected: Localization.language == language) {
+                        LanguageSwitch.set(language, in: settingsStore)
+                    }
+                }
+            }
+            InfoBox(symbol: "globe", text: L("Du kannst die Sprache jederzeit unter Einstellungen › Allgemein ändern."))
         }
     }
 
@@ -392,8 +409,12 @@ private struct StepInfo {
     private static func of(_ step: SetupStep) -> StepInfo {
         let rgb = SetupAssistantView.rgb
         switch step {
+        case .language:
+            return StepInfo(title: L("Sprache"), short: L("Sprache"),
+                     subtitle: L("In welcher Sprache soll notchai mit dir sprechen?"),
+                     symbol: "globe", colors: (rgb(0.30, 0.70, 1.0), rgb(0.20, 0.38, 0.95)))
         case .welcome:
-            return StepInfo(title: L("Willkommen bei notchai"), short: "Willkommen",
+            return StepInfo(title: L("Willkommen bei notchai"), short: L("Willkommen"),
                      subtitle: L("Deine Notch wird zur Steuerzentrale für Claude Code und Codex."),
                      symbol: "sparkles", colors: (rgb(1.0, 0.42, 0.62), rgb(0.62, 0.35, 1.0)))
         case .claude:
@@ -405,11 +426,11 @@ private struct StepInfo {
                      subtitle: L("Auch Codex meldet sich dann in der Notch."),
                      symbol: "chevron.left.forwardslash.chevron.right", colors: (rgb(0.48, 0.64, 1.0), rgb(0.25, 0.40, 0.92)))
         case .signalStyle:
-            return StepInfo(title: L("So meldet sich die Notch"), short: "Signale",
+            return StepInfo(title: L("So meldet sich die Notch"), short: L("Signale"),
                      subtitle: L("Wähle, wie Signale aussehen, und probier es gleich aus."),
                      symbol: "rectangle.topthird.inset.filled", colors: (rgb(0.32, 0.32, 0.36), rgb(0.06, 0.06, 0.07)))
         case .appearance:
-            return StepInfo(title: L("Farben und Leuchten"), short: "Farben",
+            return StepInfo(title: L("Farben und Leuchten"), short: L("Farben"),
                      subtitle: L("Hintergrund, Agentenfarben und das Leuchten bei Signalen."),
                      symbol: "paintpalette.fill", colors: (rgb(1.0, 0.62, 0.22), rgb(0.95, 0.30, 0.45)))
         case .sessions:
@@ -417,11 +438,11 @@ private struct StepInfo {
                      subtitle: L("Wie die Notch deine laufenden Sessions zeigt."),
                      symbol: "rectangle.stack.fill", colors: (rgb(1.0, 0.66, 0.12), rgb(0.98, 0.42, 0.0)))
         case .permissions:
-            return StepInfo(title: L("Berechtigungen"), short: "Berechtigungen",
+            return StepInfo(title: L("Berechtigungen"), short: L("Berechtigungen"),
                      subtitle: L("Freiwillig – für Tastenkürzel, Antworten und Musik."),
                      symbol: "lock.shield.fill", colors: (rgb(0.30, 0.82, 0.62), rgb(0.08, 0.58, 0.45)))
         case .done:
-            return StepInfo(title: L("Alles bereit"), short: "Fertig",
+            return StepInfo(title: L("Alles bereit"), short: L("Fertig"),
                      subtitle: L("notchai läuft. Die Notch hört gleich auf zu leuchten – viel Spaß!"),
                      symbol: "checkmark.seal.fill", colors: (rgb(0.35, 0.85, 0.45), rgb(0.12, 0.62, 0.30)))
         }
@@ -582,5 +603,59 @@ private struct PermissionCard: View {
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.05)))
+    }
+}
+
+/// Karte für eine Sprache: Kürzel, Name und ein Gruß in der Sprache selbst.
+private struct LanguageCard: View {
+    let language: AppLanguage
+    let selected: Bool
+    let choose: () -> Void
+
+    @ViewState private var hovering = false
+
+    /// Der Gruß steht immer in der Sprache der Karte, nicht in der gerade eingestellten.
+    private var greeting: String {
+        switch language {
+        case .german: "Hallo! Die Notch spricht Deutsch."
+        case .english: "Hi! The notch speaks English."
+        }
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        Button(action: choose) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(language.rawValue.uppercased())
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(LinearGradient(
+                            colors: language == .german ? [SetupAssistantView.rgb(1.0, 0.55, 0.25), SetupAssistantView.rgb(0.92, 0.25, 0.30)]
+                                : [SetupAssistantView.rgb(0.30, 0.70, 1.0), SetupAssistantView.rgb(0.20, 0.38, 0.95)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    Spacer()
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(selected ? Color.accentColor : Color.secondary.opacity(0.5))
+                }
+                Text(language.nativeName)
+                    .font(.system(size: 18, weight: .bold))
+                Text(greeting)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(shape.fill(selected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(hovering ? 0.07 : 0.04)))
+            .overlay(shape.strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 2 : 1))
+            .scaleEffect(hovering && !selected ? 1.02 : 1)
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) { hovering = inside }
+        }
     }
 }

@@ -52,6 +52,11 @@ final class SetupWindowController: NSObject, NSWindowDelegate {
         NSApp.activate()
     }
 
+    /// Fenstertitel in der aktuellen Sprache (nach einem Sprachwechsel).
+    func relocalize() {
+        window?.title = L("notchai einrichten")
+    }
+
     private func finish() {
         settingsStore.settings.setupCompleted = true
         model.setupGlow = false

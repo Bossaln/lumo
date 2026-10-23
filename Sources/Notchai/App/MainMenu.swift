@@ -1,4 +1,5 @@
 import AppKit
+import NotchaiCore
 
 /// Kleines deutsches Hauptmenü. macOS zeigt es nur, solange notchai `.regular` ist (Einstellungsfenster offen);
 /// im Menüleisten-Modus (`.accessory`) bleibt es unsichtbar, das Statusmenü ist davon unabhängig.

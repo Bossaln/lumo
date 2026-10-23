@@ -28,8 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let statusItemController = StatusItemController()
         self.statusItemController = statusItemController
-        let model = AppModel(settingsStore: SettingsStore(fileURL: SettingsStore.defaultFileURL()),
-                             shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
+        let settingsStore = SettingsStore(fileURL: SettingsStore.defaultFileURL())
+        // Die Sprache steht fest, bevor irgendein Text entsteht.
+        LanguageSwitch.apply(settingsStore.settings)
+        NSApp.mainMenu = MainMenu.make()
+        let model = AppModel(settingsStore: settingsStore, shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
         self.model = model
         let setup = SetupController(home: home)
         let updates = UpdateController(settingsStore: model.settingsStore)
@@ -84,11 +87,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })
 
-        updateItem = statusItemController.addMenuItem(L("Nach Updates suchen …")) { [weak self] in
-            self?.updateMenuAction()
+        updateItem = statusItemController.addMenuItem({ [weak updates] in Self.menuTitle(for: updates?.state ?? .idle) }) {
+            [weak self] in self?.updateMenuAction()
         }
-        statusItemController.addMenuItem(L("Büro öffnen")) { [weak office] in office?.open() }
-        statusItemController.addMenuItem(L("Einrichtung …")) { [weak setupWindow] in setupWindow?.show() }
+        statusItemController.addMenuItem({ L("Büro öffnen") }) { [weak office] in office?.open() }
+        statusItemController.addMenuItem({ L("Einrichtung …") }) { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
 
@@ -100,6 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusItemController.onMenuOpen = { [weak self] delay in self?.responsiveness.menuOpened(after: delay) }
         observeDeveloperOptions()
+        observeLanguage()
 
         // Beim ersten Start leuchtet der Bildschirm auf, das Leuchten zieht sich in die Notch zusammen, und der
         // Assistent richtet alles ein (jeder Schritt lässt sich überspringen).
@@ -153,6 +157,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Entwickler
+
+    /// Nach einem Sprachwechsel bekommen Menüs und Fenstertitel die neuen Texte (die SwiftUI-Ansichten bauen sich
+    /// selbst neu auf).
+    private func observeLanguage() {
+        guard let model else { return }
+        withObservationTracking {
+            _ = model.settingsStore.settings.language
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, let model = self.model else { return }
+                LanguageSwitch.apply(model.settingsStore.settings)
+                NSApp.mainMenu = MainMenu.make()
+                statusItemController?.relocalize()
+                SettingsWindowController.shared.relocalize()
+                setupWindow?.relocalize()
+                observeLanguage()
+            }
+        }
+    }
 
     /// Die Messung der Reaktionszeit läuft nur, solange die Entwickleroptionen an sind.
     private func observeDeveloperOptions() {

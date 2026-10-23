@@ -28,6 +28,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.tryOut = tryOut
     }
 
+    /// Fenstertitel in der aktuellen Sprache (nach einem Sprachwechsel).
+    func relocalize() {
+        window?.title = L("notchai-Einstellungen")
+    }
+
     /// Das Einstellungsfenster ist gerade zu sehen.
     var isVisible: Bool { window?.isVisible == true }
 

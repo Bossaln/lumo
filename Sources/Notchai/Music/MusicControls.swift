@@ -45,7 +45,7 @@ struct SkipButton: View {
         }
         .buttonStyle(NotchControlButtonStyle())
         .frame(width: 40, height: 40)
-        .accessibilityLabel(direction == .forward ? L("Weiter") : L("Zurück"))
+        .accessibilityLabel(direction == .forward ? L("Nächster Titel") : L("Vorheriger Titel"))
     }
 
     private func play() {

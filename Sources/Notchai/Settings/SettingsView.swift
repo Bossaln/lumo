@@ -43,6 +43,8 @@ struct SettingsView: View {
             detail(for: selection ?? .general)
         }
         .frame(minWidth: 860, minHeight: 620)
+        // Neue Sprache: alles neu aufbauen, damit jeder Text sie zeigt.
+        .id(settingsStore.settings.language)
     }
 
     /// Oben in der Seitenleiste, wie das Konto in den Systemeinstellungen: notchai mit Version.
@@ -83,6 +85,17 @@ struct SettingsView: View {
 
     private var generalPane: some View {
         SettingsPage(pane: .general) {
+            Section(L("Sprache")) {
+                Picker(L("Sprache"), selection: Binding(
+                    get: { Localization.language },
+                    set: { LanguageSwitch.set($0, in: settingsStore) }
+                )) {
+                    ForEach(AppLanguage.allCases, id: \.self) { language in
+                        Text(language.nativeName).tag(language)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
             Section(L("Anmelden")) {
                 Toggle(L("notchai beim Anmelden starten"), isOn: Binding(
                     get: { settingsStore.settings.launchAtLogin },
