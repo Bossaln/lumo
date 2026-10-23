@@ -58,7 +58,7 @@ Stand: 22.10.2026. Woher notchai weiß, was gerade spielt, und wie es die Wieder
 
 ## Offene Punkte
 
-Prüfhilfe: Entwickler-Menü „Jetzt-läuft-Rohdaten kopieren“. Es zeigt die letzte JXA-Ausgabe und die letzten Benachrichtigungen samt aller Schlüssel.
+Prüfhilfe: Einstellungen › Entwickler › „Jetzt-läuft-Rohdaten“ kopieren. Das zeigt die letzte JXA-Ausgabe und die letzten Benachrichtigungen samt aller Schlüssel.
 
 - JXA-Abfrage auf macOS 27:
   - Kommt überhaupt etwas?

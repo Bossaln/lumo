@@ -5,7 +5,7 @@ import NotchaiCore
 /// Signalen, Entscheidungen aus der Notch gehen an den wartenden Hook zurück. Lebt so lange wie die App.
 @MainActor
 final class HookCoordinator {
-    /// So viele Hook-Ereignisse merkt sich das Entwickler-Menü.
+    /// So viele Hook-Ereignisse merkt sich die Entwickler-Seite der Einstellungen.
     private static let recentLimit = 40
 
     private let model: AppModel
@@ -256,7 +256,7 @@ final class HookCoordinator {
         onWaitingChange?(visible.contains { $0.status.isWaiting })
     }
 
-    /// Die letzten Hook-Ereignisse als JSON-Zeilen (Entwickler-Menü; hilft bei den offenen Mac-Prüfungen).
+    /// Die letzten Hook-Ereignisse als JSON-Zeilen (Entwickler-Seite der Einstellungen; hilft bei den offenen Mac-Prüfungen).
     func recentEventsText() -> String {
         recentEnvelopes.compactMap { try? HookWire.encodeLine($0) }
             .map { String(decoding: $0, as: UTF8.self) }

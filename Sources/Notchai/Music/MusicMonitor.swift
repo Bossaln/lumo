@@ -38,7 +38,7 @@ final class MusicMonitor {
     private var artworkCache: [String: NSImage] = [:]
     private var artworkOrder: [String] = []
 
-    // Prüfhilfe für `docs/now-playing.md` (Entwickler-Menü).
+    // Prüfhilfe für `docs/now-playing.md` (Entwickler-Seite der Einstellungen).
     private var lastProbeOutput = "–"
     private var lastProbeDetails = "noch keine Abfrage"
     private var recentNotifications: [String] = []
@@ -314,7 +314,7 @@ final class MusicMonitor {
 
     // MARK: - Prüfhilfe
 
-    /// Letzte JXA-Ausgabe und Benachrichtigungen samt aller Schlüssel (Entwickler-Menü).
+    /// Letzte JXA-Ausgabe und Benachrichtigungen samt aller Schlüssel (Entwickler-Seite der Einstellungen).
     func rawDataText() -> String {
         let shown = model.nowPlaying.map { "\($0.title) – \($0.source.name) (\($0.source.key)), spielt: \($0.isPlaying)" }
         return """

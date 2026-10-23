@@ -1,7 +1,13 @@
 import NotchaiCore
 
-/// Beispiel-Inhalte für die Test-Signale im Entwickler-Menü. Jeder Aufruf ist ein neues Signal mit eigener ID.
+/// Beispiel-Inhalte für die Test-Signale (Einstellungen › Entwickler, „In der Notch ausprobieren“). Jeder Aufruf ist ein neues Signal mit eigener ID.
 enum SignalDemo {
+    /// Vorschau der gewählten Signalform aus Einrichtung und Einstellungen.
+    static var preview: SignalContent {
+        SignalContent(agent: .claude, title: "notchai · Vorschau", subtitle: "So meldet sich Claude Code:",
+                      detail: "npm test", kind: .permission)
+    }
+
     static var permission: SignalContent {
         SignalContent(agent: .claude, title: "notchai · Claude", subtitle: "Möchte ausführen:",
                       detail: "npm install", kind: .permission)

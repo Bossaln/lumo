@@ -103,6 +103,7 @@ private func everyFieldChanged() -> AppSettings {
     s.musicArtworkBackground = false
     s.musicCoverTransition = .flip
     s.officeHotkey = false
+    s.developerOptions = true
     return s
 }
 
@@ -143,4 +144,8 @@ private func everyFieldChanged() -> AppSettings {
     #expect(s.islandSideWidth == d.islandSideWidth)
     // Ein falscher Wert verdirbt die übrigen nicht.
     #expect(s.soundsEnabled == false)
+}
+
+@Test func developerOptionsAreHiddenByDefault() {
+    #expect(AppSettings.default.developerOptions == false)
 }

@@ -38,7 +38,7 @@ public struct SignalLifecycle: Equatable, Sendable {
         return clearActive()
     }
 
-    /// Schließt, was gerade angezeigt wird (Entwickler-Menü „Signal schließen“).
+    /// Schließt, was gerade angezeigt wird (Einstellungen › Entwickler › „Signal schließen“).
     @discardableResult
     public mutating func clearActive() -> ActiveSignal? {
         defer { active = nil }

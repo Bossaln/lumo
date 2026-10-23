@@ -62,7 +62,7 @@ public enum SignalKind: Equatable, Sendable {
     }
 }
 
-/// Inhalt eines Notch-Signals: eine echte Anfrage oder ein Test-Signal aus dem Entwickler-Menü.
+/// Inhalt eines Notch-Signals: eine echte Anfrage oder ein Test-Signal von der Entwickler-Seite der Einstellungen.
 public struct SignalContent: Equatable, Sendable, Identifiable {
     /// Wem eine Entscheidung gilt. Bei Anfragen die ID der Hook-Anfrage; sonst ist jedes Signal ein neues.
     public var id: UUID

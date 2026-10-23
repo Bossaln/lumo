@@ -11,18 +11,22 @@ struct NotchGlow: View {
     let intensity: Double
     let enabled: Bool
     let cycle: TimeInterval
+    /// Farbe läuft langsam durch den Farbkreis (während der Einrichtung).
+    var rainbow = false
 
     var body: some View {
         let k = GlowPulse.strength(intensity: intensity, enabled: true)
         // Das ruhige Musik-Leuchten braucht weniger Bilder pro Sekunde; es läuft oft stundenlang.
         let fps: Double = cycle > GlowPulse.cycle ? 30 : 60
         TimelineView(.animation(minimumInterval: 1.0 / fps, paused: !enabled)) { timeline in
-            let level = GlowPulse.level(at: timeline.date.timeIntervalSinceReferenceDate, cycle: cycle)
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            let level = GlowPulse.level(at: time, cycle: cycle)
+            let tint = rainbow ? Color(hue: (time / 8).truncatingRemainder(dividingBy: 1), saturation: 0.75, brightness: 1) : color
             // Die Füllung liegt genau unter der Notch und ist unsichtbar; zu sehen ist nur ihr Schatten.
             shape
                 .fill(Color.black)
-                .shadow(color: color.opacity(min(1, (0.35 + 0.30 * level) * k)), radius: 7 + 7 * level)
-                .shadow(color: color.opacity(min(1, (0.18 + 0.17 * level) * k)), radius: 2 + 2 * level)
+                .shadow(color: tint.opacity(min(1, (0.35 + 0.30 * level) * k)), radius: 7 + 7 * level)
+                .shadow(color: tint.opacity(min(1, (0.18 + 0.17 * level) * k)), radius: 2 + 2 * level)
         }
         // Ein- und Ausblenden weich statt schlagartig.
         .opacity(enabled ? 1 : 0)

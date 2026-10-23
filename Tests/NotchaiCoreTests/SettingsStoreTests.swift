@@ -22,3 +22,12 @@ import Testing
     store.settings.soundsEnabled = false
     #expect(FileManager.default.fileExists(atPath: dir.appending(path: "settings.json").path))
 }
+
+@MainActor @Test func frozenStoreNoLongerWrites() throws {
+    // Beim Zurücksetzen darf nichts die gerade gelöschte Datei wieder anlegen.
+    let url = FileManager.default.temporaryDirectory.appending(path: "notchai-\(UUID()).json")
+    let store = SettingsStore(fileURL: url)
+    store.freeze()
+    store.settings.setupCompleted = true
+    #expect(!FileManager.default.fileExists(atPath: url.path))
+}

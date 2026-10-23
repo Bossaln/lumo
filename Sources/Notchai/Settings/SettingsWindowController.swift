@@ -12,14 +12,18 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var setup: SetupController?
     private var updates: UpdateController?
     private var openAssistant: () -> Void = {}
+    private var developer = DeveloperTools()
+    private var tryOut: () -> Void = {}
     private var window: NSWindow?
 
     func configure(settingsStore: SettingsStore, setup: SetupController, updates: UpdateController,
-                   openAssistant: @escaping () -> Void) {
+                   developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void) {
         self.settingsStore = settingsStore
         self.setup = setup
         self.updates = updates
+        self.developer = developer
         self.openAssistant = openAssistant
+        self.tryOut = tryOut
     }
 
     func show() {
@@ -43,7 +47,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 windowController: self,
                 setup: setup,
                 updates: updates,
-                openAssistant: openAssistant
+                openAssistant: openAssistant,
+                developer: developer,
+                tryOut: tryOut
             ))
             window.isReleasedWhenClosed = false
             window.delegate = self
