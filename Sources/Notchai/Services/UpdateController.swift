@@ -147,17 +147,15 @@ final class UpdateController {
         try? FileManager.default.createDirectory(at: Self.logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         state = .installing("Homebrew aktualisiert notchai …")
         // Homebrew beendet notchai selbst (`uninstall quit:` im Cask); das Skript läuft weiter und öffnet die neue Version.
-        let log = ShellQuote.quote(Self.logURL.path)
-        let app = ShellQuote.quote(Bundle.main.bundlePath)
-        let script = "\(ShellQuote.quote(brew)) upgrade --cask notchai >> \(log) 2>&1 && open \(app)"
+        let script = ReleaseCheck.homebrewUpgradeScript(brew: brew, log: Self.logURL.path, app: Bundle.main.bundlePath)
         let process = Process()
         process.executableURL = URL(filePath: "/bin/zsh")
         process.arguments = ["-lc", script]
-        // Läuft notchai danach noch, hat Homebrew nicht aktualisiert.
-        process.terminationHandler = { [weak self] finished in
-            guard finished.terminationStatus != 0 else { return }
+        // Läuft notchai danach noch, hat Homebrew nicht aktualisiert (sonst wäre diese Instanz beendet).
+        process.terminationHandler = { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.state = .failed("Homebrew konnte notchai nicht aktualisieren. Details im Protokoll.")
+                self?.state = .failed("Homebrew hat notchai nicht aktualisiert. Details im Protokoll; im Terminal geht es mit "
+                    + "„brew update && brew upgrade --cask notchai“.")
             }
         }
         do {

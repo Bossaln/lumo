@@ -50,3 +50,16 @@ private func latest(tag: String, body: String? = nil) -> Data {
     guard case .releaseAvailable(let offer) = state else { Issue.record("erwartet neue Version, war \(state)"); return }
     #expect(offer.notes == ["Büro: Lagerhalle mit Autos", "Musik: Spulen im Balken"])
 }
+
+@Test func homebrewUpdateRefreshesTheTapBeforeUpgrading() {
+    let script = ReleaseCheck.homebrewUpgradeScript(brew: "/opt/homebrew/bin/brew", log: "/Users/x/update.log",
+                                                    app: "/Applications/notchai.app")
+    // Ohne `brew update` kennt Homebrew die neue Version bis zu 24 Stunden lang nicht.
+    let update = script.range(of: "/opt/homebrew/bin/brew update")
+    let upgrade = script.range(of: "/opt/homebrew/bin/brew upgrade --cask notchai")
+    #expect(update != nil && upgrade != nil)
+    if let update, let upgrade { #expect(update.lowerBound < upgrade.lowerBound) }
+    // Neu geöffnet wird nur nach erfolgreichem Upgrade; alles landet im Protokoll.
+    #expect(script.hasSuffix("&& open /Applications/notchai.app"))
+    #expect(script.components(separatedBy: ">> /Users/x/update.log 2>&1").count == 3)
+}
