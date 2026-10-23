@@ -76,6 +76,10 @@ signal style, animations, glow, sounds, which tab opens on hover, music sources,
 brew install --cask bossaln/tap/notchai
 ```
 
+<p align="center">
+  <img src="docs/images/install.gif" width="720" alt="Installing notchai with Homebrew">
+</p>
+
 This adds the tap [`Bossaln/homebrew-tap`](https://github.com/Bossaln/homebrew-tap) and installs notchai to
 `/Applications`. Afterwards, `brew upgrade --cask notchai` keeps it up to date – or use the update button in
 notchai's settings, which does the same.
