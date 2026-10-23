@@ -22,7 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let statusItemController = StatusItemController()
         self.statusItemController = statusItemController
-        let model = AppModel(settingsStore: SettingsStore(fileURL: SettingsStore.defaultFileURL()))
+        let model = AppModel(settingsStore: SettingsStore(fileURL: SettingsStore.defaultFileURL()),
+                             shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
         self.model = model
         let setup = SetupController(home: home)
         let updates = UpdateController(settingsStore: model.settingsStore)
@@ -72,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.officeHotkey = officeHotkey
 
         settingsWindowController.configure(
-            settingsStore: model.settingsStore, setup: setup, updates: updates,
+            settingsStore: model.settingsStore, shelfStore: model.shelfStore, setup: setup, updates: updates,
             developer: makeDeveloperTools(model: model, setupWindow: setupWindow),
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })

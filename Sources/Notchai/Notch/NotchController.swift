@@ -21,20 +21,30 @@ final class NotchController {
     private var pointerInside = false
     /// Signal, das zuletzt gemeldet wurde; endet es, geht die Tastatur zurück.
     private var shownSignalID: UUID?
+    /// Werden gerade Dateien gezogen (aus dem Finder, Mail …)?
+    private var fileDrag = FileDragTracker()
+    /// Die gezogenen Dateien sind nah an der Notch; die Ablage ist dafür aufgeklappt.
+    private var fileDragNearNotch = false
+    /// Letzter Blick in den Drag-Zwischenspeicher; jeder Blick ist eine Anfrage an einen anderen Prozess.
+    private var lastDragCheck = Date.distantPast
 
     init(model: AppModel) {
         self.model = model
         panel = NotchPanel(rootView: NotchRootView(model: model))
         panel.keyPolicy = { [weak model] in model?.acceptsKeyboard ?? false }
 
-        // Globale Maus-Monitore brauchen keine Bedienungshilfen-Berechtigung.
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved, handler: { [weak self] _ in
-            MainActor.assumeIsolated { self?.updatePointer() }
+        // Globale Maus-Monitore brauchen keine Bedienungshilfen-Berechtigung. Gedrückte Maustaste und Ziehen
+        // zählen mit: So merkt die Notch, wenn jemand Dateien zu ihr zieht (Reiter „Ablage“).
+        let mouse: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDown, .leftMouseDragged, .leftMouseUp]
+        if let global = NSEvent.addGlobalMonitorForEvents(matching: mouse, handler: { [weak self] event in
+            let type = event.type
+            MainActor.assumeIsolated { self?.handleMouse(type, inNotchai: false) }
         }) {
             observers.append(global)
         }
-        if let local = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved, handler: { [weak self] event in
-            MainActor.assumeIsolated { self?.updatePointer() }
+        if let local = NSEvent.addLocalMonitorForEvents(matching: mouse, handler: { [weak self] event in
+            let type = event.type
+            MainActor.assumeIsolated { self?.handleMouse(type, inNotchai: true) }
             return event
         }) {
             observers.append(local)
@@ -120,6 +130,47 @@ final class NotchController {
         ScreenInfo(frame: screen.frame, topInset: screen.safeAreaInsets.top,
                    leftAuxWidth: screen.auxiliaryTopLeftArea?.width,
                    rightAuxWidth: screen.auxiliaryTopRightArea?.width)
+    }
+
+    private func handleMouse(_ type: NSEvent.EventType, inNotchai: Bool) {
+        switch type {
+        case .leftMouseDown:
+            fileDrag.mouseDown(changeCount: NSPasteboard(name: .drag).changeCount, insideNotchai: inNotchai)
+        case .leftMouseDragged:
+            trackFileDrag()
+            // Wer ein Fenster oder Text zieht, soll die Notch nicht aufklappen; nur Dateien öffnen sie.
+            if fileDrag.isDraggingFiles { updatePointer() }
+        case .leftMouseUp:
+            if fileDrag.mouseUp() { fileDragEnded() }
+        default:
+            updatePointer()
+        }
+    }
+
+    /// Kommen gezogene Dateien der Notch nahe, klappt sie zur Ablage auf und zeigt AirDrop und Ablage als Ziele.
+    private func trackFileDrag() {
+        guard model.settingsStore.settings.shelfEnabled, model.screen != nil else { return }
+        if !fileDrag.isDraggingFiles {
+            let now = Date()
+            guard now.timeIntervalSince(lastDragCheck) >= 0.08 else { return }
+            lastDragCheck = now
+            let board = NSPasteboard(name: .drag)
+            let hasFiles = board.types?.contains(.fileURL) == true
+            guard fileDrag.dragged(changeCount: board.changeCount, hasFiles: hasFiles) else { return }
+        }
+        let near = model.visibleFrame().map { Self.contains(NotchGeometry.dropZone(around: $0), NSEvent.mouseLocation) } ?? false
+        if near, !fileDragNearNotch { model.send(.fileDragEntered) }
+        fileDragNearNotch = near
+    }
+
+    /// Losgelassen (abgelegt oder irgendwo anders): Die Ablage zeigt danach wieder ihre Dateien.
+    private func fileDragEnded() {
+        fileDragNearNotch = false
+        // Erst nach dem Ablegen umschalten, sonst verschwänden die Ziele unter der fallenden Datei.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(150))
+            self?.model.send(.fileDragEnded)
+        }
     }
 
     /// Nur über der sichtbaren Form nimmt das Panel Mausereignisse an. Läuft bei jeder Mausbewegung

@@ -148,3 +148,12 @@ private func dragResults(mouseDown: Int?, insideNotchai: Bool = false, _ moves: 
     #expect(PanelTab.allCases.contains(.shelf))
     #expect(PanelTab.shelf.title == "Ablage")
 }
+
+@Test func collapsingTheNotchForgetsTheDropTargets() {
+    // Meldet macOS das Loslassen nicht, zeigt die Ablage beim nächsten Öffnen trotzdem ihre Dateien.
+    var s = NotchState()
+    s.apply(.fileDragEntered, style: .island)
+    s.apply(.hoverEnded, style: .island)
+    #expect(s.mode == .idle)
+    #expect(!s.isReceivingFiles)
+}

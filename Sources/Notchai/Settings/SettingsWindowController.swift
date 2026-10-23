@@ -9,6 +9,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
     private var settingsStore: SettingsStore?
+    private var shelfStore: ShelfStore?
     private var setup: SetupController?
     private var updates: UpdateController?
     private var openAssistant: () -> Void = {}
@@ -16,9 +17,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var tryOut: () -> Void = {}
     private var window: NSWindow?
 
-    func configure(settingsStore: SettingsStore, setup: SetupController, updates: UpdateController,
+    func configure(settingsStore: SettingsStore, shelfStore: ShelfStore, setup: SetupController, updates: UpdateController,
                    developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void) {
         self.settingsStore = settingsStore
+        self.shelfStore = shelfStore
         self.setup = setup
         self.updates = updates
         self.developer = developer
@@ -27,7 +29,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        guard let settingsStore, let setup, let updates else { return }
+        guard let settingsStore, let shelfStore, let setup, let updates else { return }
         refreshLaunchAtLoginSetting()
 
         if window == nil {
@@ -44,6 +46,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             window.toolbarStyle = .unified
             window.contentView = NSHostingView(rootView: SettingsView(
                 settingsStore: settingsStore,
+                shelfStore: shelfStore,
                 windowController: self,
                 setup: setup,
                 updates: updates,

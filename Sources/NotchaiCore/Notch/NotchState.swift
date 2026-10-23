@@ -57,7 +57,9 @@ public struct NotchState: Equatable, Sendable {
             }
         case .hoverEnded:
             switch mode {
-            case .panel: mode = hasPendingSignal ? .signal(style) : .idle
+            case .panel:
+                mode = hasPendingSignal ? .signal(style) : .idle
+                isReceivingFiles = false
             // Sonst ginge die halb getippte Antwort verloren und die Tastatur an die vordere App.
             case .signal where isEditing: collapseAfterEditing = true
             case .signal: mode = .signal(style)

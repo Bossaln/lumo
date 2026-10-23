@@ -9,6 +9,8 @@ import Observation
 final class AppModel {
     var notch = NotchState()
     let settingsStore: SettingsStore
+    /// Reiter „Ablage“: abgelegte Dateien.
+    let shelfStore: ShelfStore
     /// Bildschirm mit Notch; `nil`, wenn keiner angeschlossen oder aufgeklappt ist.
     var screen: ScreenInfo?
     /// Von SwiftUI gemessene Höhe des Panel-Inhalts je Reiter. So klappt das Panel gleich auf die richtige Höhe
@@ -88,8 +90,9 @@ final class AppModel {
     /// Öffnet das große Büro.
     @ObservationIgnored var onOpenOffice: (() -> Void)?
 
-    init(settingsStore: SettingsStore) {
+    init(settingsStore: SettingsStore, shelfStore: ShelfStore) {
         self.settingsStore = settingsStore
+        self.shelfStore = shelfStore
     }
 
     func send(_ e: NotchEvent) {
@@ -122,6 +125,7 @@ final class AppModel {
         case .music: 147
         case .sessions: 170
         case .office: OfficeTabView.previewSize.height + 52
+        case .shelf: 176
         }
     }
 

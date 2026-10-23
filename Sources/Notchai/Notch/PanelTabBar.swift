@@ -66,6 +66,7 @@ struct PanelTabBar: View {
         case .music: "music.note"
         case .sessions: "terminal"
         case .office: "building.2"
+        case .shelf: "tray.full"
         }
     }
 }
