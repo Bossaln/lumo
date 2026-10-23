@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let responsiveness = ResponsivenessMonitor()
     /// Hält App Nap fern: Agenten warten auf die Antwort der Notch, und ein Klick in die Menüleiste soll sofort wirken.
     private var activity: NSObjectProtocol?
+    /// Sprache, in der Menüs und Fenstertitel gerade stehen.
+    private var appliedLanguage: AppLanguage?
     /// Wartet irgendeine Session auf den Besitzer (laut Session-Buch)?
     private var sessionsWaiting = false
     private var dotVisible: Bool?
@@ -26,12 +28,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             options: .userInitiatedAllowingIdleSystemSleep,
             reason: "notchai beantwortet Fragen und Freigaben von Claude Code und Codex sofort")
         let home = FileManager.default.homeDirectoryForCurrentUser
+        let settingsStore = SettingsStore(fileURL: SettingsStore.defaultFileURL())
+        // Die Sprache steht fest, bevor irgendein Text entsteht (Menüs, Notch, Fenster).
+        LanguageSwitch.apply(settingsStore.settings)
+        appliedLanguage = Localization.language
+        NSApp.mainMenu = MainMenu.make()
         let statusItemController = StatusItemController()
         self.statusItemController = statusItemController
-        let settingsStore = SettingsStore(fileURL: SettingsStore.defaultFileURL())
-        // Die Sprache steht fest, bevor irgendein Text entsteht.
-        LanguageSwitch.apply(settingsStore.settings)
-        NSApp.mainMenu = MainMenu.make()
         let model = AppModel(settingsStore: settingsStore, shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
         self.model = model
         let setup = SetupController(home: home)
@@ -167,11 +170,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self, let model = self.model else { return }
+                // Beobachtet werden alle Einstellungen; neu beschriftet wird nur bei einer anderen Sprache.
                 LanguageSwitch.apply(model.settingsStore.settings)
-                NSApp.mainMenu = MainMenu.make()
-                statusItemController?.relocalize()
-                SettingsWindowController.shared.relocalize()
-                setupWindow?.relocalize()
+                if Localization.language != appliedLanguage {
+                    appliedLanguage = Localization.language
+                    NSApp.mainMenu = MainMenu.make()
+                    statusItemController?.relocalize()
+                    SettingsWindowController.shared.relocalize()
+                    setupWindow?.relocalize()
+                }
                 observeLanguage()
             }
         }
