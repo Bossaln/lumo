@@ -1,0 +1,12 @@
+# SwiftPM
+.build/
+.swiftpm/
+
+# App-Bundle und Release-Archive aus scripts/build-app.sh und scripts/package-release.sh
+build/
+
+# Signatur-Zertifikat (scripts/create-signing-certificate.sh), nie einchecken
+*.p12
+signing/
+
+.DS_Store

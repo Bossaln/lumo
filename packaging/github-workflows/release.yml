@@ -1,0 +1,115 @@
+# Aktivieren (einmal, mit deiner GitHub-Anmeldung – sie braucht das Recht „workflow“):
+#   mkdir -p .github/workflows && git mv packaging/github-workflows/*.yml .github/workflows/
+#   git commit -m "Workflows aktivieren" && git push
+#
+# Veröffentlicht eine Version: testen, App bauen und signieren, GitHub Release anlegen, Homebrew-Cask aktualisieren.
+# Start: Tag „v0.2.0“ pushen oder unter Actions › Release › „Run workflow“ die Version eingeben.
+# Secrets (siehe docs/releasing.md): NOTCHAI_CERT_P12, NOTCHAI_CERT_PASSWORD, TAP_GITHUB_TOKEN.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version ohne v, z. B. 0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAP_REPOSITORY: Bossaln/homebrew-tap
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then V="$INPUT_VERSION"; else V="$GITHUB_REF_NAME"; fi
+          V="${V#v}"
+          if ! echo "$V" | grep -Eq '^[0-9]+(\.[0-9]+){1,2}$'; then
+            echo "::error::Ungültige Version: $V"
+            exit 1
+          fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          swift --version
+          uname -m
+
+      - name: Test
+        run: swift test || swift test
+
+      - name: Load signing certificate
+        env:
+          CERT_P12: ${{ secrets.NOTCHAI_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.NOTCHAI_CERT_PASSWORD }}
+        run: |
+          if [ -z "$CERT_P12" ]; then
+            echo "::warning::Kein Zertifikat hinterlegt (NOTCHAI_CERT_P12). Die App wird nur ad hoc signiert."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/notchai.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$CERT_P12" | base64 -D > "$RUNNER_TEMP/notchai.p12"
+          security import "$RUNNER_TEMP/notchai.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/notchai.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          security find-identity -p codesigning "$KEYCHAIN"
+          echo "NOTCHAI_SIGN_IDENTITY=notchai Signing" >> "$GITHUB_ENV"
+
+      - name: Build and package
+        run: scripts/package-release.sh "$VERSION"
+
+      - name: Show signature
+        run: codesign -dv --verbose=2 build/notchai.app 2>&1 | grep -E "^(Identifier|Authority|Signature)" || true
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" "build/notchai-$VERSION.zip" \
+            --target "$GITHUB_SHA" --title "notchai $VERSION" --generate-notes
+
+      - name: Update Homebrew tap
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::warning::Kein TAP_GITHUB_TOKEN hinterlegt. Den Cask im Tap bitte von Hand aktualisieren."
+            exit 0
+          fi
+          SHA256="$(cat "build/notchai-$VERSION.zip.sha256")"
+          TAP="$RUNNER_TEMP/tap"
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPOSITORY}.git" "$TAP"
+          mkdir -p "$TAP/Casks"
+          # Ohne die beiden Kommentarzeilen der Vorlage.
+          sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA256/" packaging/homebrew/notchai.rb | sed '1,2d' > "$TAP/Casks/notchai.rb"
+          [ -f "$TAP/README.md" ] || cp packaging/homebrew/tap-README.md "$TAP/README.md"
+          cd "$TAP"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "notchai $VERSION"
+          git push origin HEAD
