@@ -80,6 +80,9 @@ final class AppModel {
     @ObservationIgnored private var shownMotion: NotchMotion = .expand
     @ObservationIgnored private var overrideTask: Task<Void, Never>?
 
+    /// Die Notch leuchtet in wechselnden Farben, solange die Einrichtung offen ist.
+    var setupGlow = false
+
     /// Lagerhalle: Bild und Figuren für Reiter und großes Fenster.
     @ObservationIgnored var officeDirector: OfficeDirector?
     /// Öffnet das große Büro.
@@ -136,7 +139,7 @@ final class AppModel {
         signalDidClose()
     }
 
-    /// Schließt, was gerade angezeigt wird (Entwickler-Menü).
+    /// Schließt, was gerade angezeigt wird (Entwickler-Seite der Einstellungen).
     func clearActiveSignal() {
         guard signals.clearActive() != nil else { return }
         signalDidClose()

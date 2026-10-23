@@ -98,14 +98,14 @@ xattr -dr com.apple.quarantine /Applications/notchai.app
 
 ## First launch
 
-1. notchai appears in the menu bar and in the notch. A setup assistant connects **Claude Code** and **Codex**.
+1. Your screen edges light up and the glow pulls into the notch, which keeps glowing until setup is done. A setup assistant connects **Claude Code** and **Codex** and lets you try the notch styles, colors and session views right away.
 2. **Codex** only runs hooks you trusted: start `codex` once in a terminal and choose **"Trust all and continue"**.
 3. Optional permissions, only needed for these features
    (System Settings › Privacy & Security):
    - **Accessibility** – double-tap right <kbd>⌘</kbd> for the warehouse, typing replies into a session's window
    - **Automation** – cover art and playback controls for Spotify and Music
 
-Everything else is in **Settings** (menu bar icon › Einstellungen).
+Everything else is in **Settings** (menu bar icon › Einstellungen). Turn on **Allgemein › Entwickleroptionen** for a developer page with test signals, raw diagnostics and a full reset to a fresh install.
 
 ## Uninstall
 

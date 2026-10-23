@@ -1,14 +1,12 @@
 import AppKit
 import NotchaiCore
 
-enum StatusMenuSection { case main, developer }
 
 /// Menüleisten-Symbol mit Menü und optionalem "Wartet"-Punkt.
 @MainActor
 final class StatusItemController {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
-    private let developerMenu = NSMenu(title: "Entwickler")
     private var mainInsertIndex = 0
     private let dotColor: NSColor
     private var settingsAction: @MainActor () -> Void = {}
@@ -27,10 +25,6 @@ final class StatusItemController {
         menu.addItem(settings)
         mainInsertIndex = menu.items.count
         menu.addItem(.separator())
-        let developer = NSMenuItem(title: "Entwickler", action: nil, keyEquivalent: "")
-        developer.submenu = developerMenu
-        menu.addItem(developer)
-        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "notchai beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
@@ -42,23 +36,18 @@ final class StatusItemController {
         settingsAction()
     }
 
-    /// Hängt einen Eintrag in den Hauptteil oder das Untermenü "Entwickler".
-    func addMenuItem(_ item: NSMenuItem, section: StatusMenuSection) {
-        switch section {
-        case .main:
-            menu.insertItem(item, at: mainInsertIndex)
-            mainInsertIndex += 1
-        case .developer:
-            developerMenu.addItem(item)
-        }
+    /// Hängt einen Eintrag in den Hauptteil des Menüs. Die Entwickler-Werkzeuge stehen in den Einstellungen.
+    func addMenuItem(_ item: NSMenuItem) {
+        menu.insertItem(item, at: mainInsertIndex)
+        mainInsertIndex += 1
     }
 
     /// Bequemer Weg für Einträge, die nur eine Closure ausführen. Gibt den Eintrag zurück, damit sich
     /// sein Titel später ändern lässt (etwa „Update installieren …“).
     @discardableResult
-    func addMenuItem(_ title: String, section: StatusMenuSection, action: @escaping @MainActor () -> Void) -> NSMenuItem {
+    func addMenuItem(_ title: String, action: @escaping @MainActor () -> Void) -> NSMenuItem {
         let item = ClosureMenuItem(title: title, handler: action)
-        addMenuItem(item, section: section)
+        addMenuItem(item)
         return item
     }
 

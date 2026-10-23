@@ -37,9 +37,12 @@ struct NotchRootView: View {
             }
             .clipShape(shape)
             .background {
-                NotchGlow(shape: shape, color: glowColor, intensity: settings.glowIntensity,
-                          enabled: (settings.glowEnabled && isSignal) || musicGlows,
-                          cycle: isSignal ? GlowPulse.cycle : GlowPulse.musicCycle)
+                // Während der Einrichtung leuchtet die Notch in wechselnden Farben, bis sie fertig ist.
+                let setupGlows = model.setupGlow && !isSignal
+                NotchGlow(shape: shape, color: glowColor, intensity: setupGlows ? 0.8 : settings.glowIntensity,
+                          enabled: (settings.glowEnabled && isSignal) || musicGlows || setupGlows,
+                          cycle: isSignal || setupGlows ? GlowPulse.cycle : GlowPulse.musicCycle,
+                          rainbow: setupGlows && !musicGlows)
             }
             .animation(animation, value: presentation)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

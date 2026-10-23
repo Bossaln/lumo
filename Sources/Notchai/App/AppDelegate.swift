@@ -27,11 +27,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let setup = SetupController(home: home)
         let updates = UpdateController(settingsStore: model.settingsStore)
         self.updates = updates
-        let setupWindow = SetupWindowController(setup: setup, settingsStore: model.settingsStore)
+        let setupWindow = SetupWindowController(setup: setup, model: model)
         self.setupWindow = setupWindow
         let settingsWindowController = SettingsWindowController.shared
-        settingsWindowController.configure(settingsStore: model.settingsStore, setup: setup, updates: updates,
-                                           openAssistant: { [weak setupWindow] in setupWindow?.show() })
         statusItemController.setSettingsAction { settingsWindowController.show() }
         model.onOpenSettings = { [weak settingsWindowController] in settingsWindowController?.show() }
         let notchController = NotchController(model: model)
@@ -73,18 +71,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         officeHotkey.start()
         self.officeHotkey = officeHotkey
 
-        updateItem = statusItemController.addMenuItem("Nach Updates suchen …", section: .main) { [weak self] in
+        settingsWindowController.configure(
+            settingsStore: model.settingsStore, setup: setup, updates: updates,
+            developer: makeDeveloperTools(model: model, setupWindow: setupWindow),
+            openAssistant: { [weak setupWindow] in setupWindow?.show() },
+            tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })
+
+        updateItem = statusItemController.addMenuItem("Nach Updates suchen …") { [weak self] in
             self?.updateMenuAction()
         }
-        statusItemController.addMenuItem("Büro öffnen", section: .main) { [weak office] in office?.open() }
-        statusItemController.addMenuItem("Einrichtung …", section: .main) { [weak setupWindow] in setupWindow?.show() }
+        statusItemController.addMenuItem("Büro öffnen") { [weak office] in office?.open() }
+        statusItemController.addMenuItem("Einrichtung …") { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
 
-        addDeveloperMenu(statusItemController, model: model)
-
-        // Beim ersten Start richtet der Assistent die Hooks ein (jeder Schritt lässt sich überspringen).
-        if !model.settingsStore.settings.setupCompleted { setupWindow.show() }
+        // Beim ersten Start leuchtet der Bildschirm auf, das Leuchten zieht sich in die Notch zusammen, und der
+        // Assistent richtet alles ein (jeder Schritt lässt sich überspringen).
+        if !model.settingsStore.settings.setupCompleted { setupWindow.showWithIntro() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -135,48 +138,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Entwickler
 
-    private func addDeveloperMenu(_ menu: StatusItemController, model: AppModel) {
-        menu.addMenuItem("Test-Signal: Freigabe (Claude)", section: .developer) { [weak model] in
-            model?.raiseSignal(SignalDemo.permission)
+    /// Werkzeuge der Seite „Entwickler“ in den Einstellungen.
+    private func makeDeveloperTools(model: AppModel, setupWindow: SetupWindowController) -> DeveloperTools {
+        let developer = DeveloperTools()
+        developer.raiseSignal = { [weak model] in model?.raiseSignal($0) }
+        developer.closeSignal = { [weak model] in model?.clearActiveSignal() }
+        developer.restyleSignal = { [weak model] in
+            // Ein offenes Signal sofort in der neuen Form zeigen.
+            guard let model, let signal = model.activeSignal else { return }
+            model.clearSignal(signal.id)
+            model.raiseSignal(signal)
         }
-        menu.addMenuItem("Test-Signal: Frage (Codex)", section: .developer) { [weak model] in
-            model?.raiseSignal(SignalDemo.question)
+        developer.hookEventsText = { [weak self] in self?.coordinator?.recentEventsText() ?? "" }
+        developer.nowPlayingText = { [weak self] in self?.music?.rawDataText() ?? "" }
+        developer.showWelcome = { [weak setupWindow] in setupWindow?.showWithIntro() }
+        developer.resetApp = { [weak self, weak model] in
+            guard let model, AppResetter.confirm() else { return }
+            AppResetter.resetAndRelaunch(settingsStore: model.settingsStore) { self?.coordinator?.stop() }
         }
-        menu.addMenuItem("Test-Signal: Fertig", section: .developer) { [weak model] in
-            model?.raiseSignal(SignalDemo.done)
-        }
-        menu.addMenuItem("Test-Signal: Fehler", section: .developer) { [weak model] in
-            model?.raiseSignal(SignalDemo.error)
-        }
-        menu.addMenuItem(.separator(), section: .developer)
-        menu.addMenuItem("Signal schließen", section: .developer) { [weak model] in
-            model?.clearActiveSignal()
-        }
-        menu.addMenuItem(.separator(), section: .developer)
-        let styles: [(SignalStyle, String)] = [(.island, "Island"), (.banner, "Banner"), (.vertical, "Vertikal")]
-        for (style, name) in styles {
-            menu.addMenuItem("Signal-Form: \(name)", section: .developer) { [weak model] in
-                guard let model else { return }
-                model.settingsStore.settings.signalStyle = style
-                // Ein offenes Signal sofort in der neuen Form zeigen.
-                if let signal = model.activeSignal {
-                    model.clearSignal(signal.id)
-                    model.raiseSignal(signal)
-                }
-            }
-        }
-        menu.addMenuItem(.separator(), section: .developer)
-        // Hilft bei den offenen Prüfungen aus `docs/hooks.md` (Umgebung der Claude-App, cmux …).
-        menu.addMenuItem("Letzte Hook-Ereignisse kopieren", section: .developer) { [weak self] in
-            guard let text = self?.coordinator?.recentEventsText() else { return }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text.isEmpty ? "Noch keine Hook-Ereignisse empfangen." : text, forType: .string)
-        }
-        // Hilft bei den offenen Prüfungen aus `docs/now-playing.md` (JXA-Felder, Schlüssel der Benachrichtigungen).
-        menu.addMenuItem("Jetzt-läuft-Rohdaten kopieren", section: .developer) { [weak self] in
-            guard let text = self?.music?.rawDataText() else { return }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-        }
+        return developer
     }
 }

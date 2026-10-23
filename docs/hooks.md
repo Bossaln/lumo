@@ -115,4 +115,4 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 - Ob die Codex-App die Hook-Freigabe genauso abfragt wie die Kommandozeile.
 - cmux: Name der `CMUX_*`-Variable mit der Surface-ID.
 
-Am einfachsten geht das, sobald notchai die Hooks eingerichtet hat: Das Entwickler-Menü zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“).
+Am einfachsten geht das, sobald notchai die Hooks eingerichtet hat: Die Entwickler-Seite der Einstellungen zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“).

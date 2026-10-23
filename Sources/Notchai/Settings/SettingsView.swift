@@ -11,6 +11,9 @@ struct SettingsView: View {
     let setup: SetupController
     let updates: UpdateController
     let openAssistant: () -> Void
+    let developer: DeveloperTools
+    /// Zeigt ein Beispiel-Signal in der echten Notch.
+    let tryOut: () -> Void
 
     @ViewState private var selection: SettingsPane? = .general
     @ViewState private var launchAtLoginMessage: String? = nil
@@ -19,7 +22,8 @@ struct SettingsView: View {
         NavigationSplitView {
             List(selection: $selection) {
                 sidebarHeader
-                ForEach(Array(SettingsPane.groups.enumerated()), id: \.offset) { _, group in
+                ForEach(Array(SettingsPane.groups(developer: settingsStore.settings.developerOptions).enumerated()),
+                        id: \.offset) { _, group in
                     Section {
                         ForEach(group) { pane in
                             Label {
@@ -67,6 +71,9 @@ struct SettingsView: View {
         case .sessions: sessionsPane
         case .music: musicPane
         case .office: officePane
+        case .developer:
+            // Wird die Seite ausgeschaltet, während sie offen ist, geht es zurück zu „Allgemein“.
+            if settingsStore.settings.developerOptions { developerPane } else { generalPane }
         }
     }
 
@@ -97,6 +104,14 @@ struct SettingsView: View {
             Section("Einrichtung") {
                 LabeledContent("Einrichtungs-Assistent") {
                     Button("Öffnen …", action: openAssistant)
+                }
+            }
+            Section("Entwickler") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Entwickleroptionen", isOn: setting(\.developerOptions))
+                    Text("Blendet in der Seitenleiste die Seite „Entwickler“ ein: Test-Signale, Rohdaten und Zurücksetzen.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
             }
             Section("Über notchai") {
@@ -196,20 +211,29 @@ struct SettingsView: View {
                 NotchPreviewCard(settings: settings)
             }
             Section("Signalform") {
-                ChoiceCards(options: [(SignalStyle.island, "Island"), (.banner, "Banner"), (.vertical, "Vertikal")],
-                            selection: setting(\.signalStyle)) { style in
-                    signalThumbnail(style)
+                SignalStylePicker(selection: setting(\.signalStyle), agent: Color(hex: settings.claudeColorHex))
+                Text(SignalStylePicker.explanation(settings.signalStyle))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Spacer()
+                    TryOutButton(action: tryOut)
                 }
             }
-            Section("Darstellung") {
-                Picker("Hintergrund", selection: setting(\.background)) {
-                    Text("Schwarz").tag(BackgroundStyle.black)
-                    Text("Dunkelgrau").tag(BackgroundStyle.darkGray)
-                    Text("Eigene Farbe").tag(BackgroundStyle.custom)
-                }
+            Section("Hintergrund") {
+                BackgroundPicker(selection: setting(\.background), customHex: settings.customBackgroundHex)
                 if settings.background == .custom {
                     ColorPicker("Eigene Hintergrundfarbe", selection: colorSetting(\.customBackgroundHex), supportsOpacity: false)
                 }
+            }
+            Section("Agentenfarben") {
+                HStack {
+                    Spacer()
+                    AgentColorChips(claude: Color(hex: settings.claudeColorHex), codex: Color(hex: settings.codexColorHex))
+                    Spacer()
+                }
+                .padding(.vertical, 6)
                 ColorPicker("Farbe von Claude Code", selection: colorSetting(\.claudeColorHex), supportsOpacity: false)
                 ColorPicker("Farbe von Codex", selection: colorSetting(\.codexColorHex), supportsOpacity: false)
             }
@@ -266,42 +290,6 @@ struct SettingsView: View {
         }
     }
 
-    /// Miniatur je Signalform für die Auswahlkarten.
-    @ViewBuilder
-    private func signalThumbnail(_ style: SignalStyle) -> some View {
-        let agent = Color(hex: settingsStore.settings.claudeColorHex)
-        switch style {
-        case .island:
-            MiniNotch(width: 84, height: 12) {
-                HStack {
-                    Circle().fill(agent).frame(width: 4, height: 4)
-                    Spacer()
-                    Circle().fill(Color.white.opacity(0.7)).frame(width: 4, height: 4)
-                }
-                .padding(.horizontal, 7)
-            }
-        case .banner:
-            MiniNotch(width: 92, height: 24) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Spacer().frame(height: 9)
-                    Capsule().fill(agent).frame(width: 40, height: 3)
-                    Capsule().fill(Color.white.opacity(0.5)).frame(width: 60, height: 3)
-                }
-                .padding(.horizontal, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        case .vertical:
-            MiniNotch(width: 50, height: 40) {
-                VStack(spacing: 4) {
-                    Spacer().frame(height: 10)
-                    Circle().fill(agent).frame(width: 7, height: 7)
-                    Capsule().fill(Color.white.opacity(0.5)).frame(width: 30, height: 3)
-                    Capsule().fill(Color.white.opacity(0.3)).frame(width: 22, height: 3)
-                }
-            }
-        }
-    }
-
     // MARK: - Agenten
 
     /// Hooks von Claude Code und Codex: Status, neu einrichten, alles entfernen.
@@ -346,10 +334,13 @@ struct SettingsView: View {
     private var sessionsPane: some View {
         SettingsPage(pane: .sessions) {
             Section("Ansicht") {
-                ChoiceCards(options: [(SessionViewStyle.list, "Liste"), (.circles, "Kreise")],
-                            selection: setting(\.sessionViewStyle)) { style in
-                    sessionThumbnail(style)
-                }
+                SessionStylePicker(selection: setting(\.sessionViewStyle),
+                                   claude: Color(hex: settingsStore.settings.claudeColorHex),
+                                   codex: Color(hex: settingsStore.settings.codexColorHex))
+                Text(SessionStylePicker.explanation(settingsStore.settings.sessionViewStyle))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Picker("Titel", selection: setting(\.sessionTitleSource)) {
                     Text("Letzte Aufgabe").tag(SessionTitleSource.lastPrompt)
                     Text("Session-Titel bevorzugen").tag(SessionTitleSource.sessionTitle)
@@ -373,38 +364,6 @@ struct SettingsView: View {
             }
             Section("Antworten") {
                 Toggle("Antworten an Claude automatisch eintippen", isOn: setting(\.autoSendClaudeReplies))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func sessionThumbnail(_ style: SessionViewStyle) -> some View {
-        let claude = Color(hex: settingsStore.settings.claudeColorHex)
-        let codex = Color(hex: settingsStore.settings.codexColorHex)
-        switch style {
-        case .list:
-            MiniNotch(width: 92, height: 50) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Spacer().frame(height: 8)
-                    ForEach(0..<3, id: \.self) { row in
-                        HStack(spacing: 4) {
-                            Circle().fill(row == 1 ? codex : claude).frame(width: 5, height: 5)
-                            Capsule().fill(Color.white.opacity(0.55)).frame(width: row == 2 ? 38 : 54, height: 3)
-                        }
-                    }
-                }
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        case .circles:
-            MiniNotch(width: 92, height: 12) {
-                HStack(spacing: 3) {
-                    Circle().fill(claude).frame(width: 6, height: 6)
-                    Circle().fill(codex).frame(width: 6, height: 6)
-                    Spacer()
-                    Circle().fill(claude.opacity(0.7)).frame(width: 6, height: 6)
-                }
-                .padding(.horizontal, 8)
             }
         }
     }
@@ -583,6 +542,62 @@ struct SettingsView: View {
             Section("Standort für den Sonnenstand (optional)") {
                 CoordinateField(kind: .latitude, settingsStore: settingsStore)
                 CoordinateField(kind: .longitude, settingsStore: settingsStore)
+            }
+        }
+    }
+
+    // MARK: - Entwickler
+
+    private var developerPane: some View {
+        SettingsPage(pane: .developer) {
+            Section("Test-Signale") {
+                LabeledContent("Freigabe von Claude Code") { Button("Zeigen") { developer.raiseSignal(SignalDemo.permission) } }
+                LabeledContent("Frage von Codex") { Button("Zeigen") { developer.raiseSignal(SignalDemo.question) } }
+                LabeledContent("Fertig") { Button("Zeigen") { developer.raiseSignal(SignalDemo.done) } }
+                LabeledContent("Fehler") { Button("Zeigen") { developer.raiseSignal(SignalDemo.error) } }
+                Picker("Signalform", selection: Binding(
+                    get: { settingsStore.settings.signalStyle },
+                    set: { settingsStore.settings.signalStyle = $0; developer.restyleSignal() }
+                )) {
+                    Text("Island").tag(SignalStyle.island)
+                    Text("Banner").tag(SignalStyle.banner)
+                    Text("Vertikal").tag(SignalStyle.vertical)
+                }
+                .pickerStyle(.segmented)
+                HStack {
+                    Spacer()
+                    Button("Signal schließen", action: developer.closeSignal)
+                }
+            }
+            Section("Diagnose") {
+                LabeledContent("Letzte Hook-Ereignisse") {
+                    Button("Kopieren") {
+                        DeveloperTools.copy(developer.hookEventsText(), empty: "Noch keine Hook-Ereignisse empfangen.")
+                    }
+                }
+                LabeledContent("Jetzt-läuft-Rohdaten") {
+                    Button("Kopieren") { DeveloperTools.copy(developer.nowPlayingText(), empty: "Keine Rohdaten.") }
+                }
+                LabeledContent("Protokolle") { Button("Im Finder zeigen") { DeveloperTools.reveal(DeveloperTools.logsFolder) } }
+                LabeledContent("Daten von notchai") { Button("Im Finder zeigen") { DeveloperTools.reveal(DeveloperTools.dataFolder) } }
+            }
+            Section("Einrichtung") {
+                LabeledContent("Begrüßung und Einrichtung") { Button("Erneut zeigen", action: developer.showWelcome) }
+                Text("Zeigt das Leuchten und den Einrichtungs-Assistenten wie beim ersten Start, ohne etwas zu löschen.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Zurücksetzen") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Setzt notchai auf „gerade installiert“ zurück: Hooks aus Claude Code und Codex entfernen, Einstellungen, Sicherungen, Protokolle und Caches in den Papierkorb legen, Berechtigungen zurücksetzen und neu starten.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Spacer()
+                        Button("notchai zurücksetzen …", role: .destructive, action: developer.resetApp)
+                    }
+                }
             }
         }
     }

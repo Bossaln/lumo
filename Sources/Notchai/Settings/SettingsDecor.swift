@@ -3,12 +3,14 @@ import SwiftUI
 
 /// Bereiche des Einstellungsfensters, gruppiert wie in den Systemeinstellungen.
 enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
-    case general, updates, notch, agents, sessions, music, office
+    case general, updates, notch, agents, sessions, music, office, developer
 
     var id: String { rawValue }
 
-    /// Gruppen der Seitenleiste.
-    static let groups: [[SettingsPane]] = [[.general, .updates], [.notch, .agents, .sessions], [.music, .office]]
+    /// Gruppen der Seitenleiste; „Entwickler“ nur, wenn die Entwickleroptionen eingeschaltet sind.
+    static func groups(developer: Bool) -> [[SettingsPane]] {
+        [[.general, .updates], [.notch, .agents, .sessions], [.music, .office]] + (developer ? [[.developer]] : [])
+    }
 
     var title: String {
         switch self {
@@ -19,6 +21,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .sessions: "Sessions"
         case .music: "Musik"
         case .office: "Büro"
+        case .developer: "Entwickler"
         }
     }
 
@@ -31,6 +34,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .sessions: "terminal.fill"
         case .music: "music.note"
         case .office: "building.2.fill"
+        case .developer: "hammer.fill"
         }
     }
 
@@ -39,7 +43,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .general:
             "Start beim Anmelden, Einrichtung und alles über notchai."
         case .updates:
-            "notchai holt neue Versionen selbst, baut sie und startet neu – nur auf deinen Klick."
+            "notchai sucht neue Versionen und installiert sie auf deinen Klick – über Homebrew oder aus deinem Quellordner."
         case .notch:
             "Form, Farben und Bewegung der Notch – vom ruhigen Schwarz bis zum leuchtenden Signal."
         case .agents:
@@ -50,6 +54,8 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
             "Was gerade läuft, mit Cover, Steuerung und Leuchten – und welche Apps die Notch zeigen darf."
         case .office:
             "Deine Lagerhalle, in der Claude Code und Codex arbeiten, Red Bull holen und schlafen."
+        case .developer:
+            "Werkzeuge zum Ausprobieren: Signale auslösen, Rohdaten kopieren und notchai komplett zurücksetzen."
         }
     }
 
@@ -63,6 +69,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .sessions: (Self.rgb(1.0, 0.66, 0.12), Self.rgb(0.98, 0.42, 0.0))
         case .music: (Self.rgb(1.0, 0.33, 0.45), Self.rgb(0.92, 0.12, 0.30))
         case .office: (Self.rgb(0.25, 0.85, 0.62), Self.rgb(0.07, 0.62, 0.45))
+        case .developer: (Self.rgb(0.36, 0.40, 0.98), Self.rgb(0.18, 0.18, 0.62))
         }
     }
 
