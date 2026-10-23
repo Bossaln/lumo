@@ -311,6 +311,20 @@ final class AppModel {
         }
     }
 
+    /// Kurz, was die Notch gerade zeigt und tut (für die Liste der Hänger auf der Seite „Entwickler“).
+    func diagnosticContext() -> String {
+        var parts: [String] = []
+        switch notch.mode {
+        case .idle:
+            parts.append(showsCirclesWhileIdle ? "Notch: Kreise" : showsCompactMusic ? "Notch: Musik eingeklappt" : "Notch: zu")
+        case .signal(let style): parts.append("Notch: Signal (\(style.rawValue))")
+        case .panel(let tab): parts.append("Notch: \(tab.title)")
+        }
+        if nowPlaying?.isPlaying == true { parts.append("Musik spielt") }
+        if !sessions.isEmpty { parts.append(sessions.count == 1 ? "1 Session" : "\(sessions.count) Sessions") }
+        return parts.joined(separator: " · ")
+    }
+
     /// Rahmen der gerade sichtbaren Form in Bildschirmkoordinaten; `nil` ohne Notch.
     func visibleFrame() -> CGRect? {
         guard let screen else { return nil }

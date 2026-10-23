@@ -28,6 +28,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.tryOut = tryOut
     }
 
+    /// Das Einstellungsfenster ist gerade zu sehen.
+    var isVisible: Bool { window?.isVisible == true }
+
     func show() {
         guard let settingsStore, let shelfStore, let setup, let updates else { return }
         refreshLaunchAtLoginSetting()
@@ -62,7 +65,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
         NSApp.setActivationPolicy(.regular)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 
     /// Versucht die Änderung und gibt einen deutschen Hinweis für die Ansicht zurück.
@@ -105,6 +108,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private func refreshLaunchAtLoginSetting() {
         guard let settingsStore else { return }
         let status = SMAppService.mainApp.status
-        settingsStore.settings.launchAtLogin = status == .enabled || status == .requiresApproval
+        let enabled = status == .enabled || status == .requiresApproval
+        // Nur bei Änderung schreiben: Jede Änderung zeichnet alles neu, was Einstellungen liest (auch die Notch).
+        if settingsStore.settings.launchAtLogin != enabled { settingsStore.settings.launchAtLogin = enabled }
     }
 }

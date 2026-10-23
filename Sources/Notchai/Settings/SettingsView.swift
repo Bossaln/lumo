@@ -616,6 +616,24 @@ struct SettingsView: View {
                 LabeledContent("Protokolle") { Button("Im Finder zeigen") { DeveloperTools.reveal(DeveloperTools.logsFolder) } }
                 LabeledContent("Daten von notchai") { Button("Im Finder zeigen") { DeveloperTools.reveal(DeveloperTools.dataFolder) } }
             }
+            Section("Reaktion") {
+                let log = developer.responsiveness.log
+                LabeledContent("Hänger") {
+                    Text(log.summary)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Liste der Hänger") {
+                    Button("Kopieren") { DeveloperTools.copy(log.report(), empty: log.summary) }
+                        .disabled(log.count == 0)
+                }
+                Text("Misst, solange die Entwickleroptionen an sind, wie schnell notchai reagiert, auch wie lange das Menü "
+                    + "in der Menüleiste nach dem Klick braucht. Jeder Hänger ab 100 ms steht mit Uhrzeit und Zustand der "
+                    + "Notch in der Liste.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Section("Einrichtung") {
                 LabeledContent("Begrüßung und Einrichtung") { Button("Erneut zeigen", action: developer.showWelcome) }
                 Text("Zeigt das Leuchten und den Einrichtungs-Assistenten wie beim ersten Start, ohne etwas zu löschen.")

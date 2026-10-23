@@ -135,7 +135,10 @@ final class NotchController {
     private func handleMouse(_ type: NSEvent.EventType, inNotchai: Bool) {
         switch type {
         case .leftMouseDown:
-            fileDrag.mouseDown(changeCount: NSPasteboard(name: .drag).changeCount, insideNotchai: inNotchai)
+            // Klicks in notchai selbst (Menüleiste, Notch) fragen den Drag-Zwischenspeicher nicht; jede Frage geht an
+            // einen anderen Prozess und hielte das Menü auf.
+            let watch = !inNotchai && model.settingsStore.settings.shelfEnabled
+            fileDrag.mouseDown(changeCount: watch ? NSPasteboard(name: .drag).changeCount : 0, insideNotchai: !watch)
         case .leftMouseDragged:
             trackFileDrag()
             // Wer ein Fenster oder Text zieht, soll die Notch nicht aufklappen; nur Dateien öffnen sie.
