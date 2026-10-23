@@ -106,6 +106,9 @@ private func everyFieldChanged() -> AppSettings {
     s.developerOptions = true
     s.shelfEnabled = false
     s.language = .english
+    s.musicTrackChangeStyle = .banner
+    s.musicTrackChangeSeconds = 5
+    s.musicVisualizer = .animated
     return s
 }
 

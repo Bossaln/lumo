@@ -74,8 +74,18 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var shelfEnabled: Bool = true
     /// Sprache der Oberfläche; `nil`, solange niemand gewählt hat (dann die des Macs).
     public var language: AppLanguage? = nil
+    /// Neuer Titel: Die Notch fährt kurz aus und zeigt Cover und Titel (`TrackChangeStyle`).
+    public var musicTrackChangeStyle: TrackChangeStyle = .island
+    /// So lange bleibt der neue Titel stehen (Sekunden).
+    public var musicTrackChangeSeconds: Double = 3
+    /// Balken neben der Kamera: echt aus dem Ton oder animiert.
+    public var musicVisualizer: MusicVisualizerMode = .audio
 
     public static let `default` = AppSettings()
+
+    /// Erlaubte Anzeigedauer für einen neuen Titel und die Auswahl in den Einstellungen.
+    public static let trackChangeSecondsRange: ClosedRange<Double> = 1...10
+    public static let trackChangeSecondChoices: [Double] = [2, 3, 5]
 
     /// Erlaubte Breite je Island-Seite in pt. Ab 80 passen Punkt, Agentname und ✕/✓ neben die Kamera.
     public static let islandSideWidthRange: ClosedRange<Double> = 80...320
@@ -106,7 +116,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case launchAtLogin, islandSideWidth, setupCompleted, checkForUpdates, notchBounce
         case musicSourceMode, musicBrowserMusic, musicIncludePodcasts, musicLoadArtwork, musicSourceRules, musicKnownSources
         case panelOpenBehavior, musicArtworkBackground, musicCoverTransition, officeHotkey, developerOptions
-        case shelfEnabled, language
+        case shelfEnabled, language, musicTrackChangeStyle, musicTrackChangeSeconds, musicVisualizer
     }
 
     public init(from decoder: Decoder) throws {
@@ -170,6 +180,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
         value(.developerOptions, &s.developerOptions)
         value(.shelfEnabled, &s.shelfEnabled)
         if let raw = try? c.decodeIfPresent(String.self, forKey: .language) { s.language = AppLanguage(rawValue: raw) }
+        option(.musicTrackChangeStyle, &s.musicTrackChangeStyle)
+        value(.musicTrackChangeSeconds, &s.musicTrackChangeSeconds)
+        let seconds = Self.trackChangeSecondsRange
+        s.musicTrackChangeSeconds = min(max(s.musicTrackChangeSeconds, seconds.lowerBound), seconds.upperBound)
+        option(.musicVisualizer, &s.musicVisualizer)
         let range = Self.islandSideWidthRange
         s.islandSideWidth = min(max(s.islandSideWidth, range.lowerBound), range.upperBound)
         self = s
