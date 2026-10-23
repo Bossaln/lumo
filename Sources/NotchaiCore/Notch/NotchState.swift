@@ -1,12 +1,13 @@
 /// Reiter des aufgeklappten Panels. Die Einstellungen öffnen sich über die Menüleiste.
 public enum PanelTab: String, CaseIterable, Sendable {
-    case music, sessions, office
+    case music, sessions, office, shelf
 
     public var title: String {
         switch self {
         case .music: "Musik"
         case .sessions: "Sessions"
         case .office: "Büro"
+        case .shelf: "Ablage"
         }
     }
 }
@@ -23,6 +24,8 @@ public enum NotchEvent: Equatable, Sendable {
     /// Das Antwortfeld im Signal hat die Tastatur bekommen bzw. wieder abgegeben
     /// (Absenden, Escape, Klick in eine andere App, Ende des Signals).
     case editingBegan, editingEnded
+    /// Dateien werden über die Notch gezogen bzw. losgelassen (abgelegt oder abgebrochen).
+    case fileDragEntered, fileDragEnded
 }
 
 /// Reiner Zustandsautomat der Notch. Nicht genannte Kombinationen lassen den Modus unverändert.
@@ -34,6 +37,8 @@ public struct NotchState: Equatable, Sendable {
     public var openTab: PanelTab?
     /// Wird im Signal gerade eine Antwort getippt? Dann klappt es beim Verlassen nicht zu.
     public private(set) var isEditing = false
+    /// Gerade werden Dateien über die Notch gezogen: Die Ablage zeigt ihre Ziele (AirDrop, Ablage).
+    public private(set) var isReceivingFiles = false
     /// Der Zeiger ging, während getippt wurde; zugeklappt wird, sobald das Tippen endet.
     private var collapseAfterEditing = false
 
@@ -77,6 +82,15 @@ public struct NotchState: Equatable, Sendable {
             if case .signal = mode { isEditing = true }
         case .editingEnded:
             endEditing(style: style)
+        case .fileDragEntered:
+            // Eine halb getippte Antwort geht vor; die Ablage öffnet sich nicht darüber.
+            guard !isEditing else { break }
+            collapseAfterEditing = false
+            mode = .panel(.shelf)
+            isReceivingFiles = true
+        case .fileDragEnded:
+            // Offen bleibt die Ablage, bis der Zeiger sie verlässt (`hoverEnded`).
+            isReceivingFiles = false
         }
     }
 

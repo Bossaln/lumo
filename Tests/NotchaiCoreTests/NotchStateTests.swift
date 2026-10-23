@@ -95,7 +95,7 @@ private func typingInClickedIsland() -> NotchState {
 }
 @Test func settingsAreNotATabAnymore() {
     // Die Einstellungen öffnen sich über die Menüleiste; in der Notch gibt es keinen Knopf mehr dafür.
-    #expect(PanelTab.allCases == [.music, .sessions, .office])
+    #expect(PanelTab.allCases == [.music, .sessions, .office, .shelf])
 }
 @Test func openTabOverridesLastTabOnce() {
     var s = NotchState(); s.lastTab = .sessions

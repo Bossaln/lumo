@@ -70,6 +70,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var officeHotkey: Bool = true
     /// Blendet in den Einstellungen die Seite „Entwickler“ ein (Test-Signale, Rohdaten, Zurücksetzen).
     public var developerOptions: Bool = false
+    /// Reiter „Ablage“: Dateien auf die Notch ziehen öffnet sie (AirDrop oder kurz ablegen).
+    public var shelfEnabled: Bool = true
 
     public static let `default` = AppSettings()
 
@@ -97,6 +99,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case launchAtLogin, islandSideWidth, setupCompleted, checkForUpdates, notchBounce
         case musicSourceMode, musicBrowserMusic, musicIncludePodcasts, musicLoadArtwork, musicSourceRules, musicKnownSources
         case panelOpenBehavior, musicArtworkBackground, musicCoverTransition, officeHotkey, developerOptions
+        case shelfEnabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -158,6 +161,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         option(.musicCoverTransition, &s.musicCoverTransition)
         value(.officeHotkey, &s.officeHotkey)
         value(.developerOptions, &s.developerOptions)
+        value(.shelfEnabled, &s.shelfEnabled)
         let range = Self.islandSideWidthRange
         s.islandSideWidth = min(max(s.islandSideWidth, range.lowerBound), range.upperBound)
         self = s
