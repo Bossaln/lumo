@@ -18,12 +18,21 @@ private struct Harness {
     /// Ruft `HookClient.run` auf einem Hintergrund-Thread auf, wie es `notchai-hook` täte.
     func client(_ mode: String, session: String = "s1", event: String = "PermissionRequest",
                 decisionTimeout: TimeInterval = 10) async -> String {
+        await timedClient(mode, session: session, event: event, decisionTimeout: decisionTimeout).output
+    }
+
+    /// Wie `client`, dazu die Dauer des Aufrufs selbst. Wann der Hintergrund-Thread startet, hängt von der Last
+    /// der übrigen Tests ab und zählt deshalb nicht mit.
+    func timedClient(_ mode: String, session: String = "s1", event: String = "PermissionRequest",
+                     decisionTimeout: TimeInterval = 10) async -> (output: String, elapsed: TimeInterval) {
         let stdin = Data(#"{"session_id":"\#(session)","hook_event_name":"\#(event)"}"#.utf8)
         let env = ["NOTCHAI_SOCKET": path, "TERM_PROGRAM": "vscode"]
         return await withCheckedContinuation { done in
             DispatchQueue.global().async {
-                done.resume(returning: HookClient.run(arguments: ["claude", mode], stdin: stdin, env: env,
-                                                      home: URL(filePath: "/tmp"), decisionTimeout: decisionTimeout))
+                let start = Date()
+                let output = HookClient.run(arguments: ["claude", mode], stdin: stdin, env: env,
+                                            home: URL(filePath: "/tmp"), decisionTimeout: decisionTimeout)
+                done.resume(returning: (output, Date().timeIntervalSince(start)))
             }
         }
     }
@@ -94,9 +103,7 @@ private struct Harness {
 @Test func decisionTimeoutGivesNoOutput() async throws {
     let h = try Harness()
     defer { h.tearDown() }
-    let start = Date()
-    let out = await h.client("decide", decisionTimeout: 0.5)
-    let elapsed = Date().timeIntervalSince(start)
+    let (out, elapsed) = await h.timedClient("decide", decisionTimeout: 0.5)
     #expect(out == "")
     #expect(elapsed >= 0.4 && elapsed < 2.0)
 }
