@@ -11,6 +11,11 @@ final class ResponsivenessMonitor {
     /// Was gerade los ist (Notch, Musik, offene Fenster); steht bei jedem Hänger dabei.
     @ObservationIgnored var context: () -> String = { "" }
     @ObservationIgnored private var timer: DispatchSourceTimer?
+    /// Benannte Arbeit, die zuletzt lange lief (`MainThreadWork`): Name, Dauer, Ende.
+    @ObservationIgnored private var slowWork: [(name: String, milliseconds: Int, end: DispatchTime)] = []
+
+    /// Misst nur mit eingeschalteten Entwickleroptionen.
+    var isRunning: Bool { timer != nil }
 
     func start() {
         guard timer == nil else { return }
@@ -41,9 +46,22 @@ final class ResponsivenessMonitor {
         record(delay, what: L("Menüleiste: Menü nach dem Klick"))
     }
 
+    /// Benannte Arbeit auf dem Haupt-Thread ist fertig; was länger als 30 ms dauerte, kommt zum nächsten Hänger.
+    func finished(_ name: String, nanoseconds: UInt64) {
+        let milliseconds = Int(nanoseconds / 1_000_000)
+        guard milliseconds >= 30 else { return }
+        slowWork.append((name, milliseconds, .now()))
+        if slowWork.count > 12 { slowWork.removeFirst(slowWork.count - 12) }
+    }
+
     private func record(_ delay: TimeInterval, what: String?) {
         guard delay >= HangLog.threshold else { return }
-        let context = [what, context()].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        // Was in der Zeit des Hängers (plus etwas Spielraum) lange lief, steht mit in der Liste.
+        let since = DispatchTime.now().uptimeNanoseconds &- UInt64((delay + 0.25) * 1_000_000_000)
+        let suspects = slowWork.filter { $0.end.uptimeNanoseconds >= since }
+            .map { "\($0.name) \($0.milliseconds) ms" }
+        let slow = suspects.isEmpty ? nil : L("langsam: {0}", suspects.joined(separator: ", "))
+        let context = [what, context(), slow].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
         log.record(delay: delay, at: Date(), context: context)
     }
 }
@@ -66,5 +84,20 @@ private final class Probe: @unchecked Sendable {
         lock.lock()
         waiting = false
         lock.unlock()
+    }
+}
+
+/// Benannte Arbeit auf dem Haupt-Thread (Hooks, Musik, Zeichnen der Notch …). Mit eingeschalteten
+/// Entwickleroptionen misst sie ihre Dauer für die Liste der Hänger; sonst kostet sie nichts.
+@MainActor
+enum MainThreadWork {
+    static var monitor: ResponsivenessMonitor?
+
+    @discardableResult
+    static func measure<T>(_ name: String, _ work: () throws -> T) rethrows -> T {
+        guard let monitor, monitor.isRunning else { return try work() }
+        let start = DispatchTime.now().uptimeNanoseconds
+        defer { monitor.finished(name, nanoseconds: DispatchTime.now().uptimeNanoseconds - start) }
+        return try work()
     }
 }

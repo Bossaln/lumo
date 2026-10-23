@@ -218,6 +218,7 @@ extension Localization {
         "Kurz durchatmen.": "Deep breath.",
         "Kurz hier lagern": "Park it here for a while",
         "Lagerhalle": "Warehouse",
+        "langsam: {0}": "slow: {0}",
         "Leeren": "Clear",
         "Letzte Aufgabe": "Last task",
         "Letzte Hook-Ereignisse": "Recent hook events",

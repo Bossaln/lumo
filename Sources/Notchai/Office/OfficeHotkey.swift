@@ -25,6 +25,7 @@ final class OfficeHotkey {
 
     func start() {
         wasTrusted = AXIsProcessTrusted()
+        Self.isTrusted = wasTrusted
         install()
         observeSetting()
         trustTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
@@ -32,8 +33,8 @@ final class OfficeHotkey {
         }
     }
 
-    /// Darf notchai Tasten in anderen Apps sehen?
-    static var isTrusted: Bool { AXIsProcessTrusted() }
+    /// Darf notchai Tasten in anderen Apps sehen? Zuletzt geprüfter Stand (alle 5 s, im Hintergrund).
+    private(set) static var isTrusted = false
 
     /// Öffnet Systemeinstellungen › Datenschutz & Sicherheit › Bedienungshilfen.
     static func openAccessibilitySettings() {
@@ -73,11 +74,19 @@ final class OfficeHotkey {
         }
     }
 
+    /// Die Abfrage geht an einen anderen Prozess und kann dauern; sie läuft deshalb im Hintergrund.
     private func checkTrust() {
-        let trusted = AXIsProcessTrusted()
-        guard trusted != wasTrusted else { return }
-        wasTrusted = trusted
-        install()
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let trusted = AXIsProcessTrusted()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    Self.isTrusted = trusted
+                    guard let self, trusted != self.wasTrusted else { return }
+                    self.wasTrusted = trusted
+                    self.install()
+                }
+            }
+        }
     }
 
     private func observeSetting() {

@@ -41,7 +41,7 @@ final class OfficeDirector {
         catchUp()
         tick()
         timer = Timer.scheduledTimer(withTimeInterval: 1 / Self.fps, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
+            MainActor.assumeIsolated { MainThreadWork.measure("Office.frame") { self?.tick() } }
         }
     }
 

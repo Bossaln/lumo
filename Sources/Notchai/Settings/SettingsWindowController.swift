@@ -16,6 +16,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var developer = DeveloperTools()
     private var tryOut: () -> Void = {}
     private var window: NSWindow?
+    /// Status des Anmeldeobjekts, gelesen beim Öffnen und nach jeder Änderung. Jede Abfrage geht an einen anderen
+    /// Prozess; im Rumpf einer Ansicht würde sie bei jedem Neuzeichnen laufen.
+    private(set) var loginItemStatus: SMAppService.Status = .notRegistered
 
     func configure(settingsStore: SettingsStore, shelfStore: ShelfStore, setup: SetupController, updates: UpdateController,
                    developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void) {
@@ -52,7 +55,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
-            window.contentView = NSHostingView(rootView: SettingsView(
+            window.contentView = MeasuredHostingView(name: "SettingsView.layout", rootView: SettingsView(
                 settingsStore: settingsStore,
                 shelfStore: shelfStore,
                 windowController: self,
@@ -87,7 +90,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
 
         refreshLaunchAtLoginSetting()
-        switch SMAppService.mainApp.status {
+        switch loginItemStatus {
         case .requiresApproval:
             return L("Bitte notchai unter Systemeinstellungen › Allgemein › Anmeldeobjekte erlauben.")
         case .notFound:
@@ -113,8 +116,23 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private func refreshLaunchAtLoginSetting() {
         guard let settingsStore else { return }
         let status = SMAppService.mainApp.status
+        loginItemStatus = status
         let enabled = status == .enabled || status == .requiresApproval
         // Nur bei Änderung schreiben: Jede Änderung zeichnet alles neu, was Einstellungen liest (auch die Notch).
         if settingsStore.settings.launchAtLogin != enabled { settingsStore.settings.launchAtLogin = enabled }
+    }
+}
+
+/// Hosting-View, die misst, wie lange SwiftUI für ihre Ansicht rechnet (Seite „Entwickler“ › Reaktion).
+final class MeasuredHostingView<Content: View>: NSHostingView<Content> {
+    private var name = ""
+
+    convenience init(name: String, rootView: Content) {
+        self.init(rootView: rootView)
+        self.name = name
+    }
+
+    override func layout() {
+        MainThreadWork.measure(name) { super.layout() }
     }
 }
