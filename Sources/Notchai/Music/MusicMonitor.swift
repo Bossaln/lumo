@@ -56,13 +56,13 @@ final class MusicMonitor {
                 for (key, value) in note.userInfo ?? [:] {
                     if let key = key as? String { info[key] = value }
                 }
-                MainActor.assumeIsolated { self?.received(name: name, userInfo: info) }
+                MainActor.assumeIsolated { MainThreadWork.measure("Music.notification") { self?.received(name: name, userInfo: info) } }
             })
         }
         model.onMusicCommand = { [weak self] command in self?.send(command) }
         model.onMusicSeek = { [weak self] position in self?.seek(to: position) }
         timer = Timer.scheduledTimer(withTimeInterval: Self.tick, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tickFired() }
+            MainActor.assumeIsolated { MainThreadWork.measure("Music.tick") { self?.tickFired() } }
         }
         tickFired()
     }
@@ -97,7 +97,7 @@ final class MusicMonitor {
             // stderr verwerfen: Warnungen von osascript würden das JSON verderben.
             let result = await ProcessRunner.run(Self.osascript, ["-l", "JavaScript", "-e", NowPlayingProbe.script],
                                                  timeout: Self.probeTimeout, includeErrors: false)
-            self?.probeFinished(result, started: started)
+            MainThreadWork.measure("Music.probe") { self?.probeFinished(result, started: started) }
         }
     }
 

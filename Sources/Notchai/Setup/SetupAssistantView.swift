@@ -354,11 +354,12 @@ struct SetupAssistantView: View {
 
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Den Status alle zwei Sekunden neu lesen: Die Freigabe passiert in den Systemeinstellungen.
+            // Den Status alle zwei Sekunden neu zeigen: Die Freigabe passiert in den Systemeinstellungen
+            // (geprüft wird im Hintergrund, `OfficeHotkey.isTrusted`).
             TimelineView(.periodic(from: .now, by: 2)) { _ in
                 PermissionCard(symbol: "accessibility", color: Self.rgb(0.25, 0.55, 1.0), title: L("Bedienungshilfen"),
                                text: L("Für zweimal rechte ⌘ (Lagerhalle) und um Antworten direkt in das Fenster einer Session zu tippen."),
-                               granted: AXIsProcessTrusted(), action: OfficeHotkey.openAccessibilitySettings)
+                               granted: OfficeHotkey.isTrusted, action: OfficeHotkey.openAccessibilitySettings)
             }
             PermissionCard(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: L("Automation"),
                            text: L("Für Cover und Steuerung von Spotify und Musik. macOS fragt beim ersten Abspielen selbst nach."),

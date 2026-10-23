@@ -44,12 +44,18 @@ final class NotchPanel: NSPanel {
                                 notch.height + NotchGeometry.verticalExtraHeight)
         let width = contentWidth + 2 * Self.glowMargin
         let height = contentHeight + Self.glowMargin
+        // Ohne sofortiges Neuzeichnen: SwiftUI zeichnet im nächsten Durchlauf ohnehin.
         setFrame(NSRect(x: notch.midX - width / 2, y: notch.maxY - height, width: width, height: height),
-                 display: true)
+                 display: false)
     }
 }
 
 /// Nimmt schon den ersten Klick an, obwohl das Panel nie aktiv wird.
 private final class FirstClickHostingView: NSHostingView<NotchRootView> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    /// SwiftUI rechnet hier die Notch neu; die Seite „Entwickler“ › Reaktion misst, wie lange das dauert.
+    override func layout() {
+        MainThreadWork.measure("NotchView.layout") { super.layout() }
+    }
 }

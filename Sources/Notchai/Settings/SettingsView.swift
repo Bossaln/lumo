@@ -106,11 +106,11 @@ struct SettingsView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                } else if SMAppService.mainApp.status == .requiresApproval {
+                } else if windowController.loginItemStatus == .requiresApproval {
                     Text(L("Erlaube notchai unter Systemeinstellungen › Allgemein › Anmeldeobjekte."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                } else if SMAppService.mainApp.status == .notFound {
+                } else if windowController.loginItemStatus == .notFound {
                     Text(L("macOS findet notchai nicht als Anmeldeobjekt."))
                         .font(.callout)
                         .foregroundStyle(.secondary)

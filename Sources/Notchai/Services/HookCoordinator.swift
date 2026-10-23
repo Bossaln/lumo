@@ -35,7 +35,9 @@ final class HookCoordinator {
         let server = HookSocketServer(
             socketPath: NotchaiPaths.socketPath(home: home, env: ProcessInfo.processInfo.environment),
             onEnvelope: { [weak self] envelope in
-                DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(envelope) } }
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { MainThreadWork.measure("Hooks.event") { self?.handle(envelope) } }
+                }
             })
         do {
             try server.start()
@@ -44,11 +46,13 @@ final class HookCoordinator {
             startError = "Hook-Server startet nicht: \(error)"
         }
         let monitor = SessionMonitor(home: home, maxAgeHours: { [weak model] in model?.settingsStore.settings.sessionMaxAgeHours ?? 24 },
-                                     onUpdate: { [weak self] summaries, stats in self?.apply(summaries, stats: stats) })
+                                     onUpdate: { [weak self] summaries, stats in
+                                         MainThreadWork.measure("Hooks.transcripts") { self?.apply(summaries, stats: stats) }
+                                     })
         monitor.start()
         self.monitor = monitor
         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
+            MainActor.assumeIsolated { MainThreadWork.measure("Hooks.tick") { self?.tick() } }
         }
     }
 

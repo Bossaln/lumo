@@ -105,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return parts.filter { !$0.isEmpty }.joined(separator: " · ")
         }
         statusItemController.onMenuOpen = { [weak self] delay in self?.responsiveness.menuOpened(after: delay) }
+        MainThreadWork.monitor = responsiveness
         observeDeveloperOptions()
         observeLanguage()
 

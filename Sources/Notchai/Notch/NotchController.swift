@@ -21,6 +21,8 @@ final class NotchController {
     private var pointerInside = false
     /// Signal, das zuletzt gemeldet wurde; endet es, geht die Tastatur zurück.
     private var shownSignalID: UUID?
+    /// Island-Breite, für die das Panel gerade sitzt.
+    private var positionedSideWidth: Double?
     /// Werden gerade Dateien gezogen (aus dem Finder, Mail …)?
     private var fileDrag = FileDragTracker()
     /// Die gezogenen Dateien sind nah an der Notch; die Ablage ist dafür aufgeklappt.
@@ -88,14 +90,15 @@ final class NotchController {
         refreshPanelPosition()
     }
 
-    /// Beobachtet die Island-Breite, damit das Panel bei einem Reglerwechsel mitwächst.
+    /// Beobachtet die Island-Breite, damit das Panel bei einem Reglerwechsel mitwächst. Gemeldet wird jede
+    /// Änderung der Einstellungen; das Panel rückt nur, wenn sich die Breite wirklich geändert hat.
     private func observeIslandSideWidth() {
         withObservationTracking {
             _ = model.settingsStore.settings.islandSideWidth
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                refreshPanelPosition()
+                if model.settingsStore.settings.islandSideWidth != positionedSideWidth { refreshPanelPosition() }
                 observeIslandSideWidth()
             }
         }
@@ -122,7 +125,11 @@ final class NotchController {
             panel.orderOut(nil)
             return
         }
-        panel.position(around: notch, islandSideWidth: CGFloat(model.settingsStore.settings.islandSideWidth))
+        let sideWidth = model.settingsStore.settings.islandSideWidth
+        positionedSideWidth = sideWidth
+        MainThreadWork.measure("Notch.position") {
+            panel.position(around: notch, islandSideWidth: CGFloat(sideWidth))
+        }
         if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
