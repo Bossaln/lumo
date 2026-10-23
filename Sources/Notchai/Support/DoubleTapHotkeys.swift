@@ -3,21 +3,25 @@ import ApplicationServices
 import NotchaiCore
 import Observation
 
-/// Zweimal rechte ⌘ öffnet oder schließt das große Büro (Einstellung `officeHotkey`).
-/// Tasten in anderen Apps sieht notchai nur mit der Berechtigung „Bedienungshilfen“; ohne sie öffnet sich
-/// das Büro über den Reiter „Büro“ in der Notch.
+/// Tastenkürzel aus zweimal Antippen einer Sondertaste, auch wenn eine andere App vorn ist:
+/// - zweimal rechte ⌘ öffnet oder schließt das große Büro (Einstellung `officeHotkey`),
+/// - zweimal ⌃ öffnet eine Schnellnotiz in der Notch (Einstellung `notesHotkey`).
+/// Tasten in anderen Apps sieht notchai nur mit der Berechtigung „Bedienungshilfen“; ohne sie gehen Büro und
+/// Notizen über ihre Reiter in der Notch.
 @MainActor
-final class OfficeHotkey {
+final class DoubleTapHotkeys {
     private let settingsStore: SettingsStore
     private var monitors: [Any] = []
-    private var tracker = RightCommandTapTracker()
+    private var office = ModifierTapTracker(key: .rightCommand)
+    private var note = ModifierTapTracker(key: .control)
     /// Prüft, ob die Berechtigung inzwischen erteilt wurde; die Monitore werden dann neu angelegt.
     private var trustTimer: Timer?
     private var wasTrusted = false
-    /// Stand der Einstellung, für den die Monitore angelegt sind.
-    private var installedFor: Bool?
+    /// Stand der Einstellungen (Büro, Notiz), für den die Monitore angelegt sind.
+    private var installedFor: [Bool]?
 
-    var onTrigger: (() -> Void)?
+    var onOffice: (() -> Void)?
+    var onNote: (() -> Void)?
 
     init(settingsStore: SettingsStore) {
         self.settingsStore = settingsStore
@@ -27,7 +31,7 @@ final class OfficeHotkey {
         wasTrusted = AXIsProcessTrusted()
         Self.isTrusted = wasTrusted
         install()
-        observeSetting()
+        observeSettings()
         trustTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.checkTrust() }
         }
@@ -42,12 +46,17 @@ final class OfficeHotkey {
         NSWorkspace.shared.open(url)
     }
 
+    private var wanted: [Bool] {
+        [settingsStore.settings.officeHotkey, settingsStore.settings.notesHotkey]
+    }
+
     private func install() {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors = []
-        tracker = RightCommandTapTracker()
-        installedFor = settingsStore.settings.officeHotkey
-        guard settingsStore.settings.officeHotkey else { return }
+        office = ModifierTapTracker(key: .rightCommand)
+        note = ModifierTapTracker(key: .control)
+        installedFor = wanted
+        guard wanted.contains(true) else { return }
         let mask: NSEvent.EventTypeMask = [.flagsChanged, .keyDown]
         // Nur die Werte gehen in den MainActor, nicht das Ereignis selbst.
         if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { [weak self] event in
@@ -67,10 +76,14 @@ final class OfficeHotkey {
     }
 
     private func handle(_ type: NSEvent.EventType, keyCode: UInt16, flags: UInt64) {
+        let settings = settingsStore.settings
         if type == .flagsChanged {
-            if tracker.flagsChanged(keyCode: keyCode, flags: flags, at: .now) { onTrigger?() }
+            let now = Date()
+            if office.flagsChanged(keyCode: keyCode, flags: flags, at: now), settings.officeHotkey { onOffice?() }
+            if note.flagsChanged(keyCode: keyCode, flags: flags, at: now), settings.notesHotkey { onNote?() }
         } else {
-            tracker.keyDown()
+            office.keyDown()
+            note.keyDown()
         }
     }
 
@@ -89,14 +102,14 @@ final class OfficeHotkey {
         }
     }
 
-    private func observeSetting() {
+    private func observeSettings() {
         withObservationTracking {
-            _ = settingsStore.settings.officeHotkey
+            _ = wanted
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if settingsStore.settings.officeHotkey != installedFor { install() }
-                observeSetting()
+                if wanted != installedFor { install() }
+                observeSettings()
             }
         }
     }

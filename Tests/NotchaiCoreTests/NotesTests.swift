@@ -111,17 +111,34 @@ private func tap(_ tracker: inout ModifierTapTracker, keyCode: UInt16 = 59, down
 @Test func noteWrittenWhileHoveringStaysOpen() {
     var s = NotchState()
     s.apply(.hoverBegan, style: .island); s.apply(.tabSelected(.notes), style: .island)
-    // Klick ins Notizfeld: Das Panel bekommt die Tastatur.
-    s.apply(.editingBegan, style: .island)
+    // Klick ins Notizfeld: Das Panel bekommt die Tastatur, das Feld den Fokus.
+    s.apply(.editingBegan, style: .island); s.apply(.noteFieldFocused(true), style: .island)
     #expect(s.isWritingNote)
     s.apply(.editingEnded, style: .island)
     #expect(s.mode == .panel(.notes))
 }
 
+@Test func clickingASavedNoteIsNotWriting() {
+    var s = NotchState()
+    s.apply(.hoverBegan, style: .island); s.apply(.tabSelected(.notes), style: .island)
+    // Das Panel wird beim Klick key, aber das Notizfeld bekommt keinen Fokus.
+    s.apply(.editingBegan, style: .island)
+    #expect(!s.isWritingNote)
+    s.apply(.hoverEnded, style: .island)
+    #expect(s.mode == .idle)
+}
+
+@Test func leavingTheNotesFieldEndsWriting() {
+    var s = NotchState()
+    s.apply(.noteShortcut(pointerInside: false), style: .island)
+    s.apply(.noteFieldFocused(false), style: .island)
+    #expect(!s.isWritingNote); #expect(s.mode == .idle)
+}
+
 @Test func leavingTheNotchWhileWritingKeepsTheNote() {
     var s = NotchState()
     s.apply(.hoverBegan, style: .island); s.apply(.tabSelected(.notes), style: .island)
-    s.apply(.editingBegan, style: .island)
+    s.apply(.noteFieldFocused(true), style: .island)
     s.apply(.hoverEnded, style: .island)
     #expect(s.mode == .panel(.notes))
     s.apply(.editingEnded, style: .island)

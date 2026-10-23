@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var music: MusicMonitor?
     private(set) var visualizer: MusicVisualizer?
     private(set) var office: OfficeWindowController?
-    private var officeHotkey: OfficeHotkey?
+    private var hotkeys: DoubleTapHotkeys?
     private var setupWindow: SetupWindowController?
     private var updateItem: NSMenuItem?
     private let responsiveness = ResponsivenessMonitor()
@@ -36,7 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = MainMenu.make()
         let statusItemController = StatusItemController()
         self.statusItemController = statusItemController
-        let model = AppModel(settingsStore: settingsStore, shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()))
+        let model = AppModel(settingsStore: settingsStore, shelfStore: ShelfStore(fileURL: ShelfStore.defaultFileURL()),
+                             noteStore: NoteStore(fileURL: NoteStore.defaultFileURL()))
         self.model = model
         let setup = SetupController(home: home)
         let updates = UpdateController(settingsStore: model.settingsStore)
@@ -88,13 +89,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model?.onFocusSession?(session)
         }
         model.onOpenOffice = { [weak office] in office?.open() }
-        let officeHotkey = OfficeHotkey(settingsStore: model.settingsStore)
-        officeHotkey.onTrigger = { [weak office] in office?.toggle() }
-        officeHotkey.start()
-        self.officeHotkey = officeHotkey
+        // Zweimal rechte ⌘ öffnet das Büro, zweimal ⌃ eine Schnellnotiz in der Notch.
+        let hotkeys = DoubleTapHotkeys(settingsStore: model.settingsStore)
+        hotkeys.onOffice = { [weak office] in office?.toggle() }
+        hotkeys.onNote = { [weak notchController] in notchController?.openNote() }
+        hotkeys.start()
+        self.hotkeys = hotkeys
 
         settingsWindowController.configure(
-            settingsStore: model.settingsStore, shelfStore: model.shelfStore, setup: setup, updates: updates,
+            settingsStore: model.settingsStore, shelfStore: model.shelfStore, noteStore: model.noteStore,
+            setup: setup, updates: updates,
             developer: makeDeveloperTools(model: model, setupWindow: setupWindow),
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) },

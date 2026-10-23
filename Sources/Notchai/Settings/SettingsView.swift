@@ -8,6 +8,7 @@ import SwiftUI
 struct SettingsView: View {
     let settingsStore: SettingsStore
     let shelfStore: ShelfStore
+    let noteStore: NoteStore
     let windowController: SettingsWindowController
     let setup: SetupController
     let updates: UpdateController
@@ -76,6 +77,7 @@ struct SettingsView: View {
         case .music: musicPane
         case .office: officePane
         case .shelf: shelfPane
+        case .notes: notesPane
         case .developer:
             // Wird die Seite ausgeschaltet, während sie offen ist, geht es zurück zu „Allgemein“.
             if settingsStore.settings.developerOptions { developerPane } else { generalPane }
@@ -591,9 +593,9 @@ struct SettingsView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                if settingsStore.settings.officeHotkey && !OfficeHotkey.isTrusted {
+                if settingsStore.settings.officeHotkey && !DoubleTapHotkeys.isTrusted {
                     LabeledContent(L("Bedienungshilfen")) {
-                        Button(L("Erlauben …")) { OfficeHotkey.openAccessibilitySettings() }
+                        Button(L("Erlauben …")) { DoubleTapHotkeys.openAccessibilitySettings() }
                     }
                     Text(L("Damit notchai die ⌘-Taste in anderen Apps bemerkt, braucht es die Berechtigung „Bedienungshilfen“ (Datenschutz & Sicherheit)."))
                         .font(.callout)
@@ -631,6 +633,50 @@ struct SettingsView: View {
                         .disabled(count == 0)
                 }
                 Text(L("notchai merkt sich nur, wo die Dateien liegen; kopiert oder verschoben wird nichts. Wer eine Datei aus der Notch zieht, bekommt eine Kopie. Gelöschte Dateien verschwinden von selbst aus der Ablage."))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: - Notizen
+
+    private var notesPane: some View {
+        let count = noteStore.book.notes.count
+        return SettingsPage(pane: .notes) {
+            Section(L("Schnellnotiz")) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(L("Zweimal ⌃ öffnet eine Schnellnotiz"), isOn: setting(\.notesHotkey))
+                    Text(L("Die Notch klappt auf, du schreibst, ↩ speichert und sie klappt wieder zu. Escape schließt, ohne zu speichern; der Entwurf bleibt. Ohne Kürzel schreibst du im Reiter „Notizen“."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if settingsStore.settings.notesHotkey && !DoubleTapHotkeys.isTrusted {
+                    LabeledContent(L("Bedienungshilfen")) {
+                        Button(L("Erlauben …")) { DoubleTapHotkeys.openAccessibilitySettings() }
+                    }
+                    Text(L("Damit notchai die ⌃-Taste in anderen Apps bemerkt, braucht es die Berechtigung „Bedienungshilfen“ (Datenschutz & Sicherheit)."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(L("Hast du „Diktieren“ in den Systemeinstellungen auf zweimal ⌃ gelegt, schalte eins von beiden um."))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Section(L("Gespeicherte Notizen")) {
+                LabeledContent(L("Notizen")) {
+                    Text(count == 1 ? L("1 Notiz") : L("{0} Notizen", count))
+                        .monospacedDigit()
+                }
+                LabeledContent(L("Alle Notizen löschen")) {
+                    Button(L("Löschen")) { noteStore.removeAll() }
+                        .disabled(count == 0)
+                }
+                Text(L("Notizen bleiben auf diesem Mac. Ein Klick auf eine Notiz in der Notch kopiert sie, ✕ löscht sie."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

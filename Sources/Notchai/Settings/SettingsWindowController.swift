@@ -10,6 +10,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private var settingsStore: SettingsStore?
     private var shelfStore: ShelfStore?
+    private var noteStore: NoteStore?
     private var setup: SetupController?
     private var updates: UpdateController?
     private var openAssistant: () -> Void = {}
@@ -21,11 +22,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// Prozess; im Rumpf einer Ansicht würde sie bei jedem Neuzeichnen laufen.
     private(set) var loginItemStatus: SMAppService.Status = .notRegistered
 
-    func configure(settingsStore: SettingsStore, shelfStore: ShelfStore, setup: SetupController, updates: UpdateController,
+    func configure(settingsStore: SettingsStore, shelfStore: ShelfStore, noteStore: NoteStore, setup: SetupController,
+                   updates: UpdateController,
                    developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void,
                    music: MusicSettingsActions) {
         self.settingsStore = settingsStore
         self.shelfStore = shelfStore
+        self.noteStore = noteStore
         self.setup = setup
         self.updates = updates
         self.developer = developer
@@ -43,7 +46,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     var isVisible: Bool { window?.isVisible == true }
 
     func show() {
-        guard let settingsStore, let shelfStore, let setup, let updates else { return }
+        guard let settingsStore, let shelfStore, let noteStore, let setup, let updates else { return }
         refreshLaunchAtLoginSetting()
 
         if window == nil {
@@ -61,6 +64,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             window.contentView = MeasuredHostingView(name: "SettingsView.layout", rootView: SettingsView(
                 settingsStore: settingsStore,
                 shelfStore: shelfStore,
+                noteStore: noteStore,
                 windowController: self,
                 setup: setup,
                 updates: updates,

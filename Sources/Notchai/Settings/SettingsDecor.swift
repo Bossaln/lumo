@@ -3,13 +3,13 @@ import SwiftUI
 
 /// Bereiche des Einstellungsfensters, gruppiert wie in den Systemeinstellungen.
 enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
-    case general, updates, notch, agents, sessions, music, office, shelf, developer
+    case general, updates, notch, agents, sessions, music, office, shelf, notes, developer
 
     var id: String { rawValue }
 
     /// Gruppen der Seitenleiste; „Entwickler“ nur, wenn die Entwickleroptionen eingeschaltet sind.
     static func groups(developer: Bool) -> [[SettingsPane]] {
-        [[.general, .updates], [.notch, .agents, .sessions], [.music, .office, .shelf]] + (developer ? [[.developer]] : [])
+        [[.general, .updates], [.notch, .agents, .sessions], [.music, .office, .shelf, .notes]] + (developer ? [[.developer]] : [])
     }
 
     var title: String {
@@ -22,6 +22,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .music: L("Musik")
         case .office: L("Büro")
         case .shelf: L("Ablage")
+        case .notes: L("Notizen")
         case .developer: L("Entwickler")
         }
     }
@@ -36,6 +37,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .music: "music.note"
         case .office: "building.2.fill"
         case .shelf: "tray.full.fill"
+        case .notes: "note.text"
         case .developer: "hammer.fill"
         }
     }
@@ -58,6 +60,8 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
             L("Deine Lagerhalle, in der Claude Code und Codex arbeiten, Red Bull holen und schlafen.")
         case .shelf:
             L("Zieh Dateien auf die Notch: per AirDrop senden oder kurz ablegen und später wieder herausziehen.")
+        case .notes:
+            L("Zweimal ⌃ drücken und eine Schnellnotiz direkt in der Notch schreiben, egal welche App vorn ist.")
         case .developer:
             L("Werkzeuge zum Ausprobieren: Signale auslösen, Rohdaten kopieren und notchai komplett zurücksetzen.")
         }
@@ -74,6 +78,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .music: (Self.rgb(1.0, 0.33, 0.45), Self.rgb(0.92, 0.12, 0.30))
         case .office: (Self.rgb(0.25, 0.85, 0.62), Self.rgb(0.07, 0.62, 0.45))
         case .shelf: (Self.rgb(1.0, 0.74, 0.22), Self.rgb(0.96, 0.52, 0.02))
+        case .notes: (Self.rgb(1.0, 0.88, 0.32), Self.rgb(0.95, 0.72, 0.08))
         case .developer: (Self.rgb(0.36, 0.40, 0.98), Self.rgb(0.18, 0.18, 0.62))
         }
     }

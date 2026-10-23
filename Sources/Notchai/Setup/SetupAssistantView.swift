@@ -355,11 +355,11 @@ struct SetupAssistantView: View {
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Den Status alle zwei Sekunden neu zeigen: Die Freigabe passiert in den Systemeinstellungen
-            // (geprüft wird im Hintergrund, `OfficeHotkey.isTrusted`).
+            // (geprüft wird im Hintergrund, `DoubleTapHotkeys.isTrusted`).
             TimelineView(.periodic(from: .now, by: 2)) { _ in
                 PermissionCard(symbol: "accessibility", color: Self.rgb(0.25, 0.55, 1.0), title: L("Bedienungshilfen"),
-                               text: L("Für zweimal rechte ⌘ (Lagerhalle) und um Antworten direkt in das Fenster einer Session zu tippen."),
-                               granted: OfficeHotkey.isTrusted, action: OfficeHotkey.openAccessibilitySettings)
+                               text: L("Für zweimal rechte ⌘ (Lagerhalle), zweimal ⌃ (Schnellnotiz) und um Antworten direkt in das Fenster einer Session zu tippen."),
+                               granted: DoubleTapHotkeys.isTrusted, action: DoubleTapHotkeys.openAccessibilitySettings)
             }
             PermissionCard(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: L("Automation"),
                            text: L("Für Cover und Steuerung von Spotify und Musik. macOS fragt beim ersten Abspielen selbst nach."),
@@ -379,6 +379,8 @@ struct SetupAssistantView: View {
                        text: L("Zieh eine Datei zur Notch und lass sie auf AirDrop oder der Ablage los."))
             FeatureRow(symbol: "command", color: Self.rgb(0.25, 0.8, 0.55), title: L("Lagerhalle"),
                        text: L("Zweimal kurz die rechte ⌘-Taste drücken öffnet die Halle groß."))
+            FeatureRow(symbol: "note.text", color: Self.rgb(1.0, 0.8, 0.2), title: L("Schnellnotiz"),
+                       text: L("Zweimal ⌃ drücken, schreiben, ↩ – die Notiz landet im Reiter „Notizen“."))
             FeatureRow(symbol: "gearshape.fill", color: Self.rgb(0.55, 0.55, 0.6), title: L("Einstellungen"),
                        text: L("Über das notchai-Symbol in der Menüleiste änderst du alles, was du hier gewählt hast."))
         }

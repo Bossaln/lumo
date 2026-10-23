@@ -67,6 +67,7 @@ struct PanelTabBar: View {
         case .sessions: "terminal"
         case .office: "building.2"
         case .shelf: "tray.full"
+        case .notes: "note.text"
         }
     }
 }

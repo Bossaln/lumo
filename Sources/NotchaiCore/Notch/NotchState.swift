@@ -29,6 +29,8 @@ public enum NotchEvent: Equatable, Sendable {
     case fileDragEntered, fileDragEnded
     /// Zweimal ⌃: Die Notch öffnet sich zum Schreiben einer Schnellnotiz.
     case noteShortcut(pointerInside: Bool)
+    /// Das Notizfeld im Reiter „Notizen“ hat den Fokus bekommen bzw. verloren.
+    case noteFieldFocused(Bool)
 }
 
 /// Reiner Zustandsautomat der Notch. Nicht genannte Kombinationen lassen den Modus unverändert.
@@ -93,7 +95,6 @@ public struct NotchState: Equatable, Sendable {
             }
         case .editingBegan:
             if case .signal = mode { isEditing = true }
-            if mode == .panel(.notes) { isWritingNote = true }
         case .editingEnded:
             endEditing(style: style)
             endNote(style: style)
@@ -106,6 +107,13 @@ public struct NotchState: Equatable, Sendable {
         case .fileDragEnded:
             // Offen bleibt die Ablage, bis der Zeiger sie verlässt (`hoverEnded`).
             isReceivingFiles = false
+        case .noteFieldFocused(let focused):
+            // Nur das Notizfeld zählt als Schreiben; ein Klick auf eine gespeicherte Notiz hält die Notch nicht auf.
+            if focused, mode == .panel(.notes) {
+                isWritingNote = true
+            } else if !focused {
+                endNote(style: style)
+            }
         case .noteShortcut(let pointerInside):
             // Eine halb getippte Antwort an einen Agenten geht vor.
             guard !isEditing else { break }

@@ -109,6 +109,7 @@ private func everyFieldChanged() -> AppSettings {
     s.musicTrackChangeStyle = .banner
     s.musicTrackChangeSeconds = 5
     s.musicVisualizer = .animated
+    s.notesHotkey = false
     return s
 }
 
