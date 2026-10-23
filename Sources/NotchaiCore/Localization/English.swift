@@ -303,6 +303,7 @@ extension Localization {
         "notchai zurücksetzen …": "Reset notchai …",
         "notchai · Vorschau": "notchai · Preview",
         "notchai-Einstellungen": "notchai Settings",
+        "Notizen": "Notes",
         "nur Musik (mit Album)": "music only (with album)",
         "Nur Musikdienste": "Music services only",
         "Nächster Titel": "Next Track",
