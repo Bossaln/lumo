@@ -215,7 +215,7 @@ struct OfficeWindowView: View {
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.15), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .help("Büro schließen (Esc)")
+        .help(L("Büro schließen (Esc)"))
         .padding(12)
         .opacity(hovering ? 1 : 0)
         .animation(.easeInOut(duration: 0.15), value: hovering)

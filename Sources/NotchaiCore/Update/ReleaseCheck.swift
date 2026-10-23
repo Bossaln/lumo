@@ -11,7 +11,7 @@ public enum ReleaseCheck {
         guard let object = try? JSONSerialization.jsonObject(with: response) as? [String: Any],
               let tag = object["tag_name"] as? String,
               let page = object["html_url"] as? String else {
-            return .failed("GitHub hat keine lesbare Version geliefert.")
+            return .failed(L("GitHub hat keine lesbare Version geliefert."))
         }
         guard isNewer(tag, than: currentVersion) else { return .upToDate }
         let notes = notes(from: object["body"] as? String ?? "")

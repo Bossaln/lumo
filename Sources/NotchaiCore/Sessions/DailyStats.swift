@@ -13,9 +13,9 @@ public struct DailyStats: Equatable, Sendable {
     }
 
     public func formatted() -> String {
-        let taskWord = tasks == 1 ? "Aufgabe" : "Aufgaben"
-        let fileWord = files == 1 ? "Datei" : "Dateien"
-        return "Heute: \(tasks) \(taskWord) · \(minutes) min · \(files) \(fileWord)"
+        let taskText = tasks == 1 ? L("1 Aufgabe") : L("{0} Aufgaben", tasks)
+        let fileText = files == 1 ? L("1 Datei") : L("{0} Dateien", files)
+        return L("Heute: {0} · {1} min · {2}", taskText, minutes, fileText)
     }
 }
 

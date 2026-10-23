@@ -31,18 +31,18 @@ final class SetupController {
 
     func connectClaude() {
         perform { try self.installer.installClaude()
-            return "Claude Code ist verbunden. Laufende Claude-Sessions neu starten, damit sie notchai kennen." }
+            return L("Claude Code ist verbunden. Laufende Claude-Sessions neu starten, damit sie notchai kennen.") }
     }
 
     func connectCodex() {
         perform { try self.installer.installCodex()
-            return "Codex ist verbunden. Starte Codex einmal im Terminal und wähle bei „Hooks need review“ „Trust all and continue“."
+            return L("Codex ist verbunden. Starte Codex einmal im Terminal und wähle bei „Hooks need review“ „Trust all and continue“.")
         }
     }
 
     func removeAll() {
         perform { try self.installer.uninstallAll()
-            return "Alle notchai-Einträge entfernt. Fremde Einträge sind unverändert." }
+            return L("Alle notchai-Einträge entfernt. Fremde Einträge sind unverändert.") }
     }
 
     func showBackups() {

@@ -49,15 +49,11 @@ enum AppResetter {
     /// Fragt nach; `true`, wenn wirklich zurückgesetzt werden soll.
     static func confirm() -> Bool {
         let alert = NSAlert()
-        alert.messageText = "notchai komplett zurücksetzen?"
-        alert.informativeText = """
-            notchai entfernt seine Hooks aus Claude Code und Codex, legt Einstellungen, Sicherungen, \
-            Protokolle und Caches in den Papierkorb und setzt seine Berechtigungen zurück. \
-            Danach startet notchai neu, als wäre es gerade installiert.
-            """
+        alert.messageText = L("notchai komplett zurücksetzen?")
+        alert.informativeText = L("notchai entfernt seine Hooks aus Claude Code und Codex, legt Einstellungen, Sicherungen, Protokolle und Caches in den Papierkorb und setzt seine Berechtigungen zurück. Danach startet notchai neu, als wäre es gerade installiert.")
         alert.alertStyle = .critical
-        alert.addButton(withTitle: "Zurücksetzen und neu starten")
-        alert.addButton(withTitle: "Abbrechen")
+        alert.addButton(withTitle: L("Zurücksetzen und neu starten"))
+        alert.addButton(withTitle: L("Abbrechen"))
         return alert.runModal() == .alertFirstButtonReturn
     }
 
@@ -77,7 +73,7 @@ enum AppResetter {
             }
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Zurücksetzen nicht möglich"
+            alert.messageText = L("Zurücksetzen nicht möglich")
             alert.informativeText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             _ = alert.runModal()
             return

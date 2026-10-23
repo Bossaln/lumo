@@ -36,9 +36,9 @@ public struct HangLog: Sendable {
 
     public var summary: String {
         switch count {
-        case 0: "Keine Hänger gemessen"
-        case 1: "1 Hänger, längster \(longestMilliseconds) ms"
-        default: "\(count) Hänger, längster \(longestMilliseconds) ms"
+        case 0: L("Keine Hänger gemessen")
+        case 1: L("1 Hänger, längster {0} ms", longestMilliseconds)
+        default: L("{0} Hänger, längster {1} ms", count, longestMilliseconds)
         }
     }
 

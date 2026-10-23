@@ -143,7 +143,7 @@ struct SignalAnswerField: View {
     var compact = false
 
     var body: some View {
-        TextField("Antworten …", text: $text)
+        TextField(L("Antworten …"), text: $text)
             .textFieldStyle(.plain)
             .font(.system(size: 12))
             .foregroundStyle(SignalTheme.primary)
@@ -167,8 +167,8 @@ struct SignalActionRow: View {
         HStack(spacing: 8) {
             switch content.kind {
             case .permission:
-                SignalPillButton(title: "Ablehnen", theme: theme) { act(.deny) }
-                SignalPillButton(title: "Erlauben", prominent: true, theme: theme) { act(.allow) }
+                SignalPillButton(title: L("Ablehnen"), theme: theme) { act(.deny) }
+                SignalPillButton(title: L("Erlauben"), prominent: true, theme: theme) { act(.allow) }
             case .question:
                 ForEach(content.kind.visibleOptions, id: \.self) { option in
                     SignalPillButton(title: option, theme: theme) { act(.answer(option)) }
@@ -179,7 +179,7 @@ struct SignalActionRow: View {
                 if showsStatus { SignalStatusMark(kind: .done) }
             case .error:
                 if showsStatus { SignalStatusMark(kind: .error) }
-                SignalPillButton(title: "Schließen", theme: theme) { act(.dismiss) }
+                SignalPillButton(title: L("Schließen"), theme: theme) { act(.dismiss) }
             }
         }
     }

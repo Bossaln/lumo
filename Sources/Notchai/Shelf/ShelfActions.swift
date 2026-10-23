@@ -12,22 +12,22 @@ enum ShelfTarget: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .airDrop: "AirDrop"
-        case .shelf: "Ablage"
+        case .shelf: L("Ablage")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .airDrop: "An ein Gerät in der Nähe"
-        case .shelf: "Kurz hier lagern"
+        case .airDrop: L("An ein Gerät in der Nähe")
+        case .shelf: L("Kurz hier lagern")
         }
     }
 
     /// Steht unter dem Titel, solange die Datei über dem Ziel schwebt.
     var releaseHint: String {
         switch self {
-        case .airDrop: "Loslassen zum Senden"
-        case .shelf: "Loslassen zum Ablegen"
+        case .airDrop: L("Loslassen zum Senden")
+        case .shelf: L("Loslassen zum Ablegen")
         }
     }
 
@@ -77,7 +77,7 @@ enum ShelfActions {
     /// Öffnet den AirDrop-Dialog von macOS mit den Dateien.
     static func airDrop(_ urls: [URL], model: AppModel) {
         guard let service = NSSharingService(named: .sendViaAirDrop), service.canPerform(withItems: urls) else {
-            model.showNotice("AirDrop ist gerade nicht verfügbar")
+            model.showNotice(L("AirDrop ist gerade nicht verfügbar"))
             return
         }
         // Ohne aktive App bliebe der Dialog hinter dem vorderen Fenster.

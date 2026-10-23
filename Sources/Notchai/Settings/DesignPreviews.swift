@@ -86,7 +86,7 @@ struct SignalStylePicker: View {
     let agent: Color
 
     var body: some View {
-        ChoiceCards(options: [(SignalStyle.island, "Island"), (.banner, "Banner"), (.vertical, "Vertikal")],
+        ChoiceCards(options: [(SignalStyle.island, L("Island")), (.banner, L("Banner")), (.vertical, L("Vertikal"))],
                     selection: $selection) { style in
             SignalStyleThumbnail(style: style, agent: agent)
         }
@@ -95,9 +95,9 @@ struct SignalStylePicker: View {
     /// Ein Satz zur gewählten Form.
     static func explanation(_ style: SignalStyle) -> String {
         switch style {
-        case .island: "Flach neben der Kamera wie die Dynamic Island; ein Klick oder Darüberfahren klappt sie auf."
-        case .banner: "Ein breites Banner wie eine Mitteilung auf dem iPhone, mit Antwortfeld."
-        case .vertical: "Ein höherer Kasten unter der Notch mit allen Details und den Knöpfen."
+        case .island: L("Flach neben der Kamera wie die Dynamic Island; ein Klick oder Darüberfahren klappt sie auf.")
+        case .banner: L("Ein breites Banner wie eine Mitteilung auf dem iPhone, mit Antwortfeld.")
+        case .vertical: L("Ein höherer Kasten unter der Notch mit allen Details und den Knöpfen.")
         }
     }
 }
@@ -108,7 +108,7 @@ struct BackgroundPicker: View {
     let customHex: String
 
     var body: some View {
-        ChoiceCards(options: [(NotchaiCore.BackgroundStyle.black, "Schwarz"), (.darkGray, "Dunkelgrau"), (.custom, "Eigene Farbe")],
+        ChoiceCards(options: [(NotchaiCore.BackgroundStyle.black, L("Schwarz")), (.darkGray, L("Dunkelgrau")), (.custom, L("Eigene Farbe"))],
                     selection: $selection) { style in
             MiniNotch(width: 84, height: 24, background: color(for: style)) {
                 HStack(spacing: 4) {
@@ -135,15 +135,15 @@ struct SessionStylePicker: View {
     let codex: Color
 
     var body: some View {
-        ChoiceCards(options: [(SessionViewStyle.list, "Liste"), (.circles, "Kreise")], selection: $selection) { style in
+        ChoiceCards(options: [(SessionViewStyle.list, L("Liste")), (.circles, L("Kreise"))], selection: $selection) { style in
             SessionStyleThumbnail(style: style, claude: claude, codex: codex)
         }
     }
 
     static func explanation(_ style: SessionViewStyle) -> String {
         switch style {
-        case .list: "Beim Darüberfahren klappt eine Liste aller Sessions auf: Titel, Projekt, letzter Schritt."
-        case .circles: "Neben der Kamera steht für jede Session ein farbiger Kreis; ein Klick zeigt die Details."
+        case .list: L("Beim Darüberfahren klappt eine Liste aller Sessions auf: Titel, Projekt, letzter Schritt.")
+        case .circles: L("Neben der Kamera steht für jede Session ein farbiger Kreis; ein Klick zeigt die Details.")
         }
     }
 }
@@ -181,7 +181,7 @@ struct TryOutButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label("In der Notch ausprobieren", systemImage: "play.circle.fill")
+            Label(L("In der Notch ausprobieren"), systemImage: "play.circle.fill")
         }
         .controlSize(.large)
     }

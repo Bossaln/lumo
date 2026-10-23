@@ -7,25 +7,25 @@ public enum StepDescriber {
     public static func describe(tool: String, input: JSONValue?) -> String {
         switch tool {
         case "Bash", "exec_command", "shell":
-            guard let command = command(input), !command.isEmpty else { return "Führt einen Befehl aus" }
-            return "Führt aus: " + shorten(firstLine(command))
+            guard let command = command(input), !command.isEmpty else { return L("Führt einen Befehl aus") }
+            return L("Führt aus: {0}", shorten(firstLine(command)))
         case "Edit", "MultiEdit":
-            return file("Bearbeitet", input?["file_path"]?.stringValue) ?? tool
+            return file("Bearbeitet {0}", input?["file_path"]?.stringValue) ?? tool
         case "NotebookEdit":
-            return file("Bearbeitet", input?["notebook_path"]?.stringValue) ?? tool
+            return file("Bearbeitet {0}", input?["notebook_path"]?.stringValue) ?? tool
         case "apply_patch":
-            return file("Bearbeitet", patchFiles(patchText(input)).first) ?? "Bearbeitet Dateien"
+            return file("Bearbeitet {0}", patchFiles(patchText(input)).first) ?? L("Bearbeitet Dateien")
         case "Write":
-            return file("Schreibt", input?["file_path"]?.stringValue) ?? tool
+            return file("Schreibt {0}", input?["file_path"]?.stringValue) ?? tool
         case "Read":
-            return file("Liest", input?["file_path"]?.stringValue) ?? tool
+            return file("Liest {0}", input?["file_path"]?.stringValue) ?? tool
         case "Grep", "Glob":
-            guard let pattern = input?["pattern"]?.stringValue else { return "Sucht" }
-            return "Sucht " + shorten(firstLine(pattern))
-        case "WebFetch", "WebSearch": return "Recherchiert im Web"
-        case "AskUserQuestion": return "Fragt dich"
-        case "Task", "Agent": return "Startet Unteragent"
-        case "TodoWrite", "update_plan": return "Plant"
+            guard let pattern = input?["pattern"]?.stringValue else { return L("Sucht") }
+            return L("Sucht {0}", shorten(firstLine(pattern)))
+        case "WebFetch", "WebSearch": return L("Recherchiert im Web")
+        case "AskUserQuestion": return L("Fragt dich")
+        case "Task", "Agent": return L("Startet Unteragent")
+        case "TodoWrite", "update_plan": return L("Plant")
         default: return tool
         }
     }
@@ -54,9 +54,10 @@ public enum StepDescriber {
         return parts.joined(separator: " ")
     }
 
-    private static func file(_ verb: String, _ path: String?) -> String? {
+    /// `phrase` ist ein Text mit `{0}` für den Dateinamen („Liest {0}“).
+    private static func file(_ phrase: String, _ path: String?) -> String? {
         guard let path, !path.isEmpty else { return nil }
-        return verb + " " + shorten((path as NSString).lastPathComponent)
+        return L(phrase, shorten((path as NSString).lastPathComponent))
     }
 
     private static func firstLine(_ text: String) -> String {

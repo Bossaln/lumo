@@ -2,7 +2,8 @@
 /// („notchai ist installiert – los geht's!“). Das Programm `notchai-welcome` schreibt die Bilder ins Terminal;
 /// hier entstehen sie, damit sie sich ohne Terminal prüfen lassen.
 public enum InstallGreeting {
-    public static let doneText = "notchai ist installiert – los geht's!"
+    /// In der Sprache des Terminals (`notchai-welcome` setzt `Localization.language`).
+    public static var doneText: String { L("notchai ist installiert – los geht's!") }
 
     static let car = [
         "              ___________________",

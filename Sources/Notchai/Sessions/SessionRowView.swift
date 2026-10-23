@@ -77,7 +77,7 @@ struct SessionRowView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             if session.errorCount > 0 {
-                Text("· \(session.errorCount) Fehler")
+                Text(L("· {0} Fehler", session.errorCount))
                     .fixedSize()
             }
         }
@@ -99,7 +99,7 @@ struct SessionRowView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help("Antworten")
+                .help(L("Antwort schreiben"))
             }
             if let fraction = session.contextFraction {
                 ContextBar(fraction: fraction, color: agentColor)
@@ -139,8 +139,8 @@ struct SessionRowView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                SignalPillButton(title: "Ablehnen", compact: true, theme: theme) { model.onDecide?(id, .deny) }
-                SignalPillButton(title: "Erlauben", prominent: true, compact: true, theme: theme) { model.onDecide?(id, .allow) }
+                SignalPillButton(title: L("Ablehnen"), compact: true, theme: theme) { model.onDecide?(id, .deny) }
+                SignalPillButton(title: L("Erlauben"), prominent: true, compact: true, theme: theme) { model.onDecide?(id, .allow) }
             case .question(let question):
                 Text(question.question)
                     .font(.system(size: 11.5))
@@ -151,14 +151,14 @@ struct SessionRowView: View {
                 ForEach(Array(question.options.prefix(4)), id: \.self) { option in
                     SignalPillButton(title: option, compact: true, theme: theme) { model.onDecide?(id, .answer(option)) }
                 }
-                SignalPillButton(title: "Im Terminal antworten", compact: true, theme: theme) { model.onDecide?(id, .dismiss) }
+                SignalPillButton(title: L("Im Terminal antworten"), compact: true, theme: theme) { model.onDecide?(id, .dismiss) }
             }
         }
     }
 
     private var replyField: some View {
         HStack(spacing: 6) {
-            TextField("Antwort an \(session.projectName) …", text: Binding(
+            TextField(L("Antwort an {0} …", session.projectName), text: Binding(
                 get: { model.replyDraft(for: session.id) },
                 set: { model.setReplyDraft($0, for: session.id) }))
                 .textFieldStyle(.plain)
@@ -168,7 +168,7 @@ struct SessionRowView: View {
                 .padding(.vertical, 5)
                 .background(Capsule().fill(SignalTheme.buttonFill))
                 .onSubmit { model.sendReply(to: session) }
-            SignalPillButton(title: "Senden", prominent: true, compact: true, theme: theme) { model.sendReply(to: session) }
+            SignalPillButton(title: L("Senden"), prominent: true, compact: true, theme: theme) { model.sendReply(to: session) }
         }
     }
 }

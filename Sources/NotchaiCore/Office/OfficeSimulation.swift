@@ -229,10 +229,11 @@ public struct OfficeSimulation: Sendable {
 
 /// Gelegentliche Sprüche entspannter Figuren.
 public enum OfficeChatter {
-    static let lines = [
-        "Noch ein Red Bull?", "Läuft bei dir?", "Hast du's getestet?", "Deploy am Freitag?", "Kurz durchatmen.",
-        "Wer fährt den GT-R?", "Merge-Konflikt?", "Ich mach nur kurz Pause.", "Gleich weiter.", "Der 911 ist frisch poliert.",
-    ]
+    static var lines: [String] {
+        [L("Noch ein Red Bull?"), L("Läuft bei dir?"), L("Hast du's getestet?"), L("Deploy am Freitag?"),
+         L("Kurz durchatmen."), L("Wer fährt den GT-R?"), L("Merge-Konflikt?"), L("Ich mach nur kurz Pause."),
+         L("Gleich weiter."), L("Der 911 ist frisch poliert.")]
+    }
     static let cycle: TimeInterval = 14
     static let visible: TimeInterval = 4
 

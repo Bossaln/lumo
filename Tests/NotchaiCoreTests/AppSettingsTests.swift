@@ -105,6 +105,7 @@ private func everyFieldChanged() -> AppSettings {
     s.officeHotkey = false
     s.developerOptions = true
     s.shelfEnabled = false
+    s.language = .english
     return s
 }
 
@@ -149,4 +150,18 @@ private func everyFieldChanged() -> AppSettings {
 
 @Test func developerOptionsAreHiddenByDefault() {
     #expect(AppSettings.default.developerOptions == false)
+}
+
+@Test func languageFollowsTheMacUntilChosen() {
+    var s = AppSettings()
+    #expect(s.language == nil)
+    #expect(s.resolvedLanguage(preferred: ["de-DE"]) == .german)
+    #expect(s.resolvedLanguage(preferred: ["en-US"]) == .english)
+    s.language = .english
+    #expect(s.resolvedLanguage(preferred: ["de-DE"]) == .english)
+}
+
+@Test func unknownLanguageFallsBackToTheMac() throws {
+    let s = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"language":"fr"}"#.utf8))
+    #expect(s.language == nil)
 }

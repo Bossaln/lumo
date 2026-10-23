@@ -28,12 +28,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func buildMenu() {
-        let settings = NSMenuItem(title: "Einstellungen …", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L("Einstellungen …"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
         mainInsertIndex = menu.items.count
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "notchai beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: L("notchai beenden"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     private func installDot(on button: NSStatusBarButton) {

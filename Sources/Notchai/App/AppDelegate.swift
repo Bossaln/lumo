@@ -84,18 +84,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })
 
-        updateItem = statusItemController.addMenuItem("Nach Updates suchen …") { [weak self] in
+        updateItem = statusItemController.addMenuItem(L("Nach Updates suchen …")) { [weak self] in
             self?.updateMenuAction()
         }
-        statusItemController.addMenuItem("Büro öffnen") { [weak office] in office?.open() }
-        statusItemController.addMenuItem("Einrichtung …") { [weak setupWindow] in setupWindow?.show() }
+        statusItemController.addMenuItem(L("Büro öffnen")) { [weak office] in office?.open() }
+        statusItemController.addMenuItem(L("Einrichtung …")) { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
 
         // Wie schnell notchai reagiert: Die Seite „Entwickler“ listet jeden spürbaren Hänger.
         responsiveness.context = { [weak model, weak office] in
-            let parts = [model?.diagnosticContext() ?? "", office?.isOpen == true ? "Büro offen" : "",
-                         settingsWindowController.isVisible ? "Einstellungen offen" : ""]
+            let parts = [model?.diagnosticContext() ?? "", office?.isOpen == true ? L("Büro offen") : "",
+                         settingsWindowController.isVisible ? L("Einstellungen offen") : ""]
             return parts.filter { !$0.isEmpty }.joined(separator: " · ")
         }
         statusItemController.onMenuOpen = { [weak self] delay in self?.responsiveness.menuOpened(after: delay) }
@@ -146,9 +146,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch state {
         case .available(let offer): "Update installieren (\(offer.count) neu) …"
         case .releaseAvailable(let offer): "Update auf \(offer.version) installieren …"
-        case .checking: "Suche nach Updates …"
-        case .installing: "Update wird installiert …"
-        default: "Nach Updates suchen …"
+        case .checking: L("Suche nach Updates …")
+        case .installing: L("Update wird installiert …")
+        default: L("Nach Updates suchen …")
         }
     }
 

@@ -99,11 +99,11 @@ public struct UpdateChecker: Sendable {
 
     public func check() async -> UpdateState {
         guard await git("rev-parse --is-inside-work-tree").trimmed == "true" else {
-            return .unavailable("„\(sourceDirectory)“ ist kein Git-Ordner mehr.")
+            return .unavailable(L("„{0}“ ist kein Git-Ordner mehr.", sourceDirectory))
         }
         let fetch = await git("fetch --prune --quiet origin")
         guard fetch.succeeded else {
-            return .failed("GitHub ist nicht erreichbar: \(fetch.trimmed)")
+            return .failed(L("GitHub ist nicht erreichbar: {0}", fetch.trimmed))
         }
         let branch = await git("rev-parse --abbrev-ref HEAD").trimmed
 
@@ -126,10 +126,10 @@ public struct UpdateChecker: Sendable {
             .split(separator: "\n").map(String.init)
 
         if !(await git("status --porcelain --untracked-files=no").trimmed.isEmpty) {
-            return .blocked("Lokale Änderungen in „\(sourceDirectory)“. Erst committen oder verwerfen, dann aktualisieren.")
+            return .blocked(L("Lokale Änderungen in „{0}“. Erst committen oder verwerfen, dann aktualisieren.", sourceDirectory))
         }
         if switchTo == nil, (Int(await git("rev-list --count \(upstream)..HEAD").trimmed) ?? 0) > 0 {
-            return .blocked("Dein Stand hat eigene Commits, die nicht auf GitHub sind. Erst pushen, dann aktualisieren.")
+            return .blocked(L("Dein Stand hat eigene Commits, die nicht auf GitHub sind. Erst pushen, dann aktualisieren."))
         }
         return .available(UpdateOffer(count: behind, subjects: subjects, branch: branch, upstream: upstream, switchTo: switchTo))
     }
@@ -137,20 +137,20 @@ public struct UpdateChecker: Sendable {
     /// Holt den neuen Stand und baut die App; gibt den Pfad der frisch gebauten App zurück.
     public func install(_ offer: UpdateOffer, progress: @Sendable (String) -> Void = { _ in }) async -> Result<String, UpdateError> {
         if let target = offer.switchTo {
-            progress("Wechsle auf \(target) …")
+            progress(L("Wechsle auf {0} …", target))
             let switched = await git("switch --quiet \(ShellQuote.quote(target))")
-            guard switched.succeeded else { return .failure(UpdateError(message: "Wechsel auf \(target) ging nicht: \(switched.trimmed)")) }
+            guard switched.succeeded else { return .failure(UpdateError(message: L("Wechsel auf {0} ging nicht: {1}", target, switched.trimmed))) }
         }
-        progress("Hole den neuen Stand …")
+        progress(L("Hole den neuen Stand …"))
         let merged = await git("merge --ff-only --quiet \(offer.upstream)")
-        guard merged.succeeded else { return .failure(UpdateError(message: "Vorspulen ging nicht: \(merged.trimmed)")) }
+        guard merged.succeeded else { return .failure(UpdateError(message: L("Vorspulen ging nicht: {0}", merged.trimmed))) }
 
-        progress("Baue notchai (das dauert ein bis zwei Minuten) …")
+        progress(L("Baue notchai (das dauert ein bis zwei Minuten) …"))
         let log = ShellQuote.quote(logPath)
         let built = await runner.run("scripts/build-app.sh > \(log) 2>&1", in: sourceDirectory)
         guard built.succeeded else {
             let tail = await runner.run("tail -n 15 \(log)", in: sourceDirectory).trimmed
-            return .failure(UpdateError(message: "Bauen fehlgeschlagen:\n\(tail)"))
+            return .failure(UpdateError(message: L("Bauen fehlgeschlagen:\n{0}", tail)))
         }
         return .success(URL(filePath: sourceDirectory).appending(path: "build/notchai.app").path)
     }

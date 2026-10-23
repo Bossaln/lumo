@@ -37,10 +37,10 @@ struct ShelfTabView: View {
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.75))
             }
-            Text("Zieh Dateien auf die Notch")
+            Text(L("Zieh Dateien auf die Notch"))
                 .font(.system(size: 13.5, weight: .bold))
                 .foregroundStyle(Color.white)
-            Text("Dann per AirDrop senden oder hier kurz ablegen und später wieder herausziehen.")
+            Text(L("Dann per AirDrop senden oder hier kurz ablegen und später wieder herausziehen."))
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(PanelTabBar.gray)
                 .multilineTextAlignment(.center)
@@ -51,10 +51,10 @@ struct ShelfTabView: View {
 
     private var disabled: some View {
         VStack(spacing: 10) {
-            Text("Die Ablage ist ausgeschaltet.")
+            Text(L("Die Ablage ist ausgeschaltet."))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(PanelTabBar.gray)
-            Button("Einstellungen öffnen") { model.openSettings() }
+            Button(L("Einstellungen öffnen")) { model.openSettings() }
                 .buttonStyle(.plain)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.white)
@@ -188,14 +188,14 @@ struct ShelfItemsView: View {
             ShelfFooterButton(title: "AirDrop", symbol: "dot.radiowaves.left.and.right") {
                 ShelfActions.airDrop(items.map(\.url), model: model)
             }
-            ShelfFooterButton(title: "Leeren", symbol: "trash") {
+            ShelfFooterButton(title: L("Leeren"), symbol: "trash") {
                 model.shelfStore.removeAll()
             }
         }
     }
 
     static func countText(_ count: Int) -> String {
-        count == 1 ? "1 Datei · zum Herausnehmen ziehen" : "\(count) Dateien · zum Herausnehmen ziehen"
+        count == 1 ? L("1 Datei · zum Herausnehmen ziehen") : L("{0} Dateien · zum Herausnehmen ziehen", count)
     }
 }
 
@@ -242,7 +242,7 @@ struct ShelfFileTile: View {
                 .buttonStyle(NotchControlButtonStyle())
                 .padding(3)
                 .transition(.scale(scale: 0.5).combined(with: .opacity))
-                .accessibilityLabel("Aus der Ablage entfernen")
+                .accessibilityLabel(L("Aus der Ablage entfernen"))
             }
         }
         .scaleEffect(hovering ? 1.05 : 1)
@@ -253,11 +253,11 @@ struct ShelfFileTile: View {
         .onTapGesture(count: 2) { ShelfActions.open(item) }
         .onDrag { NSItemProvider(contentsOf: item.url) ?? NSItemProvider() }
         .contextMenu {
-            Button("Öffnen") { ShelfActions.open(item) }
-            Button("Im Finder zeigen") { ShelfActions.reveal(item) }
-            Button("Per AirDrop senden") { ShelfActions.airDrop([item.url], model: model) }
+            Button(L("Öffnen")) { ShelfActions.open(item) }
+            Button(L("Im Finder zeigen")) { ShelfActions.reveal(item) }
+            Button(L("Per AirDrop senden")) { ShelfActions.airDrop([item.url], model: model) }
             Divider()
-            Button("Aus der Ablage entfernen") { model.shelfStore.remove(item.path) }
+            Button(L("Aus der Ablage entfernen")) { model.shelfStore.remove(item.path) }
         }
         .help(item.path)
     }

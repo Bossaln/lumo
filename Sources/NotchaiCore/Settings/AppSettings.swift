@@ -72,6 +72,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var developerOptions: Bool = false
     /// Reiter „Ablage“: Dateien auf die Notch ziehen öffnet sie (AirDrop oder kurz ablegen).
     public var shelfEnabled: Bool = true
+    /// Sprache der Oberfläche; `nil`, solange niemand gewählt hat (dann die des Macs).
+    public var language: AppLanguage? = nil
 
     public static let `default` = AppSettings()
 
@@ -79,6 +81,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public static let islandSideWidthRange: ClosedRange<Double> = 80...320
 
     public init() {}
+
+    /// Gewählte Sprache, sonst die erste bevorzugte Sprache des Macs, die notchai kann.
+    public func resolvedLanguage(preferred: [String]) -> AppLanguage {
+        language ?? AppLanguage.preferred(from: preferred)
+    }
 
     /// Hintergrundfarbe als Hex-Text je nach gewähltem Stil.
     public func backgroundHex() -> String {
@@ -99,7 +106,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case launchAtLogin, islandSideWidth, setupCompleted, checkForUpdates, notchBounce
         case musicSourceMode, musicBrowserMusic, musicIncludePodcasts, musicLoadArtwork, musicSourceRules, musicKnownSources
         case panelOpenBehavior, musicArtworkBackground, musicCoverTransition, officeHotkey, developerOptions
-        case shelfEnabled
+        case shelfEnabled, language
     }
 
     public init(from decoder: Decoder) throws {
@@ -162,6 +169,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         value(.officeHotkey, &s.officeHotkey)
         value(.developerOptions, &s.developerOptions)
         value(.shelfEnabled, &s.shelfEnabled)
+        if let raw = try? c.decodeIfPresent(String.self, forKey: .language) { s.language = AppLanguage(rawValue: raw) }
         let range = Self.islandSideWidthRange
         s.islandSideWidth = min(max(s.islandSideWidth, range.lowerBound), range.upperBound)
         self = s

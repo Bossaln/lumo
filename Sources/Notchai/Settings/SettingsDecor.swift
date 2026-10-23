@@ -14,15 +14,15 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .general: "Allgemein"
-        case .updates: "Softwareupdate"
-        case .notch: "Notch"
-        case .agents: "Agenten"
-        case .sessions: "Sessions"
-        case .music: "Musik"
-        case .office: "Büro"
-        case .shelf: "Ablage"
-        case .developer: "Entwickler"
+        case .general: L("Allgemein")
+        case .updates: L("Softwareupdate")
+        case .notch: L("Notch")
+        case .agents: L("Agenten")
+        case .sessions: L("Sessions")
+        case .music: L("Musik")
+        case .office: L("Büro")
+        case .shelf: L("Ablage")
+        case .developer: L("Entwickler")
         }
     }
 
@@ -43,23 +43,23 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
     var subtitle: String {
         switch self {
         case .general:
-            "Start beim Anmelden, Einrichtung und alles über notchai."
+            L("Start beim Anmelden, Einrichtung und alles über notchai.")
         case .updates:
-            "notchai sucht neue Versionen und installiert sie auf deinen Klick – über Homebrew oder aus deinem Quellordner."
+            L("notchai sucht neue Versionen und installiert sie auf deinen Klick – über Homebrew oder aus deinem Quellordner.")
         case .notch:
-            "Form, Farben und Bewegung der Notch – vom ruhigen Schwarz bis zum leuchtenden Signal."
+            L("Form, Farben und Bewegung der Notch – vom ruhigen Schwarz bis zum leuchtenden Signal.")
         case .agents:
-            "Verbinde Claude Code und Codex, damit Fragen und Freigaben direkt in der Notch landen."
+            L("Verbinde Claude Code und Codex, damit Fragen und Freigaben direkt in der Notch landen.")
         case .sessions:
-            "Was die Notch über laufende Sessions zeigt und wann sie sich bei dir meldet."
+            L("Was die Notch über laufende Sessions zeigt und wann sie sich bei dir meldet.")
         case .music:
-            "Was gerade läuft, mit Cover, Steuerung und Leuchten – und welche Apps die Notch zeigen darf."
+            L("Was gerade läuft, mit Cover, Steuerung und Leuchten – und welche Apps die Notch zeigen darf.")
         case .office:
-            "Deine Lagerhalle, in der Claude Code und Codex arbeiten, Red Bull holen und schlafen."
+            L("Deine Lagerhalle, in der Claude Code und Codex arbeiten, Red Bull holen und schlafen.")
         case .shelf:
-            "Zieh Dateien auf die Notch: per AirDrop senden oder kurz ablegen und später wieder herausziehen."
+            L("Zieh Dateien auf die Notch: per AirDrop senden oder kurz ablegen und später wieder herausziehen.")
         case .developer:
-            "Werkzeuge zum Ausprobieren: Signale auslösen, Rohdaten kopieren und notchai komplett zurücksetzen."
+            L("Werkzeuge zum Ausprobieren: Signale auslösen, Rohdaten kopieren und notchai komplett zurücksetzen.")
         }
     }
 
@@ -249,8 +249,9 @@ struct NotchPreviewCard: View {
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(alignment: .bottom) {
-            Text(expanded ? "Gummi-Effekt: \(settings.notchBounce == 0 ? "aus" : settings.notchBounce.formatted(.percent.precision(.fractionLength(0))))"
-                          : "Zum Ausprobieren mit dem Zeiger darüberfahren")
+            Text(expanded ? L("Gummi-Effekt: {0}", settings.notchBounce == 0 ? L("aus")
+                                  : settings.notchBounce.formatted(.percent.precision(.fractionLength(0))))
+                          : L("Zum Ausprobieren mit dem Zeiger darüberfahren"))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.85))
                 .padding(.bottom, 10)
@@ -265,16 +266,16 @@ struct NotchPreviewCard: View {
             Spacer().frame(height: 28)
             HStack(spacing: 8) {
                 Circle().fill(agent).frame(width: 8, height: 8)
-                Text("Claude möchte eine Datei bearbeiten")
+                Text(L("Claude möchte eine Datei bearbeiten"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.white)
                     .lineLimit(1)
             }
             HStack(spacing: 8) {
                 Capsule().fill(Color.white.opacity(0.14)).frame(width: 82, height: 22)
-                    .overlay(Text("Ablehnen").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white))
+                    .overlay(Text(L("Ablehnen")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white))
                 Capsule().fill(agent).frame(width: 82, height: 22)
-                    .overlay(Text("Erlauben").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white))
+                    .overlay(Text(L("Erlauben")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white))
             }
         }
         .padding(.horizontal, 22)

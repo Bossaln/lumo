@@ -129,7 +129,7 @@ final class UpdateController {
         }
         switch result {
         case .success(let builtApp):
-            state = .installing("Starte notchai neu …")
+            state = .installing(L("Starte notchai neu …"))
             relaunch(builtApp: builtApp, source: source)
         case .failure(let error):
             state = .failed(error.message)
@@ -145,7 +145,7 @@ final class UpdateController {
             return
         }
         try? FileManager.default.createDirectory(at: Self.logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        state = .installing("Homebrew aktualisiert notchai …")
+        state = .installing(L("Homebrew aktualisiert notchai …"))
         // Homebrew beendet notchai selbst (`uninstall quit:` im Cask); das Skript läuft weiter und öffnet die neue Version.
         let script = ReleaseCheck.homebrewUpgradeScript(brew: brew, log: Self.logURL.path, app: Bundle.main.bundlePath)
         let process = Process()
@@ -154,8 +154,8 @@ final class UpdateController {
         // Läuft notchai danach noch, hat Homebrew nicht aktualisiert (sonst wäre diese Instanz beendet).
         process.terminationHandler = { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.state = .failed("Homebrew hat notchai nicht aktualisiert. Details im Protokoll; im Terminal geht es mit "
-                    + "„brew update && brew upgrade --cask notchai“.")
+                self?.state = .failed(L("Homebrew hat notchai nicht aktualisiert. Details im Protokoll; im Terminal geht es mit „{0}“.",
+                                        "brew update && brew upgrade --cask notchai"))
             }
         }
         do {
@@ -189,12 +189,12 @@ final class UpdateController {
     /// Kurzer Text für Menü und Einstellungen.
     var summary: String {
         switch state {
-        case .idle: "Noch nicht geprüft"
-        case .checking: "Suche nach Updates …"
-        case .upToDate: "notchai ist aktuell"
+        case .idle: L("Noch nicht geprüft")
+        case .checking: L("Suche nach Updates …")
+        case .upToDate: L("notchai ist aktuell")
         case .available(let offer): Self.describe(offer)
         case .releaseAvailable(let offer):
-            offer.viaHomebrew ? "Version \(offer.version) ist da" : "Version \(offer.version) ist da (Download auf GitHub)"
+            offer.viaHomebrew ? L("Version {0} ist da", offer.version) : L("Version {0} ist da (Download auf GitHub)", offer.version)
         case .blocked(let reason): reason
         case .installing(let step): step
         case .failed(let message): message
@@ -203,8 +203,8 @@ final class UpdateController {
     }
 
     private static func describe(_ offer: UpdateOffer) -> String {
-        let changes = offer.count == 1 ? "1 neue Änderung" : "\(offer.count) neue Änderungen"
-        guard let target = offer.switchTo else { return "Update verfügbar: \(changes)" }
-        return "Update verfügbar: Wechsel auf \(target) (\(changes))"
+        let changes = offer.count == 1 ? L("1 neue Änderung") : L("{0} neue Änderungen", offer.count)
+        guard let target = offer.switchTo else { return L("Update verfügbar: {0}", changes) }
+        return L("Update verfügbar: Wechsel auf {0} ({1})", target, changes)
     }
 }

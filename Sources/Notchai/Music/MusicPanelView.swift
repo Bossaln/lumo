@@ -82,10 +82,10 @@ struct MusicPanelView: View {
                         .foregroundStyle(PanelTabBar.gray.opacity(0.8))
                 )
             VStack(alignment: .leading, spacing: 3) {
-                Text("Gerade läuft nichts")
+                Text(L("Gerade läuft nichts"))
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Color.white.opacity(0.85))
-                Text(settings.musicEnabled ? settings.musicSourceMode.label : "Musikanzeige ist aus")
+                Text(settings.musicEnabled ? settings.musicSourceMode.label : L("Musikanzeige ist aus"))
                     .font(.system(size: 13))
                     .foregroundStyle(Color.white.opacity(0.45))
             }
