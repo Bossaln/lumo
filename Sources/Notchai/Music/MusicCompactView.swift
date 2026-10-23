@@ -22,7 +22,8 @@ struct MusicCompactView: View {
             .frame(width: inner)
             .animation(.easeInOut(duration: 0.3), value: model.artworkTrack)
             Color.clear.frame(width: notchWidth)
-            DancingBars(color: Color(glow: model.artworkGlow), playing: model.displayedMusicPlaying)
+            DancingBars(color: Color(glow: model.artworkGlow), playing: model.displayedMusicPlaying,
+                        levels: model.musicLevels)
                 .frame(width: inner)
             Color.clear.frame(width: ear)
         }

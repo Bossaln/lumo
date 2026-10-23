@@ -364,7 +364,10 @@ struct SetupAssistantView: View {
             PermissionCard(symbol: "music.note", color: Self.rgb(1.0, 0.33, 0.5), title: L("Automation"),
                            text: L("Für Cover und Steuerung von Spotify und Musik. macOS fragt beim ersten Abspielen selbst nach."),
                            granted: nil, action: nil)
-            InfoBox(symbol: "checkmark.shield.fill", text: L("Beides ist freiwillig. Ohne Berechtigung öffnest du die Lagerhalle über den Reiter „Büro“, und Antworten landen in der Zwischenablage."))
+            PermissionCard(symbol: "waveform", color: Self.rgb(0.2, 0.75, 0.6), title: L("Systemaudio"),
+                           text: L("Damit die Balken neben der Kamera echt zur Musik tanzen. notchai rechnet nur die Höhen aus; nichts wird gespeichert."),
+                           granted: nil, action: nil)
+            InfoBox(symbol: "checkmark.shield.fill", text: L("Alles ist freiwillig. Ohne Berechtigung öffnest du die Lagerhalle über den Reiter „Büro“, Antworten landen in der Zwischenablage, und die Balken tanzen animiert."))
         }
     }
 

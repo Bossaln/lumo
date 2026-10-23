@@ -77,6 +77,12 @@ final class AppModel {
     var musicSeek: MusicScrub.Override?
     /// Gerade wird im Fortschrittsbalken gezogen: Die Notch bleibt offen, auch wenn der Zeiger sie verlässt.
     var isScrubbing = false
+    /// Höhen der Balken aus dem echten Ton (`MusicVisualizer`): Anzahl und Zeitpunkt des Bildes rein, Höhen raus;
+    /// `nil` heißt „kein echter Ton“, dann tanzen die Balken von selbst.
+    @ObservationIgnored var musicLevels: ((Int, TimeInterval) -> [Double]?)?
+    /// Neuer Titel, den die Notch gerade kurz ausgefahren zeigt (`TrackChangeStyle`).
+    private(set) var trackAnnouncement: TrackAnnouncement?
+    @ObservationIgnored private var announcementTask: Task<Void, Never>?
     /// Zuletzt gezeigte Form und Richtung des Wechsels dorthin (nur für die Wahl der Animation).
     @ObservationIgnored private var shownPresentation: NotchPresentation = .idle
     @ObservationIgnored private var shownMotion: NotchMotion = .expand
@@ -97,6 +103,8 @@ final class AppModel {
 
     func send(_ e: NotchEvent) {
         let settings = settingsStore.settings
+        // Was der Besitzer selbst öffnet und jedes Signal gehen vor; der neue Titel weicht sofort.
+        if e == .hoverBegan || e == .signalRaised || e == .fileDragEntered { endTrackAnnouncement() }
         if e == .hoverBegan, notch.mode == .idle {
             // Aufklappen dort, wo gerade etwas passiert (oder im zuletzt gewählten Reiter).
             notch.openTab = PanelTabChoice.tab(behavior: settings.panelOpenBehavior, lastTab: notch.lastTab,
@@ -240,6 +248,38 @@ final class AppModel {
         onMusicCommand?(command)
     }
 
+    /// Zeigt einen neuen Titel für die eingestellte Dauer, wenn die Notch gerade nichts anderes zeigt.
+    func announceTrack(_ announcement: TrackAnnouncement) {
+        guard announcement.style != .off, notch.mode == .idle else { return }
+        trackAnnouncement = announcement
+        announcementTask?.cancel()
+        let seconds = settingsStore.settings.musicTrackChangeSeconds
+        announcementTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self?.trackAnnouncement = nil
+        }
+    }
+
+    /// Einstellungen › Musik: So sieht ein neuer Titel aus (mit dem, was gerade läuft, sonst mit einem Beispiel).
+    func previewTrackAnnouncement() {
+        let style = settingsStore.settings.musicTrackChangeStyle
+        guard style != .off else { return }
+        if let item = nowPlaying {
+            announceTrack(TrackAnnouncement(style: style, title: item.title, artist: item.artist, artwork: artwork,
+                                            appIcon: musicAppIcon, glow: artworkGlow))
+        } else {
+            announceTrack(TrackAnnouncement(style: style, title: L("Nächster Titel"), artist: "notchai",
+                                            artwork: nil, appIcon: nil, glow: nil))
+        }
+    }
+
+    private func endTrackAnnouncement() {
+        announcementTask?.cancel()
+        announcementTask = nil
+        if trackAnnouncement != nil { trackAnnouncement = nil }
+    }
+
     func seekMusic(to position: TimeInterval) {
         guard let item = nowPlaying else { return }
         musicSeek = MusicScrub.Override(position: position, track: item.trackKey, playing: displayedMusicPlaying, at: .now)
@@ -277,6 +317,15 @@ final class AppModel {
     /// Der Reiter „Musik“ ist offen (dann wird öfter abgefragt).
     var musicTabOpen: Bool { notch.mode == .panel(.music) }
 
+    /// Stehen gerade Balken in der Notch, die sich zur laufenden Musik bewegen?
+    var showsMusicBars: Bool {
+        guard displayedMusicPlaying else { return false }
+        switch currentPresentation() {
+        case .compact, .trackSides, .trackBanner: return true
+        default: return musicTabOpen
+        }
+    }
+
     /// Im Ruhezustand stehen statt der bloßen Notch die Session-Kreise neben der Kamera.
     var showsCirclesWhileIdle: Bool {
         settingsStore.settings.sessionViewStyle == .circles && !sessions.isEmpty
@@ -301,7 +350,12 @@ final class AppModel {
         switch notch.mode {
         // Die Kreise nutzen die vorhandene Island-Form; an Geometrie und Zustandsautomat ändert sich nichts.
         // Laufende Musik zeigt sich eingeklappt, wenn keine Kreise stehen; ein Signal verdrängt beides.
-        case .idle: showsCirclesWhileIdle ? .island : showsCompactMusic ? .compact : .idle
+        // Ein neuer Titel fährt kurz über alles aus, was im Ruhezustand zu sehen ist.
+        case .idle:
+            if let presentation = trackAnnouncement?.style.presentation { presentation }
+            else if showsCirclesWhileIdle { .island }
+            else if showsCompactMusic { .compact }
+            else { .idle }
         case .signal(.island): .island
         case .signal(.banner): .banner
         case .signal(.vertical): .vertical
@@ -316,7 +370,8 @@ final class AppModel {
         var parts: [String] = []
         switch notch.mode {
         case .idle:
-            parts.append(showsCirclesWhileIdle ? L("Notch: Kreise") : showsCompactMusic ? L("Notch: Musik eingeklappt") : L("Notch: zu"))
+            parts.append(trackAnnouncement != nil ? L("Notch: neuer Titel")
+                : showsCirclesWhileIdle ? L("Notch: Kreise") : showsCompactMusic ? L("Notch: Musik eingeklappt") : L("Notch: zu"))
         case .signal(let style): parts.append("Notch: Signal (\(style.rawValue))")
         case .panel(let tab): parts.append("Notch: \(tab.title)")
         }

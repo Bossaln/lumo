@@ -34,8 +34,9 @@ project, last step, how full the context is, and what you got done today. Click 
 front, or reply to it directly. Works with the Claude desktop app, the terminal, VS Code and cmux.
 
 **Now playing.** Spotify, Apple Music and most other players: cover art, title, a progress bar you can scrub,
-playback controls, a backdrop in the colors of the cover and a soft glow. While music plays, a compact view with
-dancing bars sits right next to the camera.
+playback controls, a backdrop in the colors of the cover and a soft glow. While music plays, a compact view sits right
+next to the camera, with bars that move to the actual audio. When the next track starts, the notch briefly pops out
+with its cover and title – sideways next to the camera or dropped down below it, for two, three or five seconds.
 
 **A pixel warehouse for your agents.** Every session becomes a little character in a warehouse with two tuned cars,
 a couch, a fridge full of energy drinks, a projector and a bed. Characters sit at their desks while working, wait
@@ -61,7 +62,8 @@ signal style, animations, glow, sounds, which tab opens on hover, music sources,
   `~/.codex/hooks.json` only after making a backup, shows what it changes and removes everything with one click.
   It never writes `~/.codex/config.toml`.
 - **Nothing leaves your Mac.** No account, no analytics. The only network request is the optional update check
-  against this repository's releases.
+  against this repository's releases. For the bars, notchai listens to what is playing and only works out bar
+  heights; macOS asks for the "system audio" permission once, and animated bars are the alternative.
 
 ## Requirements
 

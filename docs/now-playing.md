@@ -56,6 +56,30 @@ Stand: 22.10.2026. Woher notchai weiß, was gerade spielt, und wie es die Wieder
 - Befehle und Cover für Spotify und Musik laufen ebenfalls über `/usr/bin/osascript` (AppleScript), nicht über `NSAppleScript` im eigenen Prozess: So hat jeder Aufruf eine Frist (2 s) und blockiert nie die Notch.
 - Eigene Builds ohne Zertifikat sind ad hoc signiert; ihre Signatur ändert sich mit jedem Build. macOS kann dann nach einem Update erneut fragen, ob notchai Spotify bzw. Musik steuern darf. Release-Builds tragen eine feste Signatur.
 
+## Echte Balken (Visualizer)
+
+Stand: 23.10.2026.
+
+- **Weg:** Core-Audio-Taps (`CATapDescription`, `AudioHardwareCreateProcessTap`, ab macOS 14.2). Der Tap hängt an
+  einem privaten Aggregat-Gerät; ein IO-Block bekommt den Ton als Float32 und schreibt ihn gemischt (Mono) in einen
+  Ringpuffer (`AudioSampleRing`). Gezeichnet wird mit bis zu 60 Bildern pro Sekunde: FFT über die letzten
+  1024 Samples, logarithmische Bänder, je Band selbst eingepegelt (`SpectrumAnalyzer`, `VisualizerBars`, getestet in
+  Core). Nichts wird gespeichert oder verschickt.
+- **Welcher Ton:** bevorzugt nur die Prozesse des Players, die gerade Ton ausgeben (gleiche Bundle-ID oder ein Helfer
+  darunter, etwa `com.google.Chrome.helper`). Findet sich keiner (Safari spielt über `com.apple.WebKit.GPU`), greift
+  notchai den ganzen Ton ab, außer seinem eigenen.
+- **Freigabe:** `NSAudioCaptureUsageDescription` in der `Info.plist` (deutsch und englisch über
+  `InfoPlist.strings`). macOS fragt beim ersten Start des Taps; die Freigabe steht danach unter Datenschutz &
+  Sicherheit › Bildschirm- & Systemaudioaufnahme. Ohne Freigabe liefert der Tap nur Nullen. notchai erkennt das
+  daran, dass nach 5 s noch nie ein Sample ungleich null kam, zeigt in Einstellungen › Musik einen Hinweis und lässt
+  die Balken solange animiert tanzen.
+- **Wann:** nur solange Balken zu sehen sind und Musik spielt (eingeklappt, Reiter „Musik“, Titelanzeige). Anlegen
+  und Abbauen laufen auf einer eigenen Warteschlange, nie auf dem Hauptthread.
+- **Ausgabe gewechselt** (AirPods verbunden …): Bleibt der Zähler des Ringpuffers zwei Sekunden stehen, startet
+  notchai den Tap neu.
+- Zu prüfen auf dem Mac: Ob macOS während des Abgriffs ein Aufnahme-Symbol in der Menüleiste zeigt, und welche
+  Prozesse Spotify, Musik und die Browser tatsächlich melden (`kAudioProcessPropertyBundleID`).
+
 ## Offene Punkte
 
 Prüfhilfe: Einstellungen › Entwickler › „Jetzt-läuft-Rohdaten“ kopieren. Das zeigt die letzte JXA-Ausgabe und die letzten Benachrichtigungen samt aller Schlüssel.

@@ -14,11 +14,14 @@ struct NotchRootView: View {
         let signal = model.activeSignal
         let isSignal = if case .signal = model.notch.mode { signal != nil } else { false }
         // Ohne Signal leuchtet sichtbare, laufende Musik in der Coverfarbe, ruhiger als ein Signal.
-        let musicGlows = !isSignal && settings.musicCoverGlow && model.nowPlaying?.isPlaying == true
-            && (presentation == .compact || model.musicTabOpen)
+        let announcement = model.trackAnnouncement
+        let musicGlows = !isSignal && settings.musicCoverGlow
+            && (model.nowPlaying?.isPlaying == true || announcement != nil)
+            && (presentation == .compact || presentation == .trackSides || presentation == .trackBanner
+                || model.musicTabOpen)
         let glowColor = isSignal
             ? signal.map { SignalTheme(agentHex: settings.colorHex(for: $0.agent)).agentColor } ?? .clear
-            : Color(glow: model.artworkGlow)
+            : Color(glow: announcement?.glow ?? model.artworkGlow)
         let spring = NotchSpring(bounce: settings.notchBounce)
         // Aufklappen mit Gummi, Zuklappen ohne Überschwingen (sonst rutschte die Form unter die Hardware-Notch).
         let animation: Animation = model.motion(toward: presentation) == .collapse
@@ -73,12 +76,24 @@ struct NotchRootView: View {
                     .transition(.notchContent)
             }
         case .idle:
-            let notchWidth = model.screen.flatMap(NotchGeometry.notchRect)?.width ?? 0
-            if model.showsCirclesWhileIdle {
+            let notch = model.screen.flatMap(NotchGeometry.notchRect)
+            let notchWidth = notch?.width ?? 0
+            let presentation = model.currentPresentation()
+            if let announcement = model.trackAnnouncement, presentation == .trackSides {
+                TrackChangeSidesView(model: model, announcement: announcement, notchWidth: notchWidth,
+                                     sideWidth: max(0, (width - notchWidth) / 2), height: height,
+                                     ear: Self.radii(for: .trackSides).top)
+                    .frame(width: width, height: height)
+                    .transition(.notchContent)
+            } else if let announcement = model.trackAnnouncement, presentation == .trackBanner {
+                TrackChangeBannerView(model: model, announcement: announcement, bandHeight: notch?.height ?? 0)
+                    .frame(width: width, height: height)
+                    .transition(.notchContent)
+            } else if model.showsCirclesWhileIdle {
                 SessionCirclesIsland(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2))
                     .frame(width: width, height: height)
                     .transition(.notchContent)
-            } else if model.currentPresentation() == .compact {
+            } else if presentation == .compact {
                 MusicCompactView(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2),
                                  ear: Self.radii(for: .compact).top)
                     .frame(width: width, height: height)
@@ -167,6 +182,8 @@ struct NotchRootView: View {
         case .idle: (0, 10)
         case .island: (6, 14)
         case .compact: (6, 12)
+        case .trackSides: (6, 14)
+        case .trackBanner: (10, 26)
         case .banner: (10, 30)
         case .vertical: (10, 24)
         // Oben je Seite eine kleine Wölbung in den Bildschirmrand, unten 22 pt rund.

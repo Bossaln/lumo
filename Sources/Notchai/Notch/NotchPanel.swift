@@ -38,10 +38,12 @@ final class NotchPanel: NSPanel {
     /// Setzt das Panel oben bündig und mittig auf die Notch, groß genug für jede Darstellung.
     func position(around notch: CGRect, islandSideWidth: CGFloat) {
         let contentWidth = max(NotchGeometry.bannerMaxWidth, NotchGeometry.panelWidth,
-                               NotchGeometry.verticalWidth, notch.width + 2 * islandSideWidth)
+                               NotchGeometry.verticalWidth, notch.width + 2 * islandSideWidth,
+                               notch.width + 2 * NotchGeometry.trackSideWidth, NotchGeometry.trackBannerWidth)
         let contentHeight = max(NotchGeometry.panelMaxHeight,
                                 notch.height + NotchGeometry.bannerExtraHeight,
-                                notch.height + NotchGeometry.verticalExtraHeight)
+                                notch.height + NotchGeometry.verticalExtraHeight,
+                                notch.height + NotchGeometry.trackBannerExtraHeight)
         let width = contentWidth + 2 * Self.glowMargin
         let height = contentHeight + Self.glowMargin
         // Ohne sofortiges Neuzeichnen: SwiftUI zeichnet im nächsten Durchlauf ohnehin.

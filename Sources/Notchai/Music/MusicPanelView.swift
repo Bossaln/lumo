@@ -34,7 +34,7 @@ struct MusicPanelView: View {
                                 .foregroundStyle(Color.white)
                                 .layoutPriority(1)
                             DancingBars(color: Color.white, playing: playing, count: 4, barWidth: 2.4, spacing: 1.8,
-                                        maxHeight: 11, minHeight: 3)
+                                        maxHeight: 11, minHeight: 3, levels: model.musicLevels)
                                 .opacity(playing ? 1 : 0)
                                 .animation(.easeInOut(duration: 0.3), value: playing)
                         }
