@@ -9,6 +9,8 @@ public final class SettingsStore {
     }
 
     @ObservationIgnored private let fileURL: URL
+    /// Nach `freeze()` schreibt der Speicher nichts mehr (beim Zurücksetzen der App).
+    @ObservationIgnored private var frozen = false
 
     /// Liest die Datei; fehlt sie oder ist sie kaputt, gelten die Standardwerte.
     public init(fileURL: URL) {
@@ -27,7 +29,13 @@ public final class SettingsStore {
             .appending(path: "settings.json")
     }
 
+    /// Ab jetzt nichts mehr schreiben: Die App wird gleich ohne Einstellungen neu gestartet.
+    public func freeze() {
+        frozen = true
+    }
+
     private func save() {
+        guard !frozen else { return }
         // Schreibfehler werden bewusst geschluckt: Einstellungen dürfen die App nie zum Absturz bringen.
         do {
             try FileManager.default.createDirectory(
