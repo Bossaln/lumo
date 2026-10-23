@@ -150,6 +150,16 @@ private struct SplitMix {
     #expect(out == [2, 3, 0.5])
 }
 
+@Test func ringCountsEveryFrame() {
+    // Steht der Zähler still, kommt kein Ton mehr an (etwa nach dem Wechsel auf AirPods).
+    let ring = AudioSampleRing(capacity: 4)
+    #expect(ring.framesWritten == 0)
+    let samples = [Float](repeating: 0.1, count: 6)
+    samples.withUnsafeBufferPointer { ring.write($0.baseAddress!, nil, frames: 6, stride: 1) }
+    samples.withUnsafeBufferPointer { ring.write($0.baseAddress!, nil, frames: 3, stride: 1) }
+    #expect(ring.framesWritten == 9)
+}
+
 @Test func ringNoticesRealSound() {
     let ring = AudioSampleRing(capacity: 8)
     let silence = [Float](repeating: 0, count: 4)

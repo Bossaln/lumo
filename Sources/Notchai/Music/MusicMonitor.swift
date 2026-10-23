@@ -37,6 +37,9 @@ final class MusicMonitor {
     private var pendingTrack: String?
     private var artworkCache: [String: NSImage] = [:]
     private var artworkOrder: [String] = []
+    private var trackChanges = TrackChangeDetector()
+    /// Neuer Titel (`trackKey`), den die Notch zeigt, sobald sein Cover da ist (oder feststeht, dass keins kommt).
+    private var announcementPending: String?
 
     // Prüfhilfe für `docs/now-playing.md` (Entwickler-Seite der Einstellungen).
     private var lastProbeOutput = "–"
@@ -141,6 +144,7 @@ final class MusicMonitor {
         let now = Date()
         let current = settings.musicEnabled ? store.current(settings: settings, now: now) : nil
         let compact = settings.musicEnabled && store.showsCompact(settings: settings, now: now)
+        if trackChanges.isNewTrack(current), let current { announcementPending = current.trackKey }
         if model.nowPlaying != current { model.nowPlaying = current }
         if let seek = model.musicSeek, seek.isSettled(by: current, trackKey: current?.trackKey, now: now) {
             model.musicSeek = nil
@@ -219,6 +223,7 @@ final class MusicMonitor {
             model.artwork = image
             model.musicAppIcon = icon
             model.artworkGlow = image.flatMap(Self.glowColor)
+            if let track, self?.announcementPending == track { self?.announce(track) }
         }
         // Ein neuer Titel nach einem anderen: erst die Richtung setzen, dann (im nächsten Durchlauf) das Cover
         // wechseln. SwiftUI nimmt das Wegklappen des alten Covers aus dessen letztem Stand.
@@ -234,6 +239,15 @@ final class MusicMonitor {
         }
         model.skipDirection = direction
         Task { @MainActor in apply() }
+    }
+
+    /// Fährt die Notch kurz aus und zeigt den neuen Titel samt Cover (Einstellung `musicTrackChangeStyle`).
+    private func announce(_ track: String) {
+        announcementPending = nil
+        guard let item = model.nowPlaying, item.trackKey == track else { return }
+        model.announceTrack(TrackAnnouncement(style: model.settingsStore.settings.musicTrackChangeStyle,
+                                              title: item.title, artist: item.artist, artwork: model.artwork,
+                                              appIcon: model.musicAppIcon, glow: model.artworkGlow))
     }
 
     /// Musik liefert die Bilddaten (`«data …»`), Spotify eine Bild-URL auf seinem Bildserver.

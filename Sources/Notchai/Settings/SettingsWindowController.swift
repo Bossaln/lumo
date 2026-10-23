@@ -15,13 +15,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var openAssistant: () -> Void = {}
     private var developer = DeveloperTools()
     private var tryOut: () -> Void = {}
+    private var music = MusicSettingsActions()
     private var window: NSWindow?
     /// Status des Anmeldeobjekts, gelesen beim Öffnen und nach jeder Änderung. Jede Abfrage geht an einen anderen
     /// Prozess; im Rumpf einer Ansicht würde sie bei jedem Neuzeichnen laufen.
     private(set) var loginItemStatus: SMAppService.Status = .notRegistered
 
     func configure(settingsStore: SettingsStore, shelfStore: ShelfStore, setup: SetupController, updates: UpdateController,
-                   developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void) {
+                   developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void,
+                   music: MusicSettingsActions) {
         self.settingsStore = settingsStore
         self.shelfStore = shelfStore
         self.setup = setup
@@ -29,6 +31,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.developer = developer
         self.openAssistant = openAssistant
         self.tryOut = tryOut
+        self.music = music
     }
 
     /// Fenstertitel in der aktuellen Sprache (nach einem Sprachwechsel).
@@ -63,7 +66,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 updates: updates,
                 openAssistant: openAssistant,
                 developer: developer,
-                tryOut: tryOut
+                tryOut: tryOut,
+                music: music
             ))
             window.isReleasedWhenClosed = false
             window.delegate = self
@@ -121,6 +125,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         // Nur bei Änderung schreiben: Jede Änderung zeichnet alles neu, was Einstellungen liest (auch die Notch).
         if settingsStore.settings.launchAtLogin != enabled { settingsStore.settings.launchAtLogin = enabled }
     }
+}
+
+/// Was die Seite „Musik“ der Einstellungen von der laufenden App braucht.
+@MainActor
+struct MusicSettingsActions {
+    /// Zeigt in der echten Notch, wie ein neuer Titel aussieht.
+    var previewTrackChange: () -> Void = {}
+    /// Für den Hinweis, ob echter Ton ankommt.
+    var visualizer: MusicVisualizer?
 }
 
 /// Hosting-View, die misst, wie lange SwiftUI für ihre Ansicht rechnet (Seite „Entwickler“ › Reaktion).

@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var coordinator: HookCoordinator?
     private(set) var updates: UpdateController?
     private(set) var music: MusicMonitor?
+    private(set) var visualizer: MusicVisualizer?
     private(set) var office: OfficeWindowController?
     private var officeHotkey: OfficeHotkey?
     private var setupWindow: SetupWindowController?
@@ -68,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let music = MusicMonitor(model: model)
         self.music = music
         music.start()
+        // Echte Balken: Ton abgreifen, solange Balken zu sehen sind.
+        let visualizer = MusicVisualizer()
+        self.visualizer = visualizer
+        model.musicLevels = { [weak visualizer] count, time in visualizer?.levels(count: count, at: time) }
+        visualizer.start(model: model)
 
         // Lagerhalle: ein Klick auf eine Figur holt das Fenster ihrer Session nach vorn und schließt das Büro.
         let officeDirector = OfficeDirector(model: model)
@@ -88,7 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsStore: model.settingsStore, shelfStore: model.shelfStore, setup: setup, updates: updates,
             developer: makeDeveloperTools(model: model, setupWindow: setupWindow),
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
-            tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) })
+            tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) },
+            music: MusicSettingsActions(previewTrackChange: { [weak model] in model?.previewTrackAnnouncement() },
+                                        visualizer: visualizer))
 
         updateItem = statusItemController.addMenuItem({ [weak updates] in Self.menuTitle(for: updates?.state ?? .idle) }) {
             [weak self] in self?.updateMenuAction()

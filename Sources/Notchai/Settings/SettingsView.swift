@@ -15,6 +15,7 @@ struct SettingsView: View {
     let developer: DeveloperTools
     /// Zeigt ein Beispiel-Signal in der echten Notch.
     let tryOut: () -> Void
+    let music: MusicSettingsActions
 
     @ViewState private var selection: SettingsPane? = .general
     @ViewState private var launchAtLoginMessage: String? = nil
@@ -407,6 +408,45 @@ struct SettingsView: View {
                     Toggle(L("Podcasts zeigen"), isOn: setting(\.musicIncludePodcasts))
                 }
             }
+            Section(L("Neuer Titel")) {
+                ChoiceCards(options: [(TrackChangeStyle.island, L("Seitlich")), (.banner, L("Ausgefahren")),
+                                      (.off, L("Aus"))],
+                            selection: setting(\.musicTrackChangeStyle)) { style in
+                    TrackChangeThumbnail(style: style)
+                }
+                Text(trackChangeHint)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if settings.musicTrackChangeStyle != .off {
+                    Picker(L("Anzeigedauer"), selection: setting(\.musicTrackChangeSeconds)) {
+                        ForEach(AppSettings.trackChangeSecondChoices, id: \.self) { seconds in
+                            Text(L("{0} s", Int(seconds))).tag(seconds)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    HStack {
+                        Spacer()
+                        TryOutButton(action: music.previewTrackChange)
+                    }
+                }
+            }
+            Section(L("Balken")) {
+                Picker(L("Balken neben der Kamera"), selection: setting(\.musicVisualizer)) {
+                    Text(L("Echt, zur Musik")).tag(MusicVisualizerMode.audio)
+                    Text(L("Animiert")).tag(MusicVisualizerMode.animated)
+                }
+                .pickerStyle(.segmented)
+                Text(settings.musicVisualizer == .audio
+                     ? L("Für echte Balken hört notchai den Ton mit, der gerade spielt, und rechnet daraus die Höhen. Das bleibt auf diesem Mac, nichts wird gespeichert. Beim ersten Mal fragt macOS, ob notchai Systemaudio aufnehmen darf.")
+                     : L("Die Balken tanzen gleichmäßig, ohne den Ton abzugreifen."))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if settings.musicVisualizer == .audio, let visualizer = music.visualizer {
+                    VisualizerStatusRow(status: visualizer.status)
+                }
+            }
             Section(L("Darstellung")) {
                 Toggle(L("Eingeklappt neben der Kamera (Cover und Balken)"), isOn: setting(\.musicCompactView))
                 Toggle(L("Hintergrund in den Farben des Covers"), isOn: setting(\.musicArtworkBackground))
@@ -422,6 +462,14 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             knownPlayersSection
+        }
+    }
+
+    private var trackChangeHint: String {
+        switch settingsStore.settings.musicTrackChangeStyle {
+        case .island: L("Beim nächsten Titel fährt die Notch kurz zur Seite aus: links das Cover, rechts Titel und Interpret.")
+        case .banner: L("Beim nächsten Titel fährt die Notch kurz nach unten aus, mit großem Cover, Titel und Interpret.")
+        case .off: L("Beim nächsten Titel wechselt nur das Cover neben der Kamera.")
         }
     }
 

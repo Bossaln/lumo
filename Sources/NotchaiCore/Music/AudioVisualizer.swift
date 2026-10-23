@@ -140,6 +140,7 @@ public final class AudioSampleRing: @unchecked Sendable {
     private let lock = NSLock()
     private var writeIndex = 0
     private var written = 0
+    private var total = 0
     private var heardSound = false
 
     public init(capacity: Int) {
@@ -167,6 +168,14 @@ public final class AudioSampleRing: @unchecked Sendable {
         }
         heardSound = sound
         written = min(written + frames, capacity)
+        total += frames
+    }
+
+    /// Alle bisher geschriebenen Samples; steht der Zähler still, kommt kein Ton mehr an.
+    public var framesWritten: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return total
     }
 
     /// Kopiert die jüngsten `out.count` Samples (älteste zuerst). `false`, solange noch nicht genug da sind.
@@ -195,6 +204,7 @@ public final class AudioSampleRing: @unchecked Sendable {
         defer { lock.unlock() }
         writeIndex = 0
         written = 0
+        total = 0
         heardSound = false
     }
 }

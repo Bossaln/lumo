@@ -3,6 +3,7 @@ import NotchaiCore
 import SwiftUI
 
 /// Tanzende Balken wie auf dem iPhone: drei in der eingeklappten Notch, vier kleine neben dem Titel.
+/// Mit `levels` folgen sie dem echten Ton (`MusicVisualizer`); ohne echten Ton tanzen sie von selbst.
 /// Ist der Titel pausiert, stehen sie still (und es wird nichts neu gezeichnet).
 struct DancingBars: View {
     let color: Color
@@ -12,6 +13,8 @@ struct DancingBars: View {
     var spacing: CGFloat = 2.5
     var maxHeight: CGFloat = 14
     var minHeight: CGFloat = 3
+    /// Höhen aus dem echten Ton für `count` Balken zur Zeit des Bildes; `nil` = keine.
+    var levels: ((Int, TimeInterval) -> [Double]?)? = nil
 
     private static let speeds: [Double] = [7.1, 9.3, 5.7, 8.2]
     private static let phases: [Double] = [0, 1.9, 3.7, 5.3]
@@ -19,15 +22,20 @@ struct DancingBars: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !playing)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
+            let real = playing ? levels?(count, time) : nil
             HStack(alignment: .center, spacing: spacing) {
                 ForEach(0..<count, id: \.self) { index in
                     Capsule()
                         .fill(color)
-                        .frame(width: barWidth, height: height(index, at: time))
+                        .frame(width: barWidth, height: real.map { height(level: $0[index]) } ?? height(index, at: time))
                 }
             }
             .frame(height: maxHeight)
         }
+    }
+
+    private func height(level: Double) -> CGFloat {
+        minHeight + (maxHeight - minHeight) * CGFloat(min(max(level, 0), 1))
     }
 
     /// Zwei überlagerte Schwingungen je Balken, damit es nicht nach Gleichtakt aussieht.

@@ -22,6 +22,8 @@ cp "$BIN_DIR/notchai-hook" "$APP/Contents/MacOS/notchai-hook"
 cp "$BIN_DIR/notchai-welcome" "$APP/Contents/MacOS/notchai-welcome"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Texte der Freigabe-Abfragen von macOS auf Deutsch und Englisch.
+cp -R Resources/*.lproj "$APP/Contents/Resources/"
 
 # Herkunft für den Update-Knopf: Commit, Branch, Build-Nummer und (nur bei eigenen Builds) der Quellordner.
 PLIST="$APP/Contents/Info.plist"
