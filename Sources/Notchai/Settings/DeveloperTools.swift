@@ -13,6 +13,7 @@ final class DeveloperTools {
     /// Zeigt ein offenes Signal in der neu gewählten Form.
     var restyleSignal: () -> Void = {}
     var hookEventsText: () -> String = { "" }
+    var sessionSourcesText: () -> String = { "" }
     var nowPlayingText: () -> String = { "" }
     /// Begrüßung (Leuchten) und Einrichtung wie beim ersten Start.
     var showWelcome: () -> Void = {}

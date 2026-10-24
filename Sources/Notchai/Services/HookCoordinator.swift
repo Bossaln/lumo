@@ -268,6 +268,15 @@ final class HookCoordinator {
         onWaitingChange?(visible.contains { $0.status.isWaiting })
     }
 
+    /// Woher die Sessions kommen und warum eine fehlt (Entwickler-Seite): Transkripte je Agent, dann jede bekannte
+    /// Session mit Herkunft, Prozess und ob die Notch sie zeigt.
+    func sessionSourcesText() -> String {
+        let now = Date()
+        let report = TranscriptLibrary.sourceReport(home: home, now: now, maxAgeHours: settings.sessionMaxAgeHours,
+                                                    calendar: .current)
+        return ([report, ""] + book.diagnosticLines(settings: settings, now: now)).joined(separator: "\n")
+    }
+
     /// Die letzten Hook-Ereignisse als JSON-Zeilen (Entwickler-Seite der Einstellungen; hilft bei den offenen Mac-Prüfungen).
     func recentEventsText() -> String {
         recentEnvelopes.compactMap { try? HookWire.encodeLine($0) }

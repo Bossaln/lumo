@@ -82,24 +82,46 @@ public final class TranscriptLibrary {
 
     // MARK: - Dateien finden
 
+    /// Für die Diagnose: wie viele Transkripte es gibt, wie viele davon jung genug sind und wie viele Codex gepackt hat
+    /// (`.jsonl.zst`, liest notchai nicht).
+    public static func sourceReport(home: URL, now: Date, maxAgeHours: Int, calendar: Calendar) -> String {
+        let library = TranscriptLibrary(home: home)
+        let oldest = now.addingTimeInterval(-TimeInterval(maxAgeHours) * 3600)
+        let claude = library.claudeFiles()
+        let codex = library.codexFiles(now: now, calendar: calendar)
+        let packed = library.codexFolders(now: now, calendar: calendar)
+            .flatMap(library.contents).filter { $0.lastPathComponent.hasSuffix(".jsonl.zst") }
+        func recent(_ files: [URL]) -> Int { files.filter { library.modified($0).map { $0 >= oldest } ?? false }.count }
+        return [
+            "Claude: \(recent(claude)) von \(claude.count) Transkripten in den letzten \(maxAgeHours) h",
+            "Codex: \(recent(codex)) von \(codex.count) Rollouts in den letzten \(maxAgeHours) h, \(packed.count) gepackt (.jsonl.zst)",
+        ].joined(separator: "\n")
+    }
+
+    private func claudeFiles() -> [URL] {
+        let projects = home.appending(path: ".claude/projects", directoryHint: .isDirectory)
+        return contents(of: projects).flatMap(contents).filter { $0.pathExtension == "jsonl" }
+    }
+
+    /// Tagesordner der letzten `codexDays` Tage, neuester zuerst.
+    private func codexFolders(now: Date, calendar: Calendar) -> [URL] {
+        let sessions = home.appending(path: ".codex/sessions", directoryHint: .isDirectory)
+        return (0..<Self.codexDays).compactMap { daysBack in
+            guard let day = calendar.date(byAdding: .day, value: -daysBack, to: now) else { return nil }
+            let parts = calendar.dateComponents([.year, .month, .day], from: day)
+            guard let year = parts.year, let month = parts.month, let dayNumber = parts.day else { return nil }
+            return sessions.appending(path: String(format: "%04d/%02d/%02d", year, month, dayNumber), directoryHint: .isDirectory)
+        }
+    }
+
+    private func codexFiles(now: Date, calendar: Calendar) -> [URL] {
+        codexFolders(now: now, calendar: calendar).flatMap(contents).filter { $0.pathExtension == "jsonl" }
+    }
+
     private func discover(now: Date, oldest: Date, calendar: Calendar) {
         var found: [URL: Reader] = [:]
-        let projects = home.appending(path: ".claude/projects", directoryHint: .isDirectory)
-        for folder in contents(of: projects) {
-            for file in contents(of: folder) where file.pathExtension == "jsonl" {
-                found[file] = .claude(ClaudeTranscriptReader())
-            }
-        }
-        let sessions = home.appending(path: ".codex/sessions", directoryHint: .isDirectory)
-        for daysBack in 0..<Self.codexDays {
-            guard let day = calendar.date(byAdding: .day, value: -daysBack, to: now) else { continue }
-            let parts = calendar.dateComponents([.year, .month, .day], from: day)
-            guard let year = parts.year, let month = parts.month, let dayNumber = parts.day else { continue }
-            let folder = sessions.appending(path: String(format: "%04d/%02d/%02d", year, month, dayNumber), directoryHint: .isDirectory)
-            for file in contents(of: folder) where file.pathExtension == "jsonl" {
-                found[file] = .codex(CodexRolloutReader())
-            }
-        }
+        for file in claudeFiles() { found[file] = .claude(ClaudeTranscriptReader()) }
+        for file in codexFiles(now: now, calendar: calendar) { found[file] = .codex(CodexRolloutReader()) }
         let recent = found.filter { modified($0.key).map { $0 >= oldest } ?? false }
         // Bekannte Dateien behalten ihren Lesestand; zu alt gewordene werden vergessen.
         for url in readers.keys where recent[url] == nil { tailer.forget(url) }

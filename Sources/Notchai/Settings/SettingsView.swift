@@ -713,6 +713,12 @@ struct SettingsView: View {
                         DeveloperTools.copy(developer.hookEventsText(), empty: L("Noch keine Hook-Ereignisse empfangen."))
                     }
                 }
+                LabeledContent(L("Session-Quellen")) {
+                    Button(L("Kopieren")) {
+                        DeveloperTools.copy(developer.sessionSourcesText(), empty: L("Keine Sessions."))
+                    }
+                    .help(L("Transkripte von Claude Code und Codex und jede bekannte Session mit Herkunft und Prozess, ohne Inhalte"))
+                }
                 LabeledContent(L("Jetzt-läuft-Rohdaten")) {
                     Button(L("Kopieren")) { DeveloperTools.copy(developer.nowPlayingText(), empty: L("Keine Rohdaten.")) }
                 }

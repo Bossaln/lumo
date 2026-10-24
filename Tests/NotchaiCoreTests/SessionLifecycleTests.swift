@@ -127,3 +127,20 @@ private let tree: [Int32: (parent: Int32, name: String)] = [
     #expect(changes.contains(.release(requestId: id)))
     #expect(book.pendingRequests().isEmpty)
 }
+
+// MARK: - Diagnose
+
+@Test func diagnosisNamesSourceProcessAndVisibility() {
+    var event = HookEvent(hookEventName: "Stop", sessionId: "t1")
+    event.cwd = "/Users/test/Developer/notchai"
+    let envelope = HookEnvelope(requestId: UUID(), agent: .codex, mode: .event, event: event,
+                                env: ["__CFBundleIdentifier": "com.openai.codex"], sentAt: t0, agentPid: 777)
+    var book = SessionBook()
+    _ = book.apply(envelope: envelope, settings: .default, now: t0)
+    _ = book.apply(summary: transcript(session: "s9", at: t0), settings: .default, now: t0)
+    let lines = book.diagnosticLines(settings: .default, now: t0.addingTimeInterval(40 * 60))
+    #expect(lines.count == 2)
+    #expect(lines.contains { $0.hasPrefix("codex:t1") && $0.contains("codexApp") && $0.contains("pid=777")
+        && $0.contains("bundle=com.openai.codex") && $0.contains("hidden") })
+    #expect(lines.contains { $0.hasPrefix("claude:s9") && $0.contains("pid=-") })
+}

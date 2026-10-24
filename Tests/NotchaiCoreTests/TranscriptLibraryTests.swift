@@ -72,3 +72,15 @@ private let now = isoDate("2026-10-20T12:00:00.000Z")
     #expect(changed.first?.turnInProgress == false)
     #expect(changed.first?.lastAssistantText == "Fertig")
 }
+
+@Test func reportCountsWhereTranscriptsLie() throws {
+    let home = try makeHome()
+    try copyFixture("claude-basic", to: home.appending(path: ".claude/projects/p/s.jsonl"), modified: now)
+    try copyFixture("codex-basic", to: home.appending(path: ".codex/sessions/2026/10/20/rollout-a.jsonl"), modified: now)
+    // Neuere Codex-Versionen packen ruhende Rollouts mit zstd; notchai liest sie nicht.
+    try copyFixture("codex-basic", to: home.appending(path: ".codex/sessions/2026/10/01/rollout-b.jsonl.zst"),
+                    modified: now.addingTimeInterval(-90_000))
+    let report = TranscriptLibrary.sourceReport(home: home, now: now, maxAgeHours: 24, calendar: utc)
+    #expect(report.contains("Claude: 1 von 1 Transkripten in den letzten 24 h"))
+    #expect(report.contains("Codex: 1 von 1 Rollouts in den letzten 24 h, 1 gepackt (.jsonl.zst)"))
+}

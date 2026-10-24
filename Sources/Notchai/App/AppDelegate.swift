@@ -227,6 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.raiseSignal(signal)
         }
         developer.hookEventsText = { [weak self] in self?.coordinator?.recentEventsText() ?? "" }
+        developer.sessionSourcesText = { [weak self] in self?.coordinator?.sessionSourcesText() ?? "" }
         developer.nowPlayingText = { [weak self] in self?.music?.rawDataText() ?? "" }
         developer.showWelcome = { [weak setupWindow] in setupWindow?.showWithIntro() }
         developer.resetApp = { [weak self, weak model] in

@@ -294,6 +294,23 @@ public struct SessionBook: Sendable {
             }
     }
 
+    /// Für die Diagnose in den Entwickleroptionen: jede bekannte Session, auch versteckte, mit Herkunft, Prozess und ob
+    /// die Notch sie zeigt. Ohne Titel und Prompts.
+    public func diagnosticLines(settings: AppSettings, now: Date) -> [String] {
+        let shown = Set(visibleSessions(settings: settings, now: now).map(\.id))
+        return sessions.values.sorted { $0.id < $1.id }.map { s in
+            let h = s.host
+            let pid = extras[s.id]?.agentPid.map(String.init) ?? "-"
+            let fields = [
+                "source=\(s.host.source)", "pid=\(pid)", "entrypoint=\(h.entrypoint ?? "-")",
+                "originator=\(h.originator ?? "-")", "bundle=\(h.bundleId ?? "-")", "term=\(h.termProgram ?? "-")",
+                "status=\(s.status)", "idle=\(Int(now.timeIntervalSince(s.lastActivity) / 60))min",
+                shown.contains(s.id) ? "shown" : "hidden",
+            ]
+            return s.id + " " + fields.joined(separator: " ")
+        }
+    }
+
     // MARK: - Hilfen
 
     /// Von Hand entfernt und seitdem still, oder zu lange still, ohne dass ein eigener Prozess zeigt, dass sie noch
