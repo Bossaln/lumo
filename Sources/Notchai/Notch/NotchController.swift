@@ -34,7 +34,6 @@ final class NotchController {
         self.model = model
         panel = NotchPanel(rootView: NotchRootView(model: model))
         panel.keyPolicy = { [weak model] in model?.acceptsKeyboard ?? false }
-        model.onReleaseKeyboard = { [weak self] in self?.releaseKeyboard() }
 
         // Globale Maus-Monitore brauchen keine Bedienungshilfen-Berechtigung. Gedrückte Maustaste und Ziehen
         // zählen mit: So merkt die Notch, wenn jemand Dateien zu ihr zieht (Reiter „Ablage“).
@@ -255,7 +254,32 @@ final class NotchController {
         guard model.notch.isWritingNote else { return }
         panel.makeKey()
         // Ohne Tastatur ließe sich nichts schreiben; dann gleich wieder zu.
-        if !panel.isKeyWindow { model.send(.editingEnded) }
+        guard panel.isKeyWindow else {
+            model.send(.editingEnded)
+            return
+        }
+        focusNoteField()
+    }
+
+    /// Setzt den Cursor ins Notizfeld, sobald SwiftUI es gezeichnet hat (der Reiter kommt eben erst ins Bild).
+    private func focusNoteField(attempt: Int = 0) {
+        if let field = Self.editableText(in: panel.contentView), panel.makeFirstResponder(field) { return }
+        guard attempt < 8, model.notch.isWritingNote else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(40))
+            self?.focusNoteField(attempt: attempt + 1)
+        }
+    }
+
+    /// Erstes Eingabefeld in der Ansicht (SwiftUI baut Textfelder aus AppKit-Textfeldern bzw. -Textansichten).
+    private static func editableText(in view: NSView?) -> NSView? {
+        guard let view else { return nil }
+        if let field = view as? NSTextField, field.isEditable { return field }
+        if let text = view as? NSTextView, text.isEditable { return text }
+        for child in view.subviews {
+            if let found = editableText(in: child) { return found }
+        }
+        return nil
     }
 
     /// Liegt der Zeiger über dem Knopfbereich einer sichtbaren Island?
@@ -279,6 +303,17 @@ final class NotchController {
     /// Escape im Notch-Panel gibt die Tastatur zurück; `true`, wenn die Taste damit verbraucht ist.
     private func releaseKeyboard(onEscapeIn window: NSWindow?) -> Bool {
         guard window === panel, panel.isKeyWindow else { return false }
+        // Notiz über zweimal ⌃: erst zuklappen, dann (unsichtbar hinter der Kamera) die Tastatur abgeben.
+        if model.notch.isWritingNote {
+            model.send(.editingEnded)
+            if model.notch.mode == .idle {
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .milliseconds(450))
+                    self?.releaseKeyboard()
+                }
+                return true
+            }
+        }
         releaseKeyboard()
         return true
     }

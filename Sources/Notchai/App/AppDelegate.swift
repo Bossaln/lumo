@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onDecide = { [weak coordinator] id, action in coordinator?.decide(id, action: action) }
         model.onReply = { [weak coordinator] session, text in coordinator?.reply(text, to: session) }
         model.onFocusSession = { [weak coordinator] session in coordinator?.replies.focus(session) }
+        model.onDismissSession = { [weak coordinator] session in coordinator?.dismiss(session) }
         coordinator.onWaitingChange = { [weak self] waiting in
             self?.sessionsWaiting = waiting
             self?.updateWaitingDot()

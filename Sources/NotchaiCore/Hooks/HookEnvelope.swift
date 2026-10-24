@@ -13,14 +13,19 @@ public struct HookEnvelope: Codable, Sendable {
     public var event: HookEvent
     public var env: [String: String]
     public var sentAt: Date
+    /// Prozess des Agenten, der den Hook gestartet hat (`ProcessTree.agent`). Endet er, ist die Session vorbei,
+    /// auch ohne `SessionEnd` (Terminal geschlossen). Ältere Hook-Programme schicken ihn nicht.
+    public var agentPid: Int32?
 
-    public init(requestId: UUID, agent: AgentKind, mode: HookMode, event: HookEvent, env: [String: String], sentAt: Date) {
+    public init(requestId: UUID, agent: AgentKind, mode: HookMode, event: HookEvent, env: [String: String], sentAt: Date,
+                agentPid: Int32? = nil) {
         self.requestId = requestId
         self.agent = agent
         self.mode = mode
         self.event = event
         self.env = env
         self.sentAt = sentAt
+        self.agentPid = agentPid
     }
 }
 

@@ -107,6 +107,14 @@ final class HookCoordinator {
             server?.reply(HookReply(requestId: id, stdout: HookOutput.noDecision))
         }
         process(changes)
+        // Terminal oder App geschlossen, ohne dass `SessionEnd` kam: Der Agent-Prozess ist weg, die Session auch.
+        process(book.removeEnded(isAlive: ProcessTree.isAlive))
+        refreshSessions()
+    }
+
+    /// Nimmt eine Session aus der Notch, bis sie wieder etwas tut (Detailansicht, „Aus der Notch entfernen“).
+    func dismiss(_ session: AgentSession) {
+        process(book.dismiss(session.id, now: Date()))
         refreshSessions()
     }
 
