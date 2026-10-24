@@ -1,7 +1,7 @@
 import NotchaiCore
 import SwiftUI
 
-/// Reiter „Sessions“: eine Zeile pro Session, darunter die Tagesbilanz.
+/// Reiter „Sessions“: eine Zeile pro Session, darunter die Tagesbilanz. Ein Klick auf eine Zeile zeigt ihre Details.
 struct SessionListView: View {
     let model: AppModel
 
@@ -12,7 +12,10 @@ struct SessionListView: View {
         // Die Zeitangaben („vor 2 min“) laufen auch ohne neue Ereignisse weiter.
         TimelineView(.periodic(from: .now, by: 30)) { context in
             VStack(alignment: .leading, spacing: 2) {
-                if model.sessions.isEmpty {
+                if let detail = model.detailSession {
+                    SessionDetailView(session: detail, now: context.date, model: model)
+                        .transition(.blurFade)
+                } else if model.sessions.isEmpty {
                     Text(L("Keine aktiven Sessions"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SessionPalette.secondary)
@@ -30,7 +33,10 @@ struct SessionListView: View {
                 }
                 SessionFooter(model: model)
             }
+            .animation(.easeInOut(duration: 0.22), value: model.detailSession?.id)
         }
+        // Beim nächsten Aufklappen wieder die Liste.
+        .onDisappear { model.closeSessionDetail() }
     }
 }
 

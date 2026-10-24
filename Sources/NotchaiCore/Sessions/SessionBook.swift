@@ -71,6 +71,7 @@ public struct SessionBook: Sendable {
         session.lastActivity = max(session.lastActivity, now)
         extra.hookTitle = e.sessionTitle ?? extra.hookTitle
         extra.model = e.model ?? extra.model
+        session.model = e.model ?? session.model
         var changes: [SessionChange] = []
 
         switch (e.hookEventName, envelope.mode) {
@@ -173,8 +174,15 @@ public struct SessionBook: Sendable {
         extra.customTitle = summary.customTitle ?? extra.customTitle
         extra.firstPrompt = summary.firstPrompt ?? extra.firstPrompt
         extra.lastPrompt = summary.lastPrompt ?? extra.lastPrompt
-        let limit = summary.agent == .codex ? summary.contextWindow : ContextWindow.claudeLimit(model: summary.model ?? extra.model)
+        let model = summary.model ?? extra.model
+        let limit = summary.agent == .codex ? summary.contextWindow : ContextWindow.claudeLimit(model: model)
         session.contextFraction = ContextWindow.fraction(tokens: summary.contextTokens, limit: limit) ?? session.contextFraction
+        session.model = model ?? session.model
+        if let tokens = summary.contextTokens { session.contextTokens = tokens; session.contextLimit = limit }
+        session.usageLimits = summary.usageLimits ?? session.usageLimits
+        session.startedAt = [summary.prompts.first, summary.turns.first?.start].compactMap { $0 }.min() ?? session.startedAt
+        session.promptCount = summary.prompts.count
+        session.editedFileCount = Set(summary.editedFiles.map(\.path)).count
         if let step = summary.lastStep, extra.hookStepAt.map({ (summary.lastActivity ?? .distantPast) > $0 }) ?? true {
             session.lastStep = step
         }
@@ -288,13 +296,21 @@ public struct SessionBook: Sendable {
 
     // MARK: - Hilfen
 
-    /// Von Hand entfernt und seitdem still, oder ohne bekannten Prozess zu lange still: nicht zeigen.
+    /// Von Hand entfernt und seitdem still, oder zu lange still, ohne dass ein eigener Prozess zeigt, dass sie noch
+    /// offen ist: nicht zeigen.
     private func isShown(_ session: AgentSession, now: Date) -> Bool {
         guard let extra = extras[session.id] else { return true }
         if let dismissed = extra.dismissedAt, session.lastActivity <= dismissed { return false }
-        if extra.agentPid == nil, session.pending == nil,
+        if !provesOpen(extra, host: session.host), session.pending == nil,
            now.timeIntervalSince(session.lastActivity) > Self.unconfirmedLifetime { return false }
         return true
+    }
+
+    /// Ein Agent-Prozess nur für diese Session, außerhalb der Apps: Solange er läuft, ist die Session offen. Die
+    /// Codex-App führt alle Threads über einen Prozess, und in beiden Apps läuft der Prozess weiter, wenn der Chat zu ist.
+    private func provesOpen(_ extra: Extras, host: SessionHost) -> Bool {
+        guard let pid = extra.agentPid, host.source != .claudeApp, host.source != .codexApp else { return false }
+        return extras.values.filter { $0.agentPid == pid }.count == 1
     }
 
     private static func rank(_ status: SessionStatus) -> Int {

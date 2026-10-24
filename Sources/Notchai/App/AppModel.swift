@@ -46,6 +46,12 @@ final class AppModel {
     var replyTargetID: String?
     /// Kreise-Ansicht: Session, deren Detailkarte gezeigt wird.
     var selectedCircleID: String?
+    /// Session, deren Details der Reiter „Sessions“ statt der Liste zeigt (Klick auf eine Zeile).
+    var detailSessionID: String?
+    /// Die Session zu `detailSessionID`, solange sie noch zu sehen ist; sonst zeigt der Reiter wieder die Liste.
+    var detailSession: AgentSession? {
+        detailSessionID.flatMap { id in sessions.first { $0.id == id } }
+    }
     /// Entwürfe der Antwortfelder je Session; überstehen Zu- und Aufklappen.
     private(set) var replyDrafts: [String: String] = [:]
     /// Entscheidung zu einer wartenden Anfrage aus einer Session-Zeile (ID = Request-ID).
@@ -240,6 +246,22 @@ final class AppModel {
     func saveNote() {
         guard noteStore.add(noteDraft) != nil else { return }
         noteDraft = ""
+    }
+
+    func openSessionDetail(_ session: AgentSession) {
+        detailSessionID = session.id
+    }
+
+    func closeSessionDetail() {
+        detailSessionID = nil
+    }
+
+    /// Nimmt die Session aus der Notch, bis sie wieder etwas tut (`SessionBook.dismiss`).
+    func dismissSession(_ session: AgentSession) {
+        if detailSessionID == session.id { detailSessionID = nil }
+        if replyTargetID == session.id { replyTargetID = nil }
+        onDismissSession?(session)
+        showNotice(L("Entfernt – kommt zurück, sobald die Session wieder etwas tut"))
     }
 
     /// Schickt den Entwurf an die Session und schließt das Antwortfeld.

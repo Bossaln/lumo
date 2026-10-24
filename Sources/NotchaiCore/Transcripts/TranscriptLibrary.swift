@@ -7,8 +7,9 @@ import Foundation
 public final class TranscriptLibrary {
     /// So oft werden die Ordner neu durchsucht; dazwischen werden nur die bekannten Dateien gelesen.
     static let discoveryInterval: TimeInterval = 10
-    /// Codex legt ein Rollout im Ordner seines Starttags ab; so viele Tage zurück wird gesucht.
-    static let codexDays = 7
+    /// Codex legt ein Rollout im Ordner seines Starttags ab und schreibt weitergeführte Threads (etwa in der
+    /// Codex-App) in dieselbe Datei; so viele Tage zurück wird gesucht.
+    static let codexDays = 45
 
     private enum Reader {
         case claude(ClaudeTranscriptReader)

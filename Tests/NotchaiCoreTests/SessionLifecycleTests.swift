@@ -84,6 +84,29 @@ private let tree: [Int32: (parent: Int32, name: String)] = [
     #expect(visible(book, at: t0.addingTimeInterval(41 * 60)) == ["s1"])
 }
 
+@Test func appThreadsSharingOneProcessFadeWhenIdle() {
+    // Die Codex-App führt alle Threads über einen Prozess: Er läuft, solange die App offen ist, auch für Threads,
+    // die niemand mehr benutzt.
+    var book = SessionBook()
+    _ = book.apply(envelope: hook("Stop", session: "t1", agent: .codex, pid: 777), settings: .default, now: t0)
+    _ = book.apply(envelope: hook("Stop", session: "t2", agent: .codex, pid: 777), settings: .default, now: t0)
+    _ = book.removeEnded { _ in true }
+    #expect(visible(book, at: t0.addingTimeInterval(20 * 60)).sorted() == ["t1", "t2"])
+    #expect(visible(book, at: t0.addingTimeInterval(31 * 60)).isEmpty)
+}
+
+@Test func sessionInTheClaudeAppFadesWhenIdle() {
+    // Ob ein Chat in der App noch offen ist, verrät kein Prozess.
+    var event = HookEvent(hookEventName: "Stop", sessionId: "s1")
+    event.cwd = "/Users/test/Developer/notchai"
+    let envelope = HookEnvelope(requestId: UUID(), agent: .claude, mode: .event, event: event,
+                                env: ["CLAUDE_CODE_ENTRYPOINT": "claude-desktop"], sentAt: t0, agentPid: 4242)
+    var book = SessionBook()
+    _ = book.apply(envelope: envelope, settings: .default, now: t0)
+    #expect(visible(book, at: t0.addingTimeInterval(20 * 60)) == ["s1"])
+    #expect(visible(book, at: t0.addingTimeInterval(31 * 60)).isEmpty)
+}
+
 // MARK: - Von Hand entfernen
 
 @Test func removedSessionStaysHiddenUntilItDoesSomething() {

@@ -48,6 +48,15 @@ private let now = isoDate("2026-10-20T12:00:00.000Z")
     #expect(changed.count == 1)
 }
 
+@Test func olderCodexThreadContinuedTodayIsFound() throws {
+    // Die Codex-App führt alte Threads weiter; Codex schreibt dann in die Datei im Ordner ihres Starttags.
+    let home = try makeHome()
+    try copyFixture("codex-basic", to: home.appending(path: ".codex/sessions/2026/09/26/rollout-old.jsonl"),
+                    modified: now.addingTimeInterval(-600))
+    let changed = TranscriptLibrary(home: home).poll(now: now, maxAgeHours: 24, calendar: utc)
+    #expect(changed.count == 1)
+}
+
 @Test func appendedLinesUpdateTheSummary() throws {
     let home = try makeHome()
     let file = home.appending(path: ".claude/projects/p/s.jsonl")

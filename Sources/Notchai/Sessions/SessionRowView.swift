@@ -9,6 +9,8 @@ struct SessionRowView: View {
     let model: AppModel
     /// Detailkarte der Kreise: Antwortfeld immer offen.
     var alwaysShowsReply = false
+    /// Kopf der Detailansicht: Deren Knöpfe stehen darunter, ein Klick öffnet nichts mehr.
+    var isDetail = false
 
     @ViewState private var hovering = false
 
@@ -26,7 +28,7 @@ struct SessionRowView: View {
                     Text(session.title)
                         .font(.system(size: 13.5, weight: .bold))
                         .foregroundStyle(SessionPalette.title)
-                        .lineLimit(1)
+                        .lineLimit(isDetail ? 2 : 1)
                         .truncationMode(.tail)
                     subline
                 }
@@ -34,8 +36,8 @@ struct SessionRowView: View {
                 trailing
             }
             .contentShape(Rectangle())
-            // Klick auf die Zeile holt das Fenster der Session nach vorn (nicht auf Knöpfe und Antwortfeld darunter).
-            .onTapGesture { model.onFocusSession?(session) }
+            // Klick auf die Zeile zeigt die Details (nicht auf Knöpfe und Antwortfeld darunter).
+            .onTapGesture { if !isDetail { model.openSessionDetail(session) } }
             if let pending = session.pending {
                 pendingButtons(pending)
                     .padding(.leading, 22)
@@ -87,7 +89,19 @@ struct SessionRowView: View {
 
     private var trailing: some View {
         HStack(spacing: 8) {
-            if (hovering || isReplying) && !alwaysShowsReply {
+            if hovering && !alwaysShowsReply && !isDetail {
+                Button { model.dismissSession(session) } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(SessionPalette.secondary)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(SignalTheme.buttonFill))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help(L("Aus der Notch entfernen"))
+            }
+            if (hovering || isReplying) && !alwaysShowsReply && !isDetail {
                 Button {
                     model.replyTargetID = isReplying ? nil : session.id
                 } label: {
