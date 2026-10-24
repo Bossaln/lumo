@@ -96,6 +96,35 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 
 **Folgen für notchai:** Erkannt wird nur über `originator`, ohne feste Liste.
 
+**Nachtrag 0.163 (aus dem Programm gelesen, nicht an einem echten Rollout geprüft):**
+
+- `token_count` trägt neben `info` auch `rate_limits` (`RateLimitSnapshot`): `limit_id`, `limit_name`, `primary` und
+  `secondary` mit je `used_percent`, `window_minutes` und `resets_at` (Unix-Sekunden), dazu `credits` und `plan_type`.
+  Ältere Versionen schrieben `resets_in_seconds` statt `resets_at`. `rate_limits` kann `null` sein oder nur
+  `limit_id` enthalten; notchai behält dann die zuletzt bekannten Werte und nimmt nur `limit_id` `codex` (oder ohne).
+- Codex packt ruhende Rollouts mit zstd zu `rollout-….jsonl.zst` (`rollout/src/compression.rs`). Laufende Threads
+  bleiben `.jsonl`; die gepackten liest notchai nicht. Die Entwickler-Seite zählt sie („Session-Quellen kopieren“).
+- Ein weitergeführter Thread schreibt in seine alte Datei im Ordner seines Starttags. notchai sucht deshalb 45 Tage
+  zurück, zählt aber nur Dateien, die innerhalb der eingestellten Session-Dauer geändert wurden.
+
+## Sessions in den Apps
+
+- **Claude-App:** Gewöhnliche Chats liegen nur in der Cloud; davon sieht notchai nichts. Claude-Code-Sessions in der
+  App schreiben nach `~/.claude/projects` (`entrypoint: "claude-desktop"`) und führen die Hooks aus
+  `~/.claude/settings.json` aus (erwartet, noch nicht auf einem Mac bestätigt).
+- **Codex-App:** teilt `~/.codex` mit der Kommandozeile. Das Programm kennt die `originator` `Codex Desktop` und
+  `codex_desktop`, die App setzt `__CFBundleIdentifier=com.openai.codex`. Alle Threads laufen über einen
+  `app-server`-Prozess, der so lange läuft wie die App.
+- **Folgen für notchai:** Ein Agent-Prozess beweist nur dann, dass eine Session offen ist, wenn er zu genau einer
+  Session gehört und nicht in einer der Apps läuft. Sonst verschwindet sie nach 30 Minuten Ruhe und kommt mit neuer
+  Aktivität zurück.
+
+## Nutzungslimits
+
+Claude Code gibt die Abo-Limits (`rate_limits.five_hour`, `rate_limits.seven_day`) nur an seine Statuszeile weiter,
+nicht an Hooks und nicht ins Transkript. Die Detailansicht zeigt sie deshalb nur für Codex und verweist bei Claude
+auf `/usage`.
+
 ## Claude-Transkripte
 
 Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
@@ -111,8 +140,9 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 ## Offene Punkte
 
 - `CLAUDE_CODE_ENTRYPOINT` und `__CFBundleIdentifier` für Sessions in der Claude-App (erwartet `claude-desktop` bzw. `com.anthropic.claudefordesktop`) und im VS-Code-Terminal (`TERM_PROGRAM=vscode`).
-- `originator` von Sessions aus der Codex-App.
+- `originator` von Sessions aus der Codex-App (erwartet `Codex Desktop`, siehe oben).
 - Ob die Codex-App die Hook-Freigabe genauso abfragt wie die Kommandozeile.
+- Ob `rate_limits` in echten Rollouts genau so aussieht wie oben.
 - cmux: Name der `CMUX_*`-Variable mit der Surface-ID.
 
-Am einfachsten geht das, sobald notchai die Hooks eingerichtet hat: Die Entwickler-Seite der Einstellungen zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“).
+Am einfachsten geht das, sobald notchai die Hooks eingerichtet hat: Die Entwickler-Seite der Einstellungen zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“) und jede bekannte Session mit Herkunft und Prozess („Session-Quellen kopieren“).

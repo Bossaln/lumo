@@ -29,9 +29,11 @@ notchai speaks **English** and **German** – pick your language in the first st
 and glows in that agent's color. Allow, deny, pick an answer or type a reply without leaving what you are doing.
 Choose between three styles: a flat island next to the camera, a wide banner, or a taller panel.
 
-**Every session at a glance.** Hover over the notch to see all running Claude Code and Codex sessions: title,
-project, last step, how full the context is, and what you got done today. Click a session to bring its window to the
-front, or reply to it directly. Works with the Claude desktop app, the terminal, VS Code and cmux.
+**Every session at a glance.** Hover over the notch to see your active Claude Code and Codex sessions: title,
+project, last step, how full the context is, and what you got done today. Click a session for its details – where it
+runs, folder, model, context in tokens and, for Codex, how much of your 5-hour and weekly limit is used – and bring
+its window to the front, reply to it or remove it from the notch. Sessions disappear by themselves when you close
+them. Works with the terminal, VS Code, Cursor, cmux and Claude Code sessions in the Claude and Codex apps.
 
 **Now playing.** Spotify, Apple Music and most other players: cover art, title, a progress bar you can scrub,
 playback controls, a backdrop in the colors of the cover and a soft glow. While music plays, a compact view sits right
@@ -52,9 +54,9 @@ real sun. Double-tap the right <kbd>⌘</kbd> key to open the warehouse in a big
 drop them on **AirDrop** to send them to a device nearby, or on the **shelf** to park them for a moment and drag them
 out again later. notchai only remembers where the files are; nothing is copied or moved.
 
-**Quick notes.** Press <kbd>⌃</kbd> twice in any app and the notch opens with a note field. Type, press
-<kbd>↩</kbd> and it closes again; <kbd>Esc</kbd> closes without saving and keeps the draft. Your notes live in the
-notch's "Notes" tab – click one to copy it. They stay on your Mac.
+**Quick notes.** Press <kbd>⌃</kbd> twice in any app and the notch opens, ready to type. Press <kbd>↩</kbd> to save
+and type the next note right away; <kbd>Esc</kbd> closes and keeps an unsaved draft. Your notes live in the notch's
+"Notes" tab – click one to copy it. They stay on your Mac.
 
 **Almost everything is a setting.** True black background so the notch blends into the camera cutout, agent colors,
 signal style, animations, glow, sounds, which tab opens on hover, music sources, warehouse size and lighting, and more.

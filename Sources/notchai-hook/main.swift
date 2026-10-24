@@ -17,10 +17,12 @@ while input.count <= inputLimit, let chunk = try? FileHandle.standardInput.read(
     input.append(chunk)
 }
 
+// Der Agent über diesem Hook (meist über eine Shell): Endet er, verschwindet seine Session aus der Notch.
 let output = HookClient.run(arguments: Array(CommandLine.arguments.dropFirst()),
                             stdin: input.count <= inputLimit ? input : Data(),
                             env: ProcessInfo.processInfo.environment,
-                            home: FileManager.default.homeDirectoryForCurrentUser)
+                            home: FileManager.default.homeDirectoryForCurrentUser,
+                            agentPid: ProcessTree.agent(above: getppid(), lookup: ProcessTree.systemLookup))
 if !output.isEmpty {
     try? FileHandle.standardOutput.write(contentsOf: Data(output.utf8))
 }

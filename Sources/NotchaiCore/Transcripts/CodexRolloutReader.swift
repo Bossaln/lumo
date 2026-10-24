@@ -37,6 +37,11 @@ public struct CodexRolloutReader: Sendable {
         case "task_complete":
             if let date { summary.endTurn(at: date, text: payload["last_agent_message"]?.stringValue) }
         case "token_count":
+            let limitId = payload["rate_limits"]?["limit_id"]?.stringValue
+            if limitId == nil || limitId == UsageLimits.codexLimitId,
+               let limits = UsageLimits(codex: payload["rate_limits"], at: date) {
+                summary.usageLimits = limits
+            }
             guard let info = payload["info"] else { return }
             if let tokens = info["last_token_usage"]?["total_tokens"]?.intValue { summary.contextTokens = tokens }
             if let window = info["model_context_window"]?.intValue { summary.contextWindow = window }

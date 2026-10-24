@@ -39,6 +39,8 @@ public struct TranscriptSummary: Equatable, Sendable {
     public var contextTokens: Int?
     /// Nur Codex schreibt die Fenstergröße mit; für Claude ergibt sie sich aus dem Modell.
     public var contextWindow: Int?
+    /// Nur Codex: Nutzungslimits des Abos aus der letzten `token_count`-Meldung.
+    public var usageLimits: UsageLimits?
     public var lastStep: String?
     public var errorCount = 0
     public var lastActivity: Date?

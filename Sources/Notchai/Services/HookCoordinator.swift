@@ -107,6 +107,14 @@ final class HookCoordinator {
             server?.reply(HookReply(requestId: id, stdout: HookOutput.noDecision))
         }
         process(changes)
+        // Terminal oder App geschlossen, ohne dass `SessionEnd` kam: Der Agent-Prozess ist weg, die Session auch.
+        process(book.removeEnded(isAlive: ProcessTree.isAlive))
+        refreshSessions()
+    }
+
+    /// Nimmt eine Session aus der Notch, bis sie wieder etwas tut (Detailansicht, „Aus der Notch entfernen“).
+    func dismiss(_ session: AgentSession) {
+        process(book.dismiss(session.id, now: Date()))
         refreshSessions()
     }
 
@@ -258,6 +266,15 @@ final class HookCoordinator {
         let visible = book.visibleSessions(settings: settings, now: Date())
         if visible != model.sessions { model.sessions = visible }
         onWaitingChange?(visible.contains { $0.status.isWaiting })
+    }
+
+    /// Woher die Sessions kommen und warum eine fehlt (Entwickler-Seite): Transkripte je Agent, dann jede bekannte
+    /// Session mit Herkunft, Prozess und ob die Notch sie zeigt.
+    func sessionSourcesText() -> String {
+        let now = Date()
+        let report = TranscriptLibrary.sourceReport(home: home, now: now, maxAgeHours: settings.sessionMaxAgeHours,
+                                                    calendar: .current)
+        return ([report, ""] + book.diagnosticLines(settings: settings, now: now)).joined(separator: "\n")
     }
 
     /// Die letzten Hook-Ereignisse als JSON-Zeilen (Entwickler-Seite der Einstellungen; hilft bei den offenen Mac-Prüfungen).

@@ -15,8 +15,6 @@ final class AppModel {
     let noteStore: NoteStore
     /// Angefangene Notiz; übersteht Zu- und Aufklappen.
     var noteDraft = ""
-    /// Gibt die Tastatur an die vorige App zurück (`NotchController`).
-    @ObservationIgnored var onReleaseKeyboard: (() -> Void)?
     /// Bildschirm mit Notch; `nil`, wenn keiner angeschlossen oder aufgeklappt ist.
     var screen: ScreenInfo?
     /// Von SwiftUI gemessene Höhe des Panel-Inhalts je Reiter. So klappt das Panel gleich auf die richtige Höhe
@@ -48,6 +46,12 @@ final class AppModel {
     var replyTargetID: String?
     /// Kreise-Ansicht: Session, deren Detailkarte gezeigt wird.
     var selectedCircleID: String?
+    /// Session, deren Details der Reiter „Sessions“ statt der Liste zeigt (Klick auf eine Zeile).
+    var detailSessionID: String?
+    /// Die Session zu `detailSessionID`, solange sie noch zu sehen ist; sonst zeigt der Reiter wieder die Liste.
+    var detailSession: AgentSession? {
+        detailSessionID.flatMap { id in sessions.first { $0.id == id } }
+    }
     /// Entwürfe der Antwortfelder je Session; überstehen Zu- und Aufklappen.
     private(set) var replyDrafts: [String: String] = [:]
     /// Entscheidung zu einer wartenden Anfrage aus einer Session-Zeile (ID = Request-ID).
@@ -56,6 +60,8 @@ final class AppModel {
     @ObservationIgnored var onReply: ((AgentSession, String) -> Void)?
     /// Klick auf eine Session: ihr Fenster nach vorn holen.
     @ObservationIgnored var onFocusSession: ((AgentSession) -> Void)?
+    /// Session aus der Notch nehmen, bis sie wieder etwas tut.
+    @ObservationIgnored var onDismissSession: ((AgentSession) -> Void)?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
     /// Was gerade läuft, schon gefiltert (`MusicMonitor`).
@@ -235,12 +241,27 @@ final class AppModel {
         replyDrafts[sessionID] = text
     }
 
-    /// Speichert die angefangene Notiz und gibt die Tastatur zurück; kam die Notiz über zweimal ⌃, klappt die Notch
-    /// danach zu.
+    /// Speichert die angefangene Notiz. Das Feld bleibt aktiv, die nächste Notiz lässt sich gleich tippen;
+    /// Escape oder ein Klick woandershin schließt.
     func saveNote() {
         guard noteStore.add(noteDraft) != nil else { return }
         noteDraft = ""
-        onReleaseKeyboard?()
+    }
+
+    func openSessionDetail(_ session: AgentSession) {
+        detailSessionID = session.id
+    }
+
+    func closeSessionDetail() {
+        detailSessionID = nil
+    }
+
+    /// Nimmt die Session aus der Notch, bis sie wieder etwas tut (`SessionBook.dismiss`).
+    func dismissSession(_ session: AgentSession) {
+        if detailSessionID == session.id { detailSessionID = nil }
+        if replyTargetID == session.id { replyTargetID = nil }
+        onDismissSession?(session)
+        showNotice(L("Entfernt – kommt zurück, sobald die Session wieder etwas tut"))
     }
 
     /// Schickt den Entwurf an die Session und schließt das Antwortfeld.

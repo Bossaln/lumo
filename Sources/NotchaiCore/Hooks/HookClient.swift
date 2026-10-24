@@ -22,14 +22,15 @@ public enum HookClient {
     }
 
     /// Aufruf als `notchai-hook <claude|codex> <event|decide>`; gibt den Text für stdout zurück (meist leer).
-    public static func run(arguments: [String], stdin: Data, env: [String: String], home: URL,
+    /// `agentPid`: Prozess des Agenten, der den Hook gestartet hat (`ProcessTree.agent`).
+    public static func run(arguments: [String], stdin: Data, env: [String: String], home: URL, agentPid: Int32? = nil,
                            connectTimeout: TimeInterval = 0.3, decisionTimeout: TimeInterval = 125) -> String {
         guard arguments.count == 2,
               let agent = AgentKind(rawValue: arguments[0]),
               let mode = HookMode(rawValue: arguments[1]),
               let event = try? JSONDecoder().decode(HookEvent.self, from: stdin) else { return HookOutput.noDecision }
         let envelope = HookEnvelope(requestId: UUID(), agent: agent, mode: mode, event: event,
-                                    env: forwardedEnvironment(env), sentAt: Date())
+                                    env: forwardedEnvironment(env), sentAt: Date(), agentPid: agentPid)
         guard let line = try? HookWire.encodeLine(envelope),
               let fd = UnixSocket.openClient(path: NotchaiPaths.socketPath(home: home, env: env),
                                              timeout: connectTimeout) else { return HookOutput.noDecision }

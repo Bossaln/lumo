@@ -75,7 +75,10 @@ struct SessionCirclesPanel: View {
         let selected = sessions.first { $0.id == model.selectedCircleID } ?? sessions.first
         TimelineView(.periodic(from: .now, by: 30)) { context in
             VStack(alignment: .leading, spacing: 10) {
-                if sessions.isEmpty {
+                if let detail = model.detailSession {
+                    SessionDetailView(session: detail, now: context.date, model: model)
+                        .transition(.blurFade)
+                } else if sessions.isEmpty {
                     Text(L("Keine aktiven Sessions"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SessionPalette.secondary)
@@ -99,10 +102,12 @@ struct SessionCirclesPanel: View {
                 }
                 SessionFooter(model: model)
             }
+            .animation(.easeInOut(duration: 0.22), value: model.detailSession?.id)
         }
         .onAppear {
             if let selected { model.replyTargetID = selected.id }
         }
+        .onDisappear { model.closeSessionDetail() }
     }
 
     @MainActor private func select(_ session: AgentSession) {

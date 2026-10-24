@@ -85,6 +85,49 @@ public struct SessionHost: Equatable, Sendable {
             : env.keys.filter { $0.hasPrefix("CMUX_") && $0.contains("SURFACE") }.sorted().first
         if let surfaceKey, let surface = env[surfaceKey] { cmuxSurface = surface }
     }
+
+    /// Wo die Session läuft, für die Detailansicht. Die Apps zuerst: Sie setzen teils auch `TERM_PROGRAM`.
+    public var source: SessionSource {
+        let origin = originator?.lowercased() ?? ""
+        if entrypoint == "claude-desktop" || bundleId == ReplyRouter.claudeDesktopBundleId { return .claudeApp }
+        if bundleId == Self.codexAppBundleId || origin.contains("desktop") { return .codexApp }
+        if cmuxSurface != nil { return .cmux }
+        if entrypoint == "claude-vscode" || origin.contains("vscode") { return .vscode }
+        if let bundleId, let app = Self.editors[bundleId] { return app }
+        if termProgram == "vscode" { return .vscode }
+        if entrypoint?.hasPrefix("sdk") == true { return .sdk }
+        if origin.contains("exec") { return .exec }
+        if let termProgram { return .terminal(Self.terminals[termProgram] ?? termProgram) }
+        if let bundleId, let name = Self.terminalApps[bundleId] { return .terminal(name) }
+        if entrypoint != nil || origin.contains("tui") || origin.contains("cli") { return .terminal(nil) }
+        return .unknown
+    }
+
+    static let codexAppBundleId = "com.openai.codex"
+    private static let editors: [String: SessionSource] = [
+        "com.microsoft.VSCode": .vscode, "com.microsoft.VSCodeInsiders": .vscode,
+        "com.todesktop.230313mzl4w4u92": .cursor,
+    ]
+    private static let terminals = [
+        "Apple_Terminal": "Terminal", "iTerm.app": "iTerm", "WarpTerminal": "Warp", "ghostty": "Ghostty",
+        "WezTerm": "WezTerm", "tmux": "tmux", "zed": "Zed",
+    ]
+    private static let terminalApps = [
+        "com.apple.Terminal": "Terminal", "com.googlecode.iterm2": "iTerm", "dev.warp.Warp-Stable": "Warp",
+        "com.mitchellh.ghostty": "Ghostty",
+    ]
+}
+
+/// Programm, in dem eine Session läuft.
+public enum SessionSource: Equatable, Sendable {
+    /// Ein Terminal; der Name, sofern bekannt.
+    case terminal(String?)
+    case claudeApp, codexApp, vscode, cursor, cmux
+    /// `codex exec` oder ein anderer Lauf ohne Fenster
+    case exec
+    /// Eigenes Programm über das Agent SDK
+    case sdk
+    case unknown
 }
 
 /// Eine Session, wie die Notch sie zeigt.
@@ -105,6 +148,16 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     /// Älteste offene Anfrage dieser Session.
     public var pending: PendingRequest?
     public var host: SessionHost
+    public var model: String?
+    /// Belegte Tokens des Kontextfensters und seine Größe.
+    public var contextTokens: Int?
+    public var contextLimit: Int?
+    /// Nur Codex meldet die Nutzungslimits des Abos.
+    public var usageLimits: UsageLimits?
+    /// Erster Prompt, soweit das Transkript zurückreicht.
+    public var startedAt: Date?
+    public var promptCount = 0
+    public var editedFileCount = 0
 
     public init(id: String, agent: AgentKind, sessionId: String, title: String, projectName: String, cwd: String?,
                 status: SessionStatus, lastStep: String?, errorCount: Int, contextFraction: Double?, lastActivity: Date,

@@ -14,6 +14,9 @@ public struct SessionBook: Sendable {
     static let doneLifetime: TimeInterval = 10 * 60
     /// So lange gilt ein laufender Turn ohne Hooks als „arbeitet“, auch ohne neue Zeile im Transkript.
     static let workingGrace: TimeInterval = 60
+    /// Sessions, deren Agent-Prozess notchai nicht kennt (nur aus dem Transkript), verschwinden so lange nach ihrer
+    /// letzten Aktivität. Läuft der Prozess nachweislich, bleiben sie, bis er endet.
+    static let unconfirmedLifetime: TimeInterval = 30 * 60
     private static let titleLength = 80
     private static let stepLength = 60
 
@@ -36,6 +39,10 @@ public struct SessionBook: Sendable {
         var hookErrors = 0
         var transcriptErrors = 0
         var doneAt: Date?
+        /// Prozess des Agenten aus dem letzten Hook; endet er, ist die Session vorbei (`removeEnded`).
+        var agentPid: Int32?
+        /// Von Hand aus der Notch entfernt; neue Aktivität danach holt die Session zurück.
+        var dismissedAt: Date?
     }
 
     public init() {}
@@ -59,10 +66,12 @@ public struct SessionBook: Sendable {
         var session = sessions[key] ?? Self.newSession(key: key, agent: envelope.agent, sessionId: e.sessionId, now: now)
         var extra = extras[key] ?? Extras()
         session.host.merge(env: envelope.env)
+        if let pid = envelope.agentPid { extra.agentPid = pid }
         if let cwd = e.cwd { session.cwd = cwd; session.projectName = Self.projectName(cwd) }
         session.lastActivity = max(session.lastActivity, now)
         extra.hookTitle = e.sessionTitle ?? extra.hookTitle
         extra.model = e.model ?? extra.model
+        session.model = e.model ?? session.model
         var changes: [SessionChange] = []
 
         switch (e.hookEventName, envelope.mode) {
@@ -165,8 +174,15 @@ public struct SessionBook: Sendable {
         extra.customTitle = summary.customTitle ?? extra.customTitle
         extra.firstPrompt = summary.firstPrompt ?? extra.firstPrompt
         extra.lastPrompt = summary.lastPrompt ?? extra.lastPrompt
-        let limit = summary.agent == .codex ? summary.contextWindow : ContextWindow.claudeLimit(model: summary.model ?? extra.model)
+        let model = summary.model ?? extra.model
+        let limit = summary.agent == .codex ? summary.contextWindow : ContextWindow.claudeLimit(model: model)
         session.contextFraction = ContextWindow.fraction(tokens: summary.contextTokens, limit: limit) ?? session.contextFraction
+        session.model = model ?? session.model
+        if let tokens = summary.contextTokens { session.contextTokens = tokens; session.contextLimit = limit }
+        session.usageLimits = summary.usageLimits ?? session.usageLimits
+        session.startedAt = [summary.prompts.first, summary.turns.first?.start].compactMap { $0 }.min() ?? session.startedAt
+        session.promptCount = summary.prompts.count
+        session.editedFileCount = Set(summary.editedFiles.map(\.path)).count
         if let step = summary.lastStep, extra.hookStepAt.map({ (summary.lastActivity ?? .distantPast) > $0 }) ?? true {
             session.lastStep = step
         }
@@ -224,6 +240,30 @@ public struct SessionBook: Sendable {
         return (changes, expired)
     }
 
+    /// Entfernt Sessions, deren Agent-Prozess nicht mehr läuft (Terminal oder App geschlossen, ohne `SessionEnd`).
+    public mutating func removeEnded(isAlive: (Int32) -> Bool) -> [SessionChange] {
+        var changes: [SessionChange] = []
+        for key in extras.keys.sorted() {
+            guard let pid = extras[key]?.agentPid, !isAlive(pid) else { continue }
+            changes += releaseAll(key)
+            sessions[key] = nil
+            extras[key] = nil
+        }
+        return changes
+    }
+
+    /// Nimmt eine Session aus der Notch, bis sie wieder etwas tut. Eine offene Anfrage geht zurück an den Agenten.
+    public mutating func dismiss(_ key: String, now: Date) -> [SessionChange] {
+        guard sessions[key] != nil, var extra = extras[key] else { return [] }
+        let changes = releaseAll(&extra, key: key)
+        extra.dismissedAt = now
+        if var session = sessions[key] {
+            if session.status.isWaiting { session.status = .ready }
+            store(&session, extra, key: key)
+        }
+        return changes
+    }
+
     /// Alle offenen Anfragen, älteste zuerst.
     public func pendingRequests() -> [PendingEntry] {
         extras.flatMap { key, extra in extra.pendings.map { PendingEntry(sessionKey: key, request: $0) } }
@@ -235,7 +275,7 @@ public struct SessionBook: Sendable {
     public func visibleSessions(settings: AppSettings, now: Date) -> [AgentSession] {
         let maxAge = TimeInterval(settings.sessionMaxAgeHours) * 3600
         return sessions.values
-            .filter { settings.watches($0.agent) && now.timeIntervalSince($0.lastActivity) <= maxAge }
+            .filter { settings.watches($0.agent) && now.timeIntervalSince($0.lastActivity) <= maxAge && isShown($0, now: now) }
             .map { session in
                 var s = session
                 if let extra = extras[s.id] { s.title = Self.title(extra, projectName: s.projectName, source: settings.sessionTitleSource) }
@@ -254,7 +294,41 @@ public struct SessionBook: Sendable {
             }
     }
 
+    /// Für die Diagnose in den Entwickleroptionen: jede bekannte Session, auch versteckte, mit Herkunft, Prozess und ob
+    /// die Notch sie zeigt. Ohne Titel und Prompts.
+    public func diagnosticLines(settings: AppSettings, now: Date) -> [String] {
+        let shown = Set(visibleSessions(settings: settings, now: now).map(\.id))
+        return sessions.values.sorted { $0.id < $1.id }.map { s in
+            let h = s.host
+            let pid = extras[s.id]?.agentPid.map(String.init) ?? "-"
+            let fields = [
+                "source=\(s.host.source)", "pid=\(pid)", "entrypoint=\(h.entrypoint ?? "-")",
+                "originator=\(h.originator ?? "-")", "bundle=\(h.bundleId ?? "-")", "term=\(h.termProgram ?? "-")",
+                "status=\(s.status)", "idle=\(Int(now.timeIntervalSince(s.lastActivity) / 60))min",
+                shown.contains(s.id) ? "shown" : "hidden",
+            ]
+            return s.id + " " + fields.joined(separator: " ")
+        }
+    }
+
     // MARK: - Hilfen
+
+    /// Von Hand entfernt und seitdem still, oder zu lange still, ohne dass ein eigener Prozess zeigt, dass sie noch
+    /// offen ist: nicht zeigen.
+    private func isShown(_ session: AgentSession, now: Date) -> Bool {
+        guard let extra = extras[session.id] else { return true }
+        if let dismissed = extra.dismissedAt, session.lastActivity <= dismissed { return false }
+        if !provesOpen(extra, host: session.host), session.pending == nil,
+           now.timeIntervalSince(session.lastActivity) > Self.unconfirmedLifetime { return false }
+        return true
+    }
+
+    /// Ein Agent-Prozess nur für diese Session, außerhalb der Apps: Solange er läuft, ist die Session offen. Die
+    /// Codex-App führt alle Threads über einen Prozess, und in beiden Apps läuft der Prozess weiter, wenn der Chat zu ist.
+    private func provesOpen(_ extra: Extras, host: SessionHost) -> Bool {
+        guard let pid = extra.agentPid, host.source != .claudeApp, host.source != .codexApp else { return false }
+        return extras.values.filter { $0.agentPid == pid }.count == 1
+    }
 
     private static func rank(_ status: SessionStatus) -> Int {
         switch status {
