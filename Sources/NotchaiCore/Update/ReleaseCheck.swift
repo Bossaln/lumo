@@ -29,11 +29,45 @@ public enum ReleaseCheck {
     }
 
     /// Shell-Befehl für das Update über Homebrew. Erst `brew update`: Sonst kennt Homebrew die neue Version aus dem
-    /// Tap bis zu 24 Stunden lang nicht. Homebrew beendet notchai beim Upgrade selbst (`uninstall quit:` im Cask);
-    /// nur nach erfolgreichem Upgrade öffnet der Befehl die neue Version.
-    public static func homebrewUpgradeScript(brew: String, log: String, app: String) -> String {
-        let brew = ShellQuote.quote(brew), log = ShellQuote.quote(log)
-        return "\(brew) update >> \(log) 2>&1; \(brew) upgrade --cask notchai >> \(log) 2>&1 && open \(ShellQuote.quote(app))"
+    /// Tap bis zu 24 Stunden lang nicht. Läuft brew in notchai, beendet Homebrew notchai nicht („brew is running inside
+    /// it“); die App prüft danach selbst die installierte Version und startet neu (`upgradeOutcome`). Hat ein älteres
+    /// Homebrew notchai doch beendet, öffnet der Befehl die neue Version. Endet mit dem Ergebnis von `brew upgrade`.
+    public static func homebrewUpgradeScript(brew: String, log: String, app: String, appPID: Int32) -> String {
+        let brew = ShellQuote.quote(brew), log = ShellQuote.quote(log), app = ShellQuote.quote(app)
+        return [
+            "echo \"=== notchai-Update $(date '+%Y-%m-%d %H:%M:%S') ===\" >> \(log)",
+            "\(brew) update >> \(log) 2>&1",
+            "\(brew) upgrade --cask notchai >> \(log) 2>&1",
+            "status=$?",
+            "kill -0 \(appPID) 2>/dev/null || { [ $status -eq 0 ] && open \(app); }",
+            "exit $status",
+        ].joined(separator: "; ")
+    }
+
+    /// Wartet, bis die alte App beendet ist, und öffnet dann die neue.
+    public static func relaunchScript(pid: Int32, app: String) -> String {
+        "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; open \(ShellQuote.quote(app))"
+    }
+
+    /// Wie das Homebrew-Update ausging.
+    public enum UpgradeOutcome: Equatable, Sendable {
+        /// Die neue Version liegt im Programme-Ordner; notchai startet neu.
+        case relaunch
+        case failed(String)
+    }
+
+    /// Bewertet das Update nach dem, was jetzt installiert ist: Ist die App im Programme-Ordner neuer als die laufende,
+    /// hat es geklappt, egal worüber brew danach noch gestolpert ist.
+    public static func upgradeOutcome(exitStatus: Int32, installedVersion: String?, runningVersion: String,
+                                      offeredVersion: String) -> UpgradeOutcome {
+        if let installedVersion, isNewer(installedVersion, than: runningVersion) { return .relaunch }
+        let command = "brew update && brew upgrade --cask notchai"
+        if exitStatus != 0 || installedVersion == nil {
+            return .failed(L("Homebrew hat notchai nicht aktualisiert. Details im Protokoll; im Terminal geht es mit „{0}“.",
+                             command))
+        }
+        return .failed(L("Homebrew kennt Version {0} noch nicht. Versuch es gleich noch einmal oder im Terminal mit „{1}“.",
+                         offeredVersion, command))
     }
 
     private static func plain(_ version: String) -> String {

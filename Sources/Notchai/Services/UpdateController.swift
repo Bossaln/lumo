@@ -146,23 +146,55 @@ final class UpdateController {
         }
         try? FileManager.default.createDirectory(at: Self.logURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         state = .installing(L("Homebrew aktualisiert notchai …"))
-        // Homebrew beendet notchai selbst (`uninstall quit:` im Cask); das Skript läuft weiter und öffnet die neue Version.
-        let script = ReleaseCheck.homebrewUpgradeScript(brew: brew, log: Self.logURL.path, app: Bundle.main.bundlePath)
+        // brew läuft in notchai; Homebrew beendet notchai deshalb nicht selbst. Ob es geklappt hat, zeigt danach die
+        // Version im Programme-Ordner (`homebrewFinished`).
+        let app = Bundle.main.bundlePath
+        let script = ReleaseCheck.homebrewUpgradeScript(brew: brew, log: Self.logURL.path, app: app,
+                                                        appPID: ProcessInfo.processInfo.processIdentifier)
         let process = Process()
         process.executableURL = URL(filePath: "/bin/zsh")
         process.arguments = ["-lc", script]
-        // Läuft notchai danach noch, hat Homebrew nicht aktualisiert (sonst wäre diese Instanz beendet).
-        process.terminationHandler = { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.state = .failed(L("Homebrew hat notchai nicht aktualisiert. Details im Protokoll; im Terminal geht es mit „{0}“.",
-                                        "brew update && brew upgrade --cask notchai"))
-            }
+        process.terminationHandler = { [weak self] process in
+            let status = process.terminationStatus
+            Task { @MainActor [weak self] in self?.homebrewFinished(status: status, offer: offer) }
         }
         do {
             try process.run()
         } catch {
             state = .failed("Homebrew ließ sich nicht starten: \(error.localizedDescription)")
         }
+    }
+
+    /// Homebrew ist fertig: Liegt eine neuere Version im Programme-Ordner, beendet sich notchai und öffnet sie.
+    private func homebrewFinished(status: Int32, offer: ReleaseOffer) {
+        let app = Bundle.main.bundlePath
+        switch ReleaseCheck.upgradeOutcome(exitStatus: status, installedVersion: Self.installedVersion(at: app),
+                                           runningVersion: buildInfo.version, offeredVersion: offer.version) {
+        case .relaunch:
+            state = .installing(L("Starte notchai neu …"))
+            let process = Process()
+            process.executableURL = URL(filePath: "/bin/zsh")
+            process.arguments = ["-c", ReleaseCheck.relaunchScript(pid: ProcessInfo.processInfo.processIdentifier, app: app)]
+            do {
+                try process.run()
+            } catch {
+                state = .failed(L("Die neue Version ist installiert. Bitte notchai beenden und neu öffnen."))
+                return
+            }
+            NSApp.terminate(nil)
+        case .failed(let message):
+            state = .failed(message)
+        }
+    }
+
+    /// Version der App im Programme-Ordner, frisch von der Platte (`Bundle` hielte die alte fest).
+    private static func installedVersion(at app: String) -> String? {
+        let plist = URL(filePath: app).appending(path: "Contents/Info.plist")
+        guard let data = try? Data(contentsOf: plist),
+              let info = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+            return nil
+        }
+        return info["CFBundleShortVersionString"] as? String
     }
 
     /// Übergibt an `scripts/install-app.sh`: Es wartet, bis diese App beendet ist, ersetzt sie durch die
