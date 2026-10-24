@@ -53,13 +53,57 @@ private func latest(tag: String, body: String? = nil) -> Data {
 
 @Test func homebrewUpdateRefreshesTheTapBeforeUpgrading() {
     let script = ReleaseCheck.homebrewUpgradeScript(brew: "/opt/homebrew/bin/brew", log: "/Users/x/update.log",
-                                                    app: "/Applications/notchai.app")
+                                                    app: "/Applications/notchai.app", appPID: 4242)
     // Ohne `brew update` kennt Homebrew die neue Version bis zu 24 Stunden lang nicht.
     let update = script.range(of: "/opt/homebrew/bin/brew update")
     let upgrade = script.range(of: "/opt/homebrew/bin/brew upgrade --cask notchai")
     #expect(update != nil && upgrade != nil)
     if let update, let upgrade { #expect(update.lowerBound < upgrade.lowerBound) }
-    // Neu geöffnet wird nur nach erfolgreichem Upgrade; alles landet im Protokoll.
-    #expect(script.hasSuffix("&& open /Applications/notchai.app"))
+    // Alles landet im Protokoll, und der Befehl endet mit dem Ergebnis von `brew upgrade`.
     #expect(script.components(separatedBy: ">> /Users/x/update.log 2>&1").count == 3)
+    #expect(script.contains("status=$?"))
+    #expect(script.hasSuffix("exit $status"))
+}
+
+@Test func homebrewUpdateOpensTheAppOnlyIfHomebrewQuitIt() {
+    // Läuft brew in notchai, beendet Homebrew notchai nicht („brew is running inside it“); dann startet die App
+    // selbst neu. Hat ein älteres Homebrew notchai doch beendet, öffnet der Befehl die neue Version.
+    let script = ReleaseCheck.homebrewUpgradeScript(brew: "/opt/homebrew/bin/brew", log: "/tmp/u.log",
+                                                    app: "/Applications/notchai.app", appPID: 4242)
+    #expect(script.contains("kill -0 4242 2>/dev/null || { [ $status -eq 0 ] && open /Applications/notchai.app; }"))
+}
+
+@Test func relaunchWaitsForTheOldAppToQuit() {
+    let script = ReleaseCheck.relaunchScript(pid: 4242, app: "/Applications/notchai.app")
+    #expect(script == "while kill -0 4242 2>/dev/null; do sleep 0.2; done; open /Applications/notchai.app")
+}
+
+// MARK: - Ergebnis des Homebrew-Updates
+
+@Test func newerInstalledVersionMeansRelaunch() {
+    #expect(ReleaseCheck.upgradeOutcome(exitStatus: 0, installedVersion: "0.5.0", runningVersion: "0.4.0",
+                                        offeredVersion: "0.5.0") == .relaunch)
+    // Auch wenn brew am Ende über etwas anderes stolpert (etwa beim Aufräumen): Die neue Version ist da.
+    #expect(ReleaseCheck.upgradeOutcome(exitStatus: 1, installedVersion: "0.5.0", runningVersion: "0.4.0",
+                                        offeredVersion: "0.5.0") == .relaunch)
+}
+
+@Test func failedUpgradeKeepsTheOldVersion() {
+    let outcome = ReleaseCheck.upgradeOutcome(exitStatus: 1, installedVersion: "0.4.0", runningVersion: "0.4.0",
+                                              offeredVersion: "0.5.0")
+    guard case .failed(let message) = outcome else { Issue.record("erwartet Fehler, war \(outcome)"); return }
+    #expect(message.contains("brew upgrade --cask notchai"))
+}
+
+@Test func homebrewThatDoesNotKnowTheVersionYetIsExplained() {
+    let outcome = ReleaseCheck.upgradeOutcome(exitStatus: 0, installedVersion: "0.4.0", runningVersion: "0.4.0",
+                                              offeredVersion: "0.5.0")
+    guard case .failed(let message) = outcome else { Issue.record("erwartet Fehler, war \(outcome)"); return }
+    #expect(message.contains("0.5.0"))
+}
+
+@Test func unreadableInstalledAppIsAFailure() {
+    let outcome = ReleaseCheck.upgradeOutcome(exitStatus: 0, installedVersion: nil, runningVersion: "0.4.0",
+                                              offeredVersion: "0.5.0")
+    guard case .failed = outcome else { Issue.record("erwartet Fehler, war \(outcome)"); return }
 }

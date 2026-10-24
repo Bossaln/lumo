@@ -51,3 +51,17 @@ private func visibleLines(_ text: String) -> [String] {
     #expect(!InstallGreeting.plain.contains("\u{1B}"))
     #expect(InstallGreeting.plain.contains(InstallGreeting.doneText))
 }
+
+// Beim Update über den Knopf läuft brew in notchai; die Fahrt landete sonst Bild für Bild im Protokoll.
+private let processes: [Int32: (parent: Int32, name: String)] = [
+    900: (1, "notchai"), 901: (900, "zsh"), 902: (901, "ruby"), 903: (902, "notchai-welcome"),
+    800: (1, "Terminal"), 801: (800, "zsh"), 802: (801, "ruby"), 803: (802, "notchai-welcome"),
+]
+
+@Test func greetingKnowsWhenNotchaiRunsTheUpdate() {
+    #expect(InstallGreeting.isRunByNotchai(pid: 903) { processes[$0] })
+    #expect(!InstallGreeting.isRunByNotchai(pid: 803) { processes[$0] })
+    // Unbekannte Prozesse oder eine Schleife beenden die Suche.
+    #expect(!InstallGreeting.isRunByNotchai(pid: 5) { processes[$0] })
+    #expect(!InstallGreeting.isRunByNotchai(pid: 7) { _ in (7, "zsh") })
+}

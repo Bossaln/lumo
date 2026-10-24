@@ -117,4 +117,16 @@ public enum InstallGreeting {
         let starts = (0..<(line.count - 4)).filter { String(line[$0..<($0 + 5)]) == "/   \\" }
         return (Set(starts.map { $0 + 2 }), Set(starts.flatMap { $0...($0 + 4) }))
     }
+
+    /// Läuft die Begrüßung unter notchai selbst (Update über den Knopf)? Dann schreibt Homebrew alles ins Protokoll,
+    /// und statt der Fahrt reicht der Satz. `lookup` liefert zu einer Prozess-ID den Elternprozess und den Namen.
+    public static func isRunByNotchai(pid: Int32, lookup: (Int32) -> (parent: Int32, name: String)?) -> Bool {
+        var current = pid
+        var seen: Set<Int32> = []
+        while current > 1, seen.insert(current).inserted, let process = lookup(current) {
+            if process.name == "notchai" { return true }
+            current = process.parent
+        }
+        return false
+    }
 }

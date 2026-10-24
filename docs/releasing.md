@@ -74,6 +74,13 @@ Workflow warnt ebenfalls.
   App-Bundle auf; das schreibt den fahrenden GT-R direkt nach `/dev/tty` (die Sandbox erlaubt das, Homebrew reicht die
   Zeichen sofort weiter). Beide Schritte dürfen scheitern (`must_succeed: false`), die Installation bricht dann nicht
   ab. Ältere Homebrew-Versionen ohne `postflight_steps` bekommen weiter den alten `postflight`-Block.
+- **Update über den Knopf in notchai:** `uninstall quit:` im Cask beendet notchai dabei *nicht*. Homebrew meldet
+  „Skipping quitting application 'com.bossaln.notchai' as `brew` is running inside it“, ersetzt die App aber trotzdem.
+  notchai liest deshalb nach `brew upgrade` die Version im Programme-Ordner: Ist sie neuer, beendet es sich und ein
+  kleiner Befehl öffnet die neue Version, sobald die alte weg ist (`ReleaseCheck.upgradeOutcome`, `relaunchScript`).
+  Bis 0.5.0 hielt notchai das Weiterlaufen für einen Fehler, obwohl das Update geklappt hatte.
+- Läuft `notchai-welcome` unter notchai (Update über den Knopf), gibt es nur den Satz aus statt der Fahrt; sonst
+  stünden alle Bilder des GT-R im Protokoll (`~/Library/Logs/notchai/update.log`).
 - Weil jede Version dieselbe Signatur trägt, behält macOS die Freigaben (Bedienungshilfen, Automation) über Updates.
 - **Später ins offizielle Homebrew:** Dafür braucht es eine Apple Developer ID (99 $ pro Jahr), Notarisierung im
   Release-Workflow und genug Bekanntheit (bei eigener Einreichung mindestens 225 Sterne, 90 Forks oder 90 Beobachter;

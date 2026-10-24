@@ -14,7 +14,24 @@ import NotchaiCore
 Localization.language = AppLanguage.fromEnvironment(ProcessInfo.processInfo.environment)
     ?? AppLanguage.preferred(from: Locale.preferredLanguages)
 
-let terminal = open("/dev/tty", O_WRONLY | O_NOCTTY)
+/// Elternprozess und Name eines Prozesses (nur macOS).
+func processInfo(_ pid: Int32) -> (parent: Int32, name: String)? {
+    #if canImport(Darwin)
+    var info = kinfo_proc()
+    var size = MemoryLayout<kinfo_proc>.stride
+    var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+    guard sysctl(&mib, 4, &info, &size, nil, 0) == 0, size > 0 else { return nil }
+    let name = withUnsafeBytes(of: info.kp_proc.p_comm) { bytes in
+        String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+    }
+    return (info.kp_eproc.e_ppid, name)
+    #else
+    return nil
+    #endif
+}
+
+// Beim Update über den Knopf in notchai schreibt Homebrew alles ins Protokoll; dort reicht der Satz.
+let terminal = InstallGreeting.isRunByNotchai(pid: getpid(), lookup: processInfo) ? -1 : open("/dev/tty", O_WRONLY | O_NOCTTY)
 guard terminal >= 0 else {
     print(InstallGreeting.plain)
     exit(0)
