@@ -34,21 +34,20 @@ struct SystemIndicatorView: View {
 
     var body: some View {
         let tint = Color(indicator.tint)
+        let leftInner = max(0, leftWidth - ear), rightInner = max(0, rightWidth - ear)
         HStack(spacing: 0) {
             Color.clear.frame(width: ear)
-            // Ganz links am Rand, wie auf dem iPhone; rechts beginnt der Inhalt direkt neben der Kamera.
+            // Symbol mittig zwischen Außenkante und Kamera; rechts der Inhalt ebenso, mit demselben Rand.
             Image(systemName: indicator.symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(tint)
                 .symbolRenderingMode(.hierarchical)
                 .contentTransition(.symbolEffect(.replace))
-                .padding(.leading, 12 - ear)
-                .frame(width: max(0, leftWidth - ear), alignment: .leading)
+                .frame(width: leftInner)
             Color.clear.frame(width: notchWidth)
             trailing(tint: tint)
-                .padding(.leading, NotchGeometry.hudInnerPadding)
-                .padding(.trailing, NotchGeometry.hudOuterPadding - ear)
-                .frame(width: max(0, rightWidth - ear), alignment: .leading)
+                .frame(width: max(0, rightInner - 2 * NotchGeometry.hudPadding))
+                .frame(width: rightInner)
             Color.clear.frame(width: ear)
         }
         .frame(height: height)

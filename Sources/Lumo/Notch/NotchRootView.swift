@@ -221,7 +221,7 @@ struct NotchRootView: View {
         case .island: (6, 14)
         case .compact: (6, 12)
         case .trackSides: (6, 14)
-        case .hud: (6, 14)
+        case .hud: (NotchGeometry.hudEar, 14)
         case .trackBanner: (10, 26)
         case .banner: (10, 30)
         case .vertical, .verticalCompact: (10, 24)

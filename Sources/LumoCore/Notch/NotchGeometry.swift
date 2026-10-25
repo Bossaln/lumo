@@ -65,15 +65,17 @@ public enum NotchGeometry {
     /// Neuer Titel, ausgefahren: Breite und Höhe unter der Kamera.
     public static let trackBannerWidth: CGFloat = 400
     public static let trackBannerExtraHeight: CGFloat = 72
-    /// Systemanzeige: links Rand, Symbol und Abstand zur Kamera.
-    public static let hudLeftWidth: CGFloat = 44
-    /// Rechts: Abstand zur Kamera (die Aussparung ist unten gerundet, deshalb großzügig) und Rand außen.
-    public static let hudInnerPadding: CGFloat = 12
-    public static let hudOuterPadding: CGFloat = 14
-    public static let hudRightPadding: CGFloat = hudInnerPadding + hudOuterPadding
+    /// Systemanzeige: Jede Seite ist Wölbung oben, Rand, Inhalt, Rand – der Inhalt sitzt mittig zwischen Kamera
+    /// und Außenkante, auf beiden Seiten mit demselben Rand.
+    public static let hudEar: CGFloat = 6
+    public static let hudPadding: CGFloat = 12
+    /// Platz für das Symbol links.
+    public static let hudSymbolWidth: CGFloat = 18
+    public static let hudLeftWidth: CGFloat = hudEar + 2 * hudPadding + hudSymbolWidth
+    public static let hudRightPadding: CGFloat = hudEar + 2 * hudPadding
     public static let hudBarWidth: CGFloat = 60
     /// Mehr Platz bekommt ein Text rechts nicht; längere werden gekürzt.
-    public static let hudMaxRightWidth: CGFloat = 190
+    public static let hudMaxRightWidth: CGFloat = 200
 
     /// Breite der rechten Seite für einen Inhalt von `contentWidth` pt (Balken oder gemessener Text).
     public static func hudRightWidth(contentWidth: CGFloat) -> CGFloat {
