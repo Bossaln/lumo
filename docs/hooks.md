@@ -164,11 +164,17 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 - **Hintergrund-Agenten** melden ihr Ende als `UserPromptSubmit` mit `prompt` „`<task-notification>…`“, mitten im Turn. Ein Prompt, der mit `<` beginnt, beginnt deshalb keinen neuen Turn: Offene Anfragen und die Fehler des Turns bleiben (`SessionBook`, Test `taskNotificationIsNoNewTurn`).
 - **Unteragenten** schicken ihre Werkzeug-Ereignisse mit der `session_id` der Haupt-Session. Schritte mit `agent_id` werden nicht zum letzten Schritt der Haupt-Session, Freigaben tragen „Von <agent_type>“, und die Details zählen laufende Unteragenten nach `agent_id` aus `SubagentStart`/`SubagentStop`. Ein `SubagentStop` mit unbekannter ID (etwa die Prompt-Vorschläge nach jedem `Stop`) zählt nicht.
 
+## Unteragenten im Terminal (Claude Code 2.1.310, Oktober 2026)
+
+- `agent_id` und `agent_type` kommen bei `SubagentStart`, `SubagentStop` und bei jedem `PreToolUse`/`PostToolUse` aus dem Unteragenten mit (`"agent_type":"general-purpose"`).
+- Die Prompt-Vorschläge nach jedem `Stop` kommen als `SubagentStop` mit eigener `agent_id`, aber `"agent_type":""` und ohne `SubagentStart`; `last_assistant_message` ist der vorhergesagte nächste Satz des Nutzers. notchai zählt nur Unteragenten, deren `SubagentStart` es gesehen hat.
+- Ist ein Unteragent im Hintergrund fertig, kommt das in der Haupt-Session als `UserPromptSubmit` mit `prompt` „`<agent-message from=…>`“ (in der Claude-App „`<task-notification>`“) und startet einen neuen kurzen Turn, der wieder mit `Stop` endet.
+- Im Modus `auto` (`permission_mode`) entscheidet Claude Code selbst; es kommt kein `PermissionRequest`.
+
 ## Offene Punkte
 
 - `TERM_PROGRAM` und `__CFBundleIdentifier` für Sessions im VS-Code-Terminal (erwartet `TERM_PROGRAM=vscode`).
 - Claude-App: `SessionStart` und `SessionEnd` beim Öffnen bzw. Schließen oder Archivieren einer Session, `StopFailure` und `Notification` mit `idle_prompt`.
-- Ob `agent_id` und `agent_type` bei Ereignissen aus Unteragenten ankommen (die Felder liest notchai seit 0.6.1, sie stehen im Export).
 - `originator` von Sessions aus der Codex-App (erwartet `Codex Desktop`, siehe oben).
 - Ob die Codex-App die Hook-Freigabe genauso abfragt wie die Kommandozeile.
 - Ob `rate_limits` in echten Rollouts genau so aussieht wie oben.
