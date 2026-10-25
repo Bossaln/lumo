@@ -2,18 +2,31 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key><string>com.bossaln.lumo</string>
-    <key>CFBundleName</key><string>lumo</string>
-    <key>CFBundleDevelopmentRegion</key><string>de</string>
-    <key>CFBundleExecutable</key><string>lumo</string>
-    <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.9.0</string>
-    <key>CFBundleVersion</key><string>1</string>
-    <key>LSUIElement</key><true/>
-    <key>LSMinimumSystemVersion</key><string>14.0</string>
-    <key>NSHumanReadableCopyright</key><string>© 2026 Bossaln · GPL-3.0</string>
-    <key>NSAppleEventsUsageDescription</key><string>lumo zeigt Cover und steuert die Wiedergabe von Spotify und Musik (Zurück, Play/Pause, Weiter).</string>
-    <key>NSAudioCaptureUsageDescription</key><string>lumo hört den Ton mit, der gerade spielt, damit die Balken neben der Kamera zur Musik tanzen. Nichts davon wird gespeichert oder verschickt.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>de</string>
+	<key>CFBundleExecutable</key>
+	<string>lumo</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.bossaln.lumo</string>
+	<key>CFBundleName</key>
+	<string>lumo</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.9.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>lumo zeigt Cover und steuert die Wiedergabe von Spotify und Musik (Zurück, Play/Pause, Weiter).</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>lumo hört den Ton mit, der gerade spielt, damit die Balken neben der Kamera zur Musik tanzen. Nichts davon wird gespeichert oder verschickt.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Bossaln · GPL-3.0</string>
 </dict>
 </plist>

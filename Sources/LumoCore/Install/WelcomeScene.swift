@@ -78,12 +78,12 @@ struct WelcomeScene {
 
     // MARK: - Geometrie
 
-    static let height = 14
+    static let height = 15
     let width: Int
     let lidX: Int, lidWidth: Int
     let screenX: Int, screenWidth: Int
     static let screenTop = 1, screenRows = 7, lidBottom = 8, baseTop = 9, baseBottom = 10
-    static let textRow = 12, tipRow = 13
+    static let textRow = 12, tipRow = 13, supportRow = 14
     static let notchWidth = 9
     let notchX: Int
     var notchCenter: Double { Double(notchX) + Double(Self.notchWidth) / 2 }
@@ -246,9 +246,15 @@ struct WelcomeScene {
     }
 
     private func drawText(_ c: inout Canvas) {
-        let done = InstallGreeting.doneText, tip = InstallGreeting.tipText
+        let done = InstallGreeting.doneText, tip = InstallGreeting.tipText, support = InstallGreeting.supportText
         c.text(max((width - done.count) / 2, 0), Self.textRow, done, fg: Self.pink, bold: true)
         c.text(max((width - tip.count) / 2, 0), Self.tipRow, tip, fg: Self.gray)
+        c.text(max((width - Self.displayWidth(support)) / 2, 0), Self.supportRow, support, fg: Self.gray)
+    }
+
+    /// Spalten im Terminal: ein Emoji (🍺) belegt zwei.
+    static func displayWidth(_ string: String) -> Int {
+        string.reduce(0) { $0 + ($1.unicodeScalars.first?.properties.isEmojiPresentation == true ? 2 : 1) }
     }
 
     // MARK: - Ablauf

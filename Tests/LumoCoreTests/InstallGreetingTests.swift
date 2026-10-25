@@ -31,6 +31,7 @@ private func visibleLines(_ text: String) -> [String] {
     #expect(frames.last?.contains("♪") == true)
     #expect(frames.last?.contains("Claude Code") == false)
     #expect(frames.last?.contains(InstallGreeting.tipText) == true)
+    #expect(frames.last?.contains(InstallGreeting.supportText) == true)
 }
 
 @Test func signalShowsBothButtonsAndTheCommand() {
@@ -67,10 +68,11 @@ private func visibleLines(_ text: String) -> [String] {
     #expect(InstallGreeting.fullscreenFrames(columns: 100, rows: InstallGreeting.rows + 1) == nil)
     let fullscreen = InstallGreeting.fullscreenFrames(columns: 100, rows: 40)
     #expect(fullscreen?.frames.first?.text.hasPrefix("\u{1B}[?1049h") == true)
-    // Jedes Bild beginnt mittig auf der Seite: (40 − 14) / 2 + 1 = Zeile 14.
+    // Jedes Bild beginnt mittig auf der Seite: (40 − 15) / 2 + 1 = Zeile 13.
     #expect(fullscreen?.frames.allSatisfy { $0.text.contains("\u{1B}[\((40 - InstallGreeting.rows) / 2 + 1);1H") } == true)
     #expect(fullscreen?.closing.hasPrefix("\u{1B}[?1049l") == true)
     #expect(fullscreen?.closing.contains(InstallGreeting.doneText) == true)
+    #expect(fullscreen?.closing.contains(InstallGreeting.supportText) == true)
 }
 
 @Test func greetingIsNotTooLong() {

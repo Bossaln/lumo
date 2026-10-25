@@ -5,6 +5,8 @@ public enum InstallGreeting {
     /// In der Sprache des Terminals (`lumo-welcome` setzt `Localization.language`).
     public static var doneText: String { L("lumo ist installiert – los geht's!") }
     public static var tipText: String { L("Öffne lumo im Programme-Ordner – die Einrichtung macht den Rest.") }
+    /// Letzte Zeile: Wer mag, gibt ein Bier aus.
+    public static var supportText: String { BuyMeABeer.installText }
 
     /// Ein Bild der Animation und wie lange es stehen bleibt (Sekunden).
     public struct Frame: Equatable, Sendable {
@@ -16,7 +18,7 @@ public enum InstallGreeting {
     public static var rows: Int { WelcomeScene.height }
 
     /// Ohne Terminal (etwa in einem Protokoll): nur der Satz, ohne Farben.
-    public static var plain: String { doneText + "\n" + tipText }
+    public static var plain: String { doneText + "\n" + tipText + "\n" + supportText }
 
     /// Alle Bilder an Ort und Stelle (für Terminals unbekannter Höhe): Das erste blendet den Cursor aus, jedes
     /// weitere springt an den Anfang des vorigen zurück (Cursor hoch und in Spalte 1; kein Wagenrücklauf, den ein
@@ -37,7 +39,7 @@ public enum InstallGreeting {
         let frames = WelcomeScene(columns: columns).frames().enumerated().map { index, frame in
             Frame(text: (index == 0 ? "\u{1B}[?1049h\u{1B}[?25l\u{1B}[2J" : "") + "\u{1B}[\(top);1H" + frame.text, pause: frame.pause)
         }
-        let closing = "\u{1B}[?1049l\u{1B}[?25h\u{1B}[38;5;\(WelcomeScene.pink)m\(doneText)\u{1B}[0m\n\u{1B}[38;5;\(WelcomeScene.gray)m\(tipText)\u{1B}[0m\n"
+        let closing = "\u{1B}[?1049l\u{1B}[?25h\u{1B}[38;5;\(WelcomeScene.pink)m\(doneText)\u{1B}[0m\n\u{1B}[38;5;\(WelcomeScene.gray)m\(tipText)\u{1B}[0m\n\u{1B}[38;5;\(WelcomeScene.gray)m\(supportText)\u{1B}[0m\n"
         return (frames, closing)
     }
 

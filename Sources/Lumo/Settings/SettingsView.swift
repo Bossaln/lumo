@@ -607,7 +607,7 @@ struct SettingsView: View {
             Section(L("Tastenkürzel")) {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle(L("Zweimal rechte ⌘ öffnet das Büro"), isOn: setting(\.officeHotkey))
-                    Text(L("Geht auch, wenn eine andere App vorn ist. Ohne Kürzel öffnet ein Klick im Reiter „Büro“ oder „Büro öffnen“ im Menü die Halle groß."))
+                    Text(L("Geht auch, wenn eine andere App vorn ist. Ohne Kürzel öffnet ein Klick im Reiter „Büro“ die Halle groß."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
