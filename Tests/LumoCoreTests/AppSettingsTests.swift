@@ -109,6 +109,11 @@ private func everyFieldChanged() -> AppSettings {
     s.musicTrackChangeSeconds = 5
     s.musicVisualizer = .animated
     s.notesHotkey = false
+    s.systemHUD = false
+    s.hudHidden = [.volume, .capsLock]
+    s.suppressMacHUD = false
+    s.systemHUDSeconds = 3
+    s.timerStaysVisible = false
     return s
 }
 

@@ -12,6 +12,7 @@ struct SettingsView: View {
     let windowController: SettingsWindowController
     let setup: SetupController
     let updates: UpdateController
+    let system: SystemHUDController
     let openAssistant: () -> Void
     let developer: DeveloperTools
     /// Zeigt ein Beispiel-Signal in der echten Notch.
@@ -80,6 +81,7 @@ struct SettingsView: View {
         case .general: generalPane
         case .updates: updatesPane
         case .notch: notchPane
+        case .system: SystemSettingsPane(settingsStore: settingsStore, system: system)
         case .agents: agentsPane
         case .sessions: sessionsPane
         case .music: musicPane

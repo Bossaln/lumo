@@ -31,6 +31,9 @@ public enum NotchPresentation: Equatable, Sendable {
     case trackSides
     /// Neuer Titel, unter der Kamera ausgefahren (`TrackChangeStyle.banner`).
     case trackBanner
+    /// Systemanzeige (Lautstärke, Fokus, Timer …): links nur das Symbol, rechts Balken oder Text; die Breiten
+    /// richten sich nach dem Inhalt.
+    case hud(left: CGFloat, right: CGFloat)
     case panel(height: CGFloat)
 }
 
@@ -62,6 +65,22 @@ public enum NotchGeometry {
     /// Neuer Titel, ausgefahren: Breite und Höhe unter der Kamera.
     public static let trackBannerWidth: CGFloat = 400
     public static let trackBannerExtraHeight: CGFloat = 72
+    /// Systemanzeige: Jede Seite ist Wölbung oben, Rand, Inhalt, Rand – der Inhalt sitzt mittig zwischen Kamera
+    /// und Außenkante, auf beiden Seiten mit demselben Rand.
+    public static let hudEar: CGFloat = 6
+    public static let hudPadding: CGFloat = 12
+    /// Platz für das Symbol links.
+    public static let hudSymbolWidth: CGFloat = 18
+    public static let hudLeftWidth: CGFloat = hudEar + 2 * hudPadding + hudSymbolWidth
+    public static let hudRightPadding: CGFloat = hudEar + 2 * hudPadding
+    public static let hudBarWidth: CGFloat = 60
+    /// Mehr Platz bekommt ein Text rechts nicht; längere werden gekürzt.
+    public static let hudMaxRightWidth: CGFloat = 200
+
+    /// Breite der rechten Seite für einen Inhalt von `contentWidth` pt (Balken oder gemessener Text).
+    public static func hudRightWidth(contentWidth: CGFloat) -> CGFloat {
+        min(max(contentWidth, hudBarWidth) + hudRightPadding, hudMaxRightWidth)
+    }
 
     /// Breite der Island: Notch, je Seite die eingestellte Breite und der Rand `islandEdge`.
     public static func islandWidth(notch: CGRect, sideWidth: CGFloat) -> CGFloat {
@@ -99,6 +118,9 @@ public enum NotchGeometry {
             size = CGSize(width: notch.width + 2 * externalIdleSideWidth, height: notch.height)
         case .trackSides:
             size = CGSize(width: notch.width + 2 * trackSideWidth, height: notch.height)
+        case .hud(let left, let right):
+            // Nicht mittig: links nur das Symbol, rechts so breit wie der Inhalt.
+            return CGRect(x: notch.minX - left, y: s.frame.maxY - notch.height, width: left + notch.width + right, height: notch.height)
         case .trackBanner:
             size = CGSize(width: max(trackBannerWidth, notch.width + 2 * compactSideWidth),
                           height: notch.height + trackBannerExtraHeight)

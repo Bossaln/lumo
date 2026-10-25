@@ -7,7 +7,11 @@ struct NotchRootView: View {
 
     var body: some View {
         let presentation = model.currentPresentation()
-        let size = model.visibleFrame()?.size ?? .zero
+        let frame = model.visibleFrame()
+        let size = frame?.size ?? .zero
+        // Die Form sitzt mittig zur Kamera; eine Systemanzeige ist links schmaler als rechts und rückt so weit,
+        // dass ihre Lücke genau unter der Kamera liegt.
+        let shift = frame.flatMap { frame in model.screen.flatMap(NotchGeometry.notchRect).map { frame.midX - $0.midX } } ?? 0
         let radii = Self.radii(for: presentation)
         let shape = NotchShape(bottomRadius: radii.bottom, topCornerRadius: radii.top)
         let settings = model.settingsStore.settings
@@ -19,9 +23,12 @@ struct NotchRootView: View {
             && (model.nowPlaying?.isPlaying == true || announcement != nil)
             && (presentation == .compact || presentation == .trackSides || presentation == .trackBanner
                 || model.musicTabOpen)
+        // Eine Systemanzeige leuchtet ruhig in ihrer Farbe (Fokus, Timer, Laden …).
+        let indicator = model.notch.mode == .idle ? model.systemIndicator : nil
+        let hudGlows = indicator != nil && settings.glowEnabled
         let glowColor = isSignal
             ? signal.map { SignalTheme(agentHex: settings.colorHex(for: $0.agent)).agentColor } ?? .clear
-            : Color(glow: announcement?.glow ?? model.artworkGlow)
+            : indicator.map { Color($0.tint) } ?? Color(glow: announcement?.glow ?? model.artworkGlow)
         let spring = NotchSpring(bounce: settings.notchBounce)
         // Aufklappen mit Gummi, Zuklappen ohne Überschwingen (sonst rutschte die Form unter die Hardware-Notch).
         let animation: Animation = model.motion(toward: presentation) == .collapse
@@ -30,7 +37,7 @@ struct NotchRootView: View {
 
         // Im Ruhezustand zeichnet die ruhende Kopie darunter; die Form bleibt fast durchsichtig da, damit Hover und
         // Klicks weiter ankommen.
-        let mirrored = model.mirrorsDrawIdle && model.notch.mode == .idle && model.idleSettled && announcement == nil
+        let mirrored = model.mirrorsDrawIdle && model.notch.mode == .idle && model.idleSettled && announcement == nil && indicator == nil
         shape
             .fill(backgroundColor.opacity(mirrored ? 0.004 : 1))
             .modifier(ClampedFrame(width: size.width, height: size.height, minimum: model.notchSize))
@@ -41,15 +48,17 @@ struct NotchRootView: View {
                 }
                 .animation(.easeInOut(duration: 0.28), value: MusicBackdrop.isShown(for: model))
             }
+            .overlay(alignment: .top) { privacyDots(width: size.width) }
             .clipShape(shape)
             .background {
                 // Während der Einrichtung leuchtet die Notch in wechselnden Farben, bis sie fertig ist.
                 let setupGlows = model.setupGlow && !isSignal
                 NotchGlow(shape: shape, color: glowColor, intensity: setupGlows ? 0.8 : settings.glowIntensity,
-                          enabled: (settings.glowEnabled && isSignal) || musicGlows || setupGlows,
+                          enabled: (settings.glowEnabled && isSignal) || musicGlows || setupGlows || hudGlows,
                           cycle: isSignal || setupGlows ? GlowPulse.cycle : GlowPulse.musicCycle,
                           rainbow: setupGlows && !musicGlows)
             }
+            .offset(x: shift)
             .animation(animation, value: presentation)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .ignoresSafeArea()
@@ -64,6 +73,21 @@ struct NotchRootView: View {
             MusicBackdrop(image: artwork, track: model.artworkTrack, bandHeight: model.screen?.topInset ?? 32)
                 .frame(width: size.width, height: size.height)
                 .transition(.opacity)
+        }
+    }
+
+    /// Mikrofon und Kamera in Benutzung: Punkte am rechten Rand der Kamera-Aussparung, solange die Notch zu ist.
+    @ViewBuilder
+    private func privacyDots(width: CGFloat) -> some View {
+        if model.notch.mode == .idle, model.microphoneInUse || model.cameraInUse,
+           let notch = model.screen.flatMap(NotchGeometry.notchRect) {
+            PrivacyDots(microphone: model.microphoneInUse, camera: model.cameraInUse)
+                .frame(width: notch.width, height: notch.height, alignment: .trailing)
+                .padding(.trailing, 9)
+                .frame(width: width, alignment: .center)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.3), value: model.microphoneInUse)
+                .animation(.easeInOut(duration: 0.3), value: model.cameraInUse)
         }
     }
 
@@ -82,7 +106,13 @@ struct NotchRootView: View {
             let notch = model.screen.flatMap(NotchGeometry.notchRect)
             let notchWidth = notch?.width ?? 0
             let presentation = model.currentPresentation()
-            if let announcement = model.trackAnnouncement, presentation == .trackSides {
+            if let indicator = model.systemIndicator, case .hud(let left, let right) = presentation {
+                SystemIndicatorView(indicator: indicator, notchWidth: notchWidth, leftWidth: left, rightWidth: right,
+                                    height: height, ear: Self.radii(for: presentation).top)
+                    .id(indicator.id)
+                    .frame(width: width, height: height)
+                    .transition(.notchContent)
+            } else if let announcement = model.trackAnnouncement, presentation == .trackSides {
                 TrackChangeSidesView(model: model, announcement: announcement, notchWidth: notchWidth,
                                      sideWidth: max(0, (width - notchWidth) / 2), height: height,
                                      ear: Self.radii(for: .trackSides).top)
@@ -191,6 +221,7 @@ struct NotchRootView: View {
         case .island: (6, 14)
         case .compact: (6, 12)
         case .trackSides: (6, 14)
+        case .hud: (NotchGeometry.hudEar, 14)
         case .trackBanner: (10, 26)
         case .banner: (10, 30)
         case .vertical, .verticalCompact: (10, 24)

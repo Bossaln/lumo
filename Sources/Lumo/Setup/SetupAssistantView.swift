@@ -313,6 +313,9 @@ struct SetupAssistantView: View {
             PermissionCard(symbol: "waveform", color: Self.rgb(0.2, 0.75, 0.6), title: L("Systemaudio"),
                            text: L("Damit die Balken neben der Kamera echt zur Musik tanzen. lumo rechnet nur die Höhen aus; nichts wird gespeichert."),
                            granted: nil, action: nil)
+            PermissionCard(symbol: "externaldrive.fill", color: Self.rgb(0.95, 0.6, 0.2), title: L("Voller Festplattenzugriff"),
+                           text: L("Für Fokus, Timer und Wecker in der Notch: lumo liest die Dateien, die macOS dafür führt. Freiwillig; alles andere geht auch ohne."),
+                           granted: nil, action: SystemHUDController.openFullDiskAccessSettings, pending: L("Freiwillig, in den Systemeinstellungen"))
             InfoBox(symbol: "checkmark.shield.fill", text: L("Alles ist freiwillig. Ohne Berechtigung öffnest du die Lagerhalle über den Reiter „Büro“, Antworten landen in der Zwischenablage, und die Balken tanzen animiert."))
         }
     }
@@ -528,6 +531,8 @@ private struct PermissionCard: View {
     /// `nil`: macOS fragt selbst, wenn es so weit ist.
     let granted: Bool?
     let action: (() -> Void)?
+    /// Hinweis statt des Status, wenn macOS nicht selbst fragt (`granted == nil`).
+    var pending: String? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -547,7 +552,7 @@ private struct PermissionCard: View {
                 if let granted {
                     StatusBadge(text: granted ? L("Erlaubt") : L("Nicht erlaubt"), color: granted ? Color.green : Color.orange)
                 } else {
-                    StatusBadge(text: L("Fragt macOS beim ersten Abspielen"), color: Color.gray)
+                    StatusBadge(text: pending ?? L("Fragt macOS beim ersten Abspielen"), color: Color.gray)
                 }
             }
             Spacer()

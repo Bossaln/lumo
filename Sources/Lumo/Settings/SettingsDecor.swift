@@ -3,13 +3,13 @@ import SwiftUI
 
 /// Bereiche des Einstellungsfensters, gruppiert wie in den Systemeinstellungen.
 enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
-    case general, updates, notch, agents, sessions, music, office, shelf, notes, developer
+    case general, updates, notch, system, agents, sessions, music, office, shelf, notes, developer
 
     var id: String { rawValue }
 
     /// Gruppen der Seitenleiste; „Entwickler“ nur, wenn die Entwickleroptionen eingeschaltet sind.
     static func groups(developer: Bool) -> [[SettingsPane]] {
-        [[.general, .updates], [.notch, .agents, .sessions], [.music, .office, .shelf, .notes]] + (developer ? [[.developer]] : [])
+        [[.general, .updates], [.notch, .system, .agents, .sessions], [.music, .office, .shelf, .notes]] + (developer ? [[.developer]] : [])
     }
 
     var title: String {
@@ -17,6 +17,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .general: L("Allgemein")
         case .updates: L("Softwareupdate")
         case .notch: L("Notch")
+        case .system: L("System")
         case .agents: L("Agenten")
         case .sessions: L("Sessions")
         case .music: L("Musik")
@@ -32,6 +33,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .general: "gearshape.fill"
         case .updates: "arrow.triangle.2.circlepath"
         case .notch: "rectangle.topthird.inset.filled"
+        case .system: "slider.horizontal.3"
         case .agents: "link"
         case .sessions: "terminal.fill"
         case .music: "music.note"
@@ -50,6 +52,8 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
             L("lumo sucht neue Versionen und installiert sie auf deinen Klick – über Homebrew oder aus deinem Quellordner.")
         case .notch:
             L("Form, Farben und Bewegung der Notch – vom ruhigen Schwarz bis zum leuchtenden Signal.")
+        case .system:
+            L("Lautstärke, Helligkeit, Fokus, Timer und mehr erscheinen in der Notch statt in der Bildschirmmitte.")
         case .agents:
             L("Verbinde Claude Code und Codex, damit Fragen und Freigaben direkt in der Notch landen.")
         case .sessions:
@@ -73,6 +77,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable {
         case .general: (Self.rgb(0.62, 0.62, 0.65), Self.rgb(0.42, 0.42, 0.45))
         case .updates: (Self.rgb(0.25, 0.62, 1.0), Self.rgb(0.0, 0.42, 0.94))
         case .notch: (Self.rgb(0.30, 0.30, 0.33), Self.rgb(0.06, 0.06, 0.07))
+        case .system: (Self.rgb(0.35, 0.78, 1.0), Self.rgb(0.05, 0.50, 0.95))
         case .agents: (Self.rgb(0.78, 0.42, 1.0), Self.rgb(0.55, 0.22, 0.88))
         case .sessions: (Self.rgb(1.0, 0.66, 0.12), Self.rgb(0.98, 0.42, 0.0))
         case .music: (Self.rgb(1.0, 0.33, 0.45), Self.rgb(0.92, 0.12, 0.30))

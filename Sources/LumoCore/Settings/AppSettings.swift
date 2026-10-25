@@ -84,12 +84,31 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var musicVisualizer: MusicVisualizerMode = .audio
     /// Zweimal ⌃ öffnet eine Schnellnotiz in der Notch.
     public var notesHotkey: Bool = true
+    /// Systemanzeigen in der Notch: Lautstärke, Helligkeit, Fokus, Timer … (`SystemIndicatorKind`).
+    public var systemHUD: Bool = true
+    /// Arten, die nicht gezeigt werden sollen.
+    public var hudHidden: Set<SystemIndicatorKind> = []
+    /// Die Einblendungen von macOS unterdrücken: lumo fängt die Tasten ab und stellt Lautstärke, Helligkeit und
+    /// Tastaturlicht selbst (braucht Bedienungshilfen).
+    public var suppressMacHUD: Bool = true
+    /// So lange steht eine kurze Systemanzeige (Sekunden).
+    public var systemHUDSeconds: Double = 2
+    /// Ein laufender Timer bleibt in der Notch stehen, bis er endet.
+    public var timerStaysVisible: Bool = true
 
     public static let `default` = AppSettings()
 
     /// Erlaubte Anzeigedauer für einen neuen Titel und die Auswahl in den Einstellungen.
     public static let trackChangeSecondsRange: ClosedRange<Double> = 1...10
     public static let trackChangeSecondChoices: [Double] = [2, 3, 5]
+    /// Anzeigedauer der Systemanzeigen und die Auswahl in den Einstellungen.
+    public static let systemHUDSecondsRange: ClosedRange<Double> = 1...6
+    public static let systemHUDSecondChoices: [Double] = [1, 2, 3, 5]
+
+    /// Soll die Notch diese Art Systemanzeige zeigen?
+    public func shows(_ kind: SystemIndicatorKind) -> Bool {
+        systemHUD && !hudHidden.contains(kind)
+    }
 
     /// Erlaubte Breite je Island-Seite in pt. Ab 80 passen Punkt, Agentname und ✕/✓ neben die Kamera.
     public static let islandSideWidthRange: ClosedRange<Double> = 80...320
@@ -122,6 +141,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case panelOpenBehavior, musicArtworkBackground, musicCoverTransition, officeHotkey, developerOptions
         case shelfEnabled, language, musicTrackChangeStyle, musicTrackChangeSeconds, musicVisualizer, notesHotkey
         case externalNotch, externalNotchCenter
+        case systemHUD, hudHidden, suppressMacHUD, systemHUDSeconds, timerStaysVisible
     }
 
     public init(from decoder: Decoder) throws {
@@ -192,6 +212,16 @@ public struct AppSettings: Codable, Equatable, Sendable {
         s.musicTrackChangeSeconds = min(max(s.musicTrackChangeSeconds, seconds.lowerBound), seconds.upperBound)
         option(.musicVisualizer, &s.musicVisualizer)
         value(.notesHotkey, &s.notesHotkey)
+        value(.systemHUD, &s.systemHUD)
+        // Unbekannte Arten einzeln überspringen, statt die ganze Liste zu verlieren.
+        if let hidden = try? c.decodeIfPresent([String].self, forKey: .hudHidden) {
+            s.hudHidden = Set(hidden.compactMap(SystemIndicatorKind.init(rawValue:)))
+        }
+        value(.suppressMacHUD, &s.suppressMacHUD)
+        value(.systemHUDSeconds, &s.systemHUDSeconds)
+        let hudSeconds = Self.systemHUDSecondsRange
+        s.systemHUDSeconds = min(max(s.systemHUDSeconds, hudSeconds.lowerBound), hudSeconds.upperBound)
+        value(.timerStaysVisible, &s.timerStaysVisible)
         let range = Self.islandSideWidthRange
         s.islandSideWidth = min(max(s.islandSideWidth, range.lowerBound), range.upperBound)
         self = s
