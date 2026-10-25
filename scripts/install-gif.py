@@ -83,7 +83,7 @@ prompt = "~ % "
 command = "brew install --cask bossaln/tap/lumo"
 brew_lines = [
     [("==> ", BLUE), ("Tapping bossaln/tap", TEXT)],
-    [("==> ", BLUE), ("Downloading lumo-0.3.0.zip", TEXT)],
+    [("==> ", BLUE), ("Downloading lumo-0.8.0.zip", TEXT)],
     [("######################################################### 100.0%", DIM)],
     [("==> ", BLUE), ("Installing Cask ", TEXT), ("lumo", GREEN)],
     [("==> ", BLUE), ("Moving App 'lumo.app' to '/Applications/lumo.app'", TEXT)],
