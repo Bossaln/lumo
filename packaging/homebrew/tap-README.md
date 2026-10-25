@@ -1,10 +1,10 @@
-# Homebrew tap for notchai
+# Homebrew tap for lumo
 
 ```sh
-brew install --cask bossaln/tap/notchai
+brew install --cask bossaln/tap/lumo
 ```
 
-notchai turns the MacBook notch into a control center for Claude Code and Codex.
-See [Bossaln/notchai](https://github.com/Bossaln/notchai) for details.
+lumo turns the MacBook notch into a control center for Claude Code and Codex.
+See [Bossaln/lumo](https://github.com/Bossaln/lumo) for details.
 
-This tap is updated automatically when a new notchai version is released.
+This tap is updated automatically when a new lumo version is released.

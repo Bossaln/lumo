@@ -4,61 +4,61 @@
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:notchai}",
-            "name": "Debug notchai",
-            "target": "notchai",
+            "cwd": "${workspaceFolder:lumo}",
+            "name": "Debug lumo",
+            "target": "lumo",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug notchai"
+            "preLaunchTask": "swift: Build Debug lumo"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:notchai}",
-            "name": "Release notchai",
-            "target": "notchai",
+            "cwd": "${workspaceFolder:lumo}",
+            "name": "Release lumo",
+            "target": "lumo",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release notchai"
+            "preLaunchTask": "swift: Build Release lumo"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:notchai}",
-            "name": "Debug notchai-hook",
-            "target": "notchai-hook",
+            "cwd": "${workspaceFolder:lumo}",
+            "name": "Debug lumo-hook",
+            "target": "lumo-hook",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug notchai-hook"
+            "preLaunchTask": "swift: Build Debug lumo-hook"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:notchai}",
-            "name": "Release notchai-hook",
-            "target": "notchai-hook",
+            "cwd": "${workspaceFolder:lumo}",
+            "name": "Release lumo-hook",
+            "target": "lumo-hook",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release notchai-hook"
+            "preLaunchTask": "swift: Build Release lumo-hook"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:notchai}",
-            "name": "Debug notchai-welcome",
-            "target": "notchai-welcome",
+            "cwd": "${workspaceFolder:lumo}",
+            "name": "Debug lumo-welcome",
+            "target": "lumo-welcome",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug notchai-welcome"
+            "preLaunchTask": "swift: Build Debug lumo-welcome"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:notchai}",
-            "name": "Release notchai-welcome",
-            "target": "notchai-welcome",
+            "cwd": "${workspaceFolder:lumo}",
+            "name": "Release lumo-welcome",
+            "target": "lumo-welcome",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release notchai-welcome"
+            "preLaunchTask": "swift: Build Release lumo-welcome"
         }
     ]
 }

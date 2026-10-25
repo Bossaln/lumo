@@ -66,31 +66,31 @@ jobs:
             echo "::warning::Kein Zertifikat hinterlegt (NOTCHAI_CERT_P12). Die App wird nur ad hoc signiert."
             exit 0
           fi
-          KEYCHAIN="$RUNNER_TEMP/notchai.keychain-db"
+          KEYCHAIN="$RUNNER_TEMP/lumo.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 3600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          echo "$CERT_P12" | base64 -D > "$RUNNER_TEMP/notchai.p12"
-          security import "$RUNNER_TEMP/notchai.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
-          rm -f "$RUNNER_TEMP/notchai.p12"
+          echo "$CERT_P12" | base64 -D > "$RUNNER_TEMP/lumo.p12"
+          security import "$RUNNER_TEMP/lumo.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/lumo.p12"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
           security find-identity -p codesigning "$KEYCHAIN"
-          echo "NOTCHAI_SIGN_IDENTITY=notchai Signing" >> "$GITHUB_ENV"
+          echo "LUMO_SIGN_IDENTITY=notchai Signing" >> "$GITHUB_ENV"
 
       - name: Build and package
         run: scripts/package-release.sh "$VERSION"
 
       - name: Show signature
-        run: codesign -dv --verbose=2 build/notchai.app 2>&1 | grep -E "^(Identifier|Authority|Signature)" || true
+        run: codesign -dv --verbose=2 build/lumo.app 2>&1 | grep -E "^(Identifier|Authority|Signature)" || true
 
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$VERSION" "build/notchai-$VERSION.zip" \
-            --target "$GITHUB_SHA" --title "notchai $VERSION" --generate-notes
+          gh release create "v$VERSION" "build/lumo-$VERSION.zip" \
+            --target "$GITHUB_SHA" --title "lumo $VERSION" --generate-notes
 
       - name: Update Homebrew tap
         env:
@@ -100,16 +100,16 @@ jobs:
             echo "::warning::Kein TAP_GITHUB_TOKEN hinterlegt. Den Cask im Tap bitte von Hand aktualisieren."
             exit 0
           fi
-          SHA256="$(cat "build/notchai-$VERSION.zip.sha256")"
+          SHA256="$(cat "build/lumo-$VERSION.zip.sha256")"
           TAP="$RUNNER_TEMP/tap"
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPOSITORY}.git" "$TAP"
           mkdir -p "$TAP/Casks"
           # Ohne die beiden Kommentarzeilen der Vorlage.
-          sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA256/" packaging/homebrew/notchai.rb | sed '1,2d' > "$TAP/Casks/notchai.rb"
+          sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA256/" packaging/homebrew/lumo.rb | sed '1,2d' > "$TAP/Casks/lumo.rb"
           [ -f "$TAP/README.md" ] || cp packaging/homebrew/tap-README.md "$TAP/README.md"
           cd "$TAP"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "notchai $VERSION"
+          git commit -m "lumo $VERSION"
           git push origin HEAD

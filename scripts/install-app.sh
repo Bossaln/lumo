@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ersetzt eine (laufende) notchai-App durch eine neu gebaute und startet sie.
+# Ersetzt eine (laufende) lumo-App durch eine neu gebaute und startet sie.
 # Aufruf: scripts/install-app.sh <PID der alten App oder ""> <neue App> <Ziel>
 # Wird von scripts/install.sh und vom Update-Knopf der App benutzt.
 set -euo pipefail
@@ -25,4 +25,4 @@ if [ "$(resolve "$NEW_APP")" != "$(resolve "$TARGET")" ]; then
   mv "$TARGET.neu" "$TARGET"
 fi
 open "$TARGET"
-echo "notchai läuft: $TARGET"
+echo "lumo läuft: $TARGET"

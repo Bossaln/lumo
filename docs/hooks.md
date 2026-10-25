@@ -1,6 +1,6 @@
 # Hooks: Freigaben, Fragen, Nachrichten-Socket und Codex
 
-Stand: 22.10.2026. Wie Claude Code und Codex mit notchais Hooks umgehen; darauf beruhen `notchai-hook`, `HookOutput` und das Session-Buch.
+Stand: 22.10.2026. Wie Claude Code und Codex mit lumos Hooks umgehen; darauf beruhen `lumo-hook`, `HookOutput` und das Session-Buch.
 
 ## Wie geprüft wurde
 
@@ -23,17 +23,17 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
   - Antwortet der Hook später mit der Allow-JSON, während der Dialog noch offen ist, schließt Claude Code den Dialog und führt aus („Allowed by PermissionRequest hook“).
   - Antwortet man zuerst im Terminal, läuft der Agent sofort weiter. **Der Hook-Prozess wird dabei nicht beendet**, er wartet bis zu seinem eigenen Ende weiter.
 - Leere Ausgabe (Exit 0, kein stdout) heißt „keine Entscheidung“: Der Dialog bleibt einfach stehen. Ohne Dialog (`-p`) wird das Werkzeug dann abgelehnt.
-- Ablehnen mit `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"In notchai abgelehnt"}}}` kommt beim Modell als Fehler mit genau diesem Text an.
+- Ablehnen mit `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"In lumo abgelehnt"}}}` kommt beim Modell als Fehler mit genau diesem Text an.
 - Etwa 6 s nach dem Dialog meldet Claude Code zusätzlich `Notification` mit `notification_type: "permission_prompt"` und `message: "Claude needs your permission"`.
 
 **Beleg:** Pseudo-Terminal-Mitschnitt: Dialog „Do you want to proceed?“ bei 0,83 s, Hook-Start bei 0,83 s, Hook-Ende bei 8,8 s. Mit `allowlate` (4 s warten, dann erlauben) steht bei 4,98 s „Ran 1 shell command · Allowed by PermissionRequest hook“, ohne Tastendruck. Mit Tastendruck „1“ bei 2,5 s ist die Datei sofort angelegt, und `hook-sleepend` wird trotzdem erst bei 8 s geschrieben.
 
-**Folgen für notchai:**
+**Folgen für lumo:**
 
 - „Nie blockieren“ ist durch Claude Code selbst garantiert. Die Wartezeit (`approvalTimeoutSeconds`) begrenzt nur noch, wie lange die Notch eine Anfrage zeigt.
 - Kommt für dieselbe Session ein weiteres Ereignis, während eine Anfrage offen ist (`PostToolUse`, `PostToolUseFailure`, `PreToolUse`, `UserPromptSubmit`, `Stop`, `StopFailure`, `SessionEnd`), wurde sie anderswo beantwortet. Das Session-Buch entfernt sie dann und meldet ihre ID, damit die App dem wartenden Hook sofort „keine Entscheidung“ schickt. `Notification` mit `permission_prompt` gehört zur selben Anfrage und räumt nichts auf.
 - Hook-Eingabe bei `PermissionRequest` enthält zusätzlich `prompt_id`, `effort` und `permission_suggestions`. Unbekannte Felder ignoriert `HookEvent` ohnehin.
-- **Im Terminal erlaubt:** Claude Code meldet die Entscheidung nicht, und das erste Ereignis danach (`PostToolUse`) kommt erst, wenn das Werkzeug fertig ist. Bei langen Befehlen stünde die Anfrage minutenlang in der Notch, und ein Klick dort bewirkte nichts mehr. Auf dem Mac (2.1.310) startet Claude Code einen Shell-Befehl als Kind des Agenten: `/bin/zsh -c source <snapshot> … && eval '<befehl>' < /dev/null && pwd -P >| /tmp/claude-…`, `'` im Befehl als `'\''`. Das Transkript schreibt vor dem `tool_result` nichts zur Entscheidung. notchai sieht deshalb jede Sekunde nach, ob unter dem Agenten ein neuer Prozess läuft, dessen Befehlszeile den Anfang des Befehls (bis zum ersten `'`, mindestens 6 Zeichen) enthält (`PermissionText.processNeedle`, `ProcessTree.startedChild`). Dann ist die Anfrage überholt und verschwindet. Abgelehnt im Terminal startet nichts; die Anfrage bleibt bis zum nächsten Ereignis der Session oder zum Ablauf.
+- **Im Terminal erlaubt:** Claude Code meldet die Entscheidung nicht, und das erste Ereignis danach (`PostToolUse`) kommt erst, wenn das Werkzeug fertig ist. Bei langen Befehlen stünde die Anfrage minutenlang in der Notch, und ein Klick dort bewirkte nichts mehr. Auf dem Mac (2.1.310) startet Claude Code einen Shell-Befehl als Kind des Agenten: `/bin/zsh -c source <snapshot> … && eval '<befehl>' < /dev/null && pwd -P >| /tmp/claude-…`, `'` im Befehl als `'\''`. Das Transkript schreibt vor dem `tool_result` nichts zur Entscheidung. lumo sieht deshalb jede Sekunde nach, ob unter dem Agenten ein neuer Prozess läuft, dessen Befehlszeile den Anfang des Befehls (bis zum ersten `'`, mindestens 6 Zeichen) enthält (`PermissionText.processNeedle`, `ProcessTree.startedChild`). Dann ist die Anfrage überholt und verschwindet. Abgelehnt im Terminal startet nichts; die Anfrage bleibt bis zum nächsten Ereignis der Session oder zum Ablauf.
 - **Ganzer Befehl:** Die Signale zeigen nur die erste Zeile. Hat der Befehl mehrere Zeilen oder mehr als 60 Zeichen, steht daneben ein Hinweis („+1 Zeile“, „ganzer Befehl“), der nie mit abgeschnitten wird. Ein Klick öffnet die Sessions, dort steht der ganze Befehl über „Erlauben“ (`PermissionText`).
 
 ## 2. Fragen beantworten (`AskUserQuestion` über `PreToolUse`)
@@ -53,7 +53,7 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 
 **Beleg:** Interaktiver Lauf: In der Sitzung steht „User answered Claude's questions: · Welche Farbe? → Blau“, beim Modell kommt `Your questions have been answered: "Welche Farbe?"="Blau"` an. Doku: https://code.claude.com/docs/en/hooks („For `AskUserQuestion`, echo back the original `questions` array and add an `answers` object …“). Schema im Programm: `answers: record<string, string | string[]>`, Arrays werden mit `", "` verbunden.
 
-**Folgen für notchai:** `HookOutput.questionAnswer(toolInput:answers:)` setzt `answers` in die unveränderte Eingabe. Option **und** Freitext gehen über diesen Weg, `ReplySender` ist für Fragen nicht nötig.
+**Folgen für lumo:** `HookOutput.questionAnswer(toolInput:answers:)` setzt `answers` in die unveränderte Eingabe. Option **und** Freitext gehen über diesen Weg, `ReplySender` ist für Fragen nicht nötig.
 
 - **Mehrere Fragen:** Claude Code nimmt auch unvollständige `answers` an, ohne nachzufragen (auf dem Mac mit 2.1.310 geprüft); eine fehlende Frage ginge also still verloren. Die Notch zeigt die Fragen deshalb nacheinander („1/2“) und schickt erst nach der letzten alle Antworten zusammen (`SessionBook.recordAnswer`).
 - **Mehrfachauswahl:** Optionen schalten um, „Senden“ schickt die gewählten Beschriftungen mit „, “ verbunden; getippter Text kommt dahinter.
@@ -68,7 +68,7 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 
 **Beleg:** https://code.claude.com/docs/en/cross-session-messaging. Die Variablen `CLAUDE_CODE_MESSAGING_SOCKET` und `CLAUDE_CODE_MESSAGING_TOKEN` kommen in jedem Hook an (geprüft).
 
-**Folgen für notchai:** `ClaudeMessaging.isSupported = false`. Antworten an Claude laufen über cmux bzw. Fenster nach vorn + Zwischenablage.
+**Folgen für lumo:** `ClaudeMessaging.isSupported = false`. Antworten an Claude laufen über cmux bzw. Fenster nach vorn + Zwischenablage.
 
 ## 4. Codex-Hooks
 
@@ -82,11 +82,11 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 
 **Beleg:** `codex features list` → `hooks stable true`. Lauf mit `CODEX_HOME=…/codex-spike/home` und `--dangerously-bypass-hook-trust` (nur für den Versuch): `SessionStart`, `UserPromptSubmit`, `Stop` und `SessionEnd` feuern mit den Feldern oben. Ohne diesen Schalter feuert nichts. Die Texte zur Hook-Freigabe stehen im Programm.
 
-**Folgen für notchai:**
+**Folgen für lumo:**
 
-- Pfad bleibt `~/.codex/hooks.json`. `SessionEnd` wird bei Codex ohne `async` eingetragen (schadet nicht, `notchai-hook` endet nach höchstens 300 ms).
-- Nach „Codex verbinden“ sagt der Assistent: „Starte Codex einmal im Terminal und wähle bei ‚Hooks need review‘ ‚Trust all and continue‘.“ Das Hook-Kommando muss über Updates hinweg gleich bleiben (fester Pfad `~/Library/Application Support/notchai/bin/notchai-hook`), sonst fragt Codex erneut.
-- notchai schreibt weiterhin nie `config.toml` und umgeht die Freigabe nie.
+- Pfad bleibt `~/.codex/hooks.json`. `SessionEnd` wird bei Codex ohne `async` eingetragen (schadet nicht, `lumo-hook` endet nach höchstens 300 ms).
+- Nach „Codex verbinden“ sagt der Assistent: „Starte Codex einmal im Terminal und wähle bei ‚Hooks need review‘ ‚Trust all and continue‘.“ Das Hook-Kommando muss über Updates hinweg gleich bleiben (fester Pfad `~/Library/Application Support/lumo/bin/lumo-hook`), sonst fragt Codex erneut.
+- lumo schreibt weiterhin nie `config.toml` und umgeht die Freigabe nie.
 
 ## 5. Codex-Rollout-Zeilen
 
@@ -99,28 +99,28 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 
 **Beleg:** Rollout aus dem Lauf oben (`sessions/2026/10/22/rollout-….jsonl`).
 
-**Folgen für notchai:** Erkannt wird nur über `originator`, ohne feste Liste.
+**Folgen für lumo:** Erkannt wird nur über `originator`, ohne feste Liste.
 
 **Nachtrag 0.163 (aus dem Programm gelesen, nicht an einem echten Rollout geprüft):**
 
 - `token_count` trägt neben `info` auch `rate_limits` (`RateLimitSnapshot`): `limit_id`, `limit_name`, `primary` und
   `secondary` mit je `used_percent`, `window_minutes` und `resets_at` (Unix-Sekunden), dazu `credits` und `plan_type`.
   Ältere Versionen schrieben `resets_in_seconds` statt `resets_at`. `rate_limits` kann `null` sein oder nur
-  `limit_id` enthalten; notchai behält dann die zuletzt bekannten Werte und nimmt nur `limit_id` `codex` (oder ohne).
+  `limit_id` enthalten; lumo behält dann die zuletzt bekannten Werte und nimmt nur `limit_id` `codex` (oder ohne).
 - Codex packt ruhende Rollouts mit zstd zu `rollout-….jsonl.zst` (`rollout/src/compression.rs`). Laufende Threads
-  bleiben `.jsonl`; die gepackten liest notchai nicht. Die Entwickler-Seite zählt sie („Session-Quellen kopieren“).
-- Ein weitergeführter Thread schreibt in seine alte Datei im Ordner seines Starttags. notchai sucht deshalb 45 Tage
+  bleiben `.jsonl`; die gepackten liest lumo nicht. Die Entwickler-Seite zählt sie („Session-Quellen kopieren“).
+- Ein weitergeführter Thread schreibt in seine alte Datei im Ordner seines Starttags. lumo sucht deshalb 45 Tage
   zurück, zählt aber nur Dateien, die innerhalb der eingestellten Session-Dauer geändert wurden.
 
 ## Sessions in den Apps
 
-- **Claude-App:** Gewöhnliche Chats liegen nur in der Cloud; davon sieht notchai nichts. Claude-Code-Sessions in der
+- **Claude-App:** Gewöhnliche Chats liegen nur in der Cloud; davon sieht lumo nichts. Claude-Code-Sessions in der
   App schreiben nach `~/.claude/projects` (`entrypoint: "claude-desktop"`) und führen die Hooks aus
   `~/.claude/settings.json` aus (erwartet, noch nicht auf einem Mac bestätigt).
 - **Codex-App:** teilt `~/.codex` mit der Kommandozeile. Das Programm kennt die `originator` `Codex Desktop` und
   `codex_desktop`, die App setzt `__CFBundleIdentifier=com.openai.codex`. Alle Threads laufen über einen
   `app-server`-Prozess, der so lange läuft wie die App.
-- **Folgen für notchai:** Ein Agent-Prozess beweist nur dann, dass eine Session offen ist, wenn er zu genau einer
+- **Folgen für lumo:** Ein Agent-Prozess beweist nur dann, dass eine Session offen ist, wenn er zu genau einer
   Session gehört und nicht in einer der Apps läuft. Sonst verschwindet sie nach 30 Minuten Ruhe und kommt mit neuer
   Aktivität zurück.
 
@@ -144,15 +144,15 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 
 ## Beobachtungen auf dem Mac (Claude Code 2.1.310, cmux 0.65.2, macOS 27.0.1, Oktober 2026)
 
-- **cmux:** Die Fläche steht in `CMUX_SURFACE_ID` (gleicher Wert wie `CMUX_PANEL_ID`), der Tab in `CMUX_WORKSPACE_ID` (gleicher Wert wie `CMUX_TAB_ID`). `__CFBundleIdentifier` ist `com.cmuxterm.app`, `TERM_PROGRAM` ist `ghostty`, `CLAUDE_CODE_ENTRYPOINT` ist `cli`. cmux setzt außerdem `CMUX_CLAUDE_PID` (gleich der `agentPid`, die `ProcessTree.agent` findet) und Zugangsdaten für seinen Socket (`CMUX_CUA_SOCKET_AUTH_TOKEN`, `CMUX_SOCKET_CAPABILITY`, Pfade zu Token-Dateien). `notchai-hook` gibt nur die vier IDs weiter (`HookClient.forwardedEnvironment`); „Letzte Hook-Ereignisse kopieren“ macht Werte mit `TOKEN`, `AUTH`, `CAPABILITY`, `SECRET`, `PASSWORD` oder `KEY` im Namen unkenntlich und kürzt Prompts, Antworten und Werkzeug-Eingaben auf 80 Zeichen (`HookExport`).
-- **cmux-Socket:** In der Standardeinstellung („Nur cmux-Prozesse“, `cmuxOnly`) nimmt cmux nur Befehle von Prozessen an, die in cmux gestartet wurden. notchai läuft außerhalb: `cmux paste` endet dann mit „failed to write to socket (Broken pipe, errno 32)“, `cmux ping` mit „Zugriff verweigert – nur innerhalb von cmux gestartete Prozesse können eine Verbindung herstellen“. `cmux socket-status --json` nennt den Modus (`effective_mode`), ohne sich mit dem Socket zu verbinden. Antworten und das Wählen des Tabs gehen nur mit „Automatisierungsmodus“ (`automation`, alle lokalen Programme dieses Benutzers), „Passwortmodus“ (`password`, das CLI liest das gespeicherte Passwort selbst) oder „Uneingeschränkter Zugriff“ (`allowAll`, unsicher); einstellbar in cmux › Einstellungen › Automatisierung. Sonst legt notchai den Text in die Zwischenablage, holt cmux nach vorn und sagt das (`CmuxSocketMode`).
+- **cmux:** Die Fläche steht in `CMUX_SURFACE_ID` (gleicher Wert wie `CMUX_PANEL_ID`), der Tab in `CMUX_WORKSPACE_ID` (gleicher Wert wie `CMUX_TAB_ID`). `__CFBundleIdentifier` ist `com.cmuxterm.app`, `TERM_PROGRAM` ist `ghostty`, `CLAUDE_CODE_ENTRYPOINT` ist `cli`. cmux setzt außerdem `CMUX_CLAUDE_PID` (gleich der `agentPid`, die `ProcessTree.agent` findet) und Zugangsdaten für seinen Socket (`CMUX_CUA_SOCKET_AUTH_TOKEN`, `CMUX_SOCKET_CAPABILITY`, Pfade zu Token-Dateien). `lumo-hook` gibt nur die vier IDs weiter (`HookClient.forwardedEnvironment`); „Letzte Hook-Ereignisse kopieren“ macht Werte mit `TOKEN`, `AUTH`, `CAPABILITY`, `SECRET`, `PASSWORD` oder `KEY` im Namen unkenntlich und kürzt Prompts, Antworten und Werkzeug-Eingaben auf 80 Zeichen (`HookExport`).
+- **cmux-Socket:** In der Standardeinstellung („Nur cmux-Prozesse“, `cmuxOnly`) nimmt cmux nur Befehle von Prozessen an, die in cmux gestartet wurden. lumo läuft außerhalb: `cmux paste` endet dann mit „failed to write to socket (Broken pipe, errno 32)“, `cmux ping` mit „Zugriff verweigert – nur innerhalb von cmux gestartete Prozesse können eine Verbindung herstellen“. `cmux socket-status --json` nennt den Modus (`effective_mode`), ohne sich mit dem Socket zu verbinden. Antworten und das Wählen des Tabs gehen nur mit „Automatisierungsmodus“ (`automation`, alle lokalen Programme dieses Benutzers), „Passwortmodus“ (`password`, das CLI liest das gespeicherte Passwort selbst) oder „Uneingeschränkter Zugriff“ (`allowAll`, unsicher); einstellbar in cmux › Einstellungen › Automatisierung. Sonst legt lumo den Text in die Zwischenablage, holt cmux nach vorn und sagt das (`CmuxSocketMode`).
 - **Tab wählen:** `cmux select-workspace --workspace <CMUX_WORKSPACE_ID>` und `cmux focus-panel --panel <CMUX_SURFACE_ID> --workspace …`. `NSRunningApplication.activate` allein holt weder ein minimiertes Fenster zurück noch den richtigen Tab.
-- **Freigaben kommen nacheinander:** Bei zwei parallelen Bash-Aufrufen, die beide eine Freigabe brauchen, kommt `PreToolUse`/`PermissionRequest` des zweiten erst nach `PostToolUse` des ersten. Einen Hinweis „weitere Anfrage folgt“ kann notchai nicht geben. (Unteragenten nicht geprüft.)
+- **Freigaben kommen nacheinander:** Bei zwei parallelen Bash-Aufrufen, die beide eine Freigabe brauchen, kommt `PreToolUse`/`PermissionRequest` des zweiten erst nach `PostToolUse` des ersten. Einen Hinweis „weitere Anfrage folgt“ kann lumo nicht geben. (Unteragenten nicht geprüft.)
 - **`Notification` `permission_prompt`** kommt auch auf dem Mac etwa 6 s nach `PermissionRequest`.
 - **`SubagentStop` nach `Stop`:** Etwa 2 s nach jedem `Stop` kommt ein `SubagentStop` derselben Session. Sein `last_assistant_message` ist ein vorgeschlagener nächster Prompt des Nutzers, nicht die Antwort des Agenten. `SessionBook` ignoriert `SubagentStop` (Test `subagentStopNeverBecomesTheLastStep`).
 - **`permission_mode` wechselt mitten im Turn:** `PreToolUse` kann `default` melden und `PostToolUse` desselben Aufrufs `auto`, wenn der Nutzer umschaltet.
-- **Abgelehnt ist kein Fehler:** Eine Ablehnung kommt beim Modell als `tool_result` mit `is_error: true` an („In notchai abgelehnt“, „The user doesn't want to proceed …“). Der Fehlerzähler lässt sie weg und zählt je Turn (`ToolFailure`).
-- **Sessions ohne Transkript:** Echte Sessions schicken immer `transcript_path`. Ereignisse ohne (von Hand an `notchai-hook` geschickt) ergeben keine Session in der Liste. Teilen sich mehrere Claude-Sessions einen Prozess (`/resume`), gehört er der zuletzt aktiven.
+- **Abgelehnt ist kein Fehler:** Eine Ablehnung kommt beim Modell als `tool_result` mit `is_error: true` an („In lumo abgelehnt“, „The user doesn't want to proceed …“). Der Fehlerzähler lässt sie weg und zählt je Turn (`ToolFailure`).
+- **Sessions ohne Transkript:** Echte Sessions schicken immer `transcript_path`. Ereignisse ohne (von Hand an `lumo-hook` geschickt) ergeben keine Session in der Liste. Teilen sich mehrere Claude-Sessions einen Prozess (`/resume`), gehört er der zuletzt aktiven.
 
 ## Claude-App (Claude Code 2.1.308 in Claude Desktop 3.6556.2, Oktober 2026)
 
@@ -167,7 +167,7 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 ## Unteragenten im Terminal (Claude Code 2.1.310, Oktober 2026)
 
 - `agent_id` und `agent_type` kommen bei `SubagentStart`, `SubagentStop` und bei jedem `PreToolUse`/`PostToolUse` aus dem Unteragenten mit (`"agent_type":"general-purpose"`).
-- Die Prompt-Vorschläge nach jedem `Stop` kommen als `SubagentStop` mit eigener `agent_id`, aber `"agent_type":""` und ohne `SubagentStart`; `last_assistant_message` ist der vorhergesagte nächste Satz des Nutzers. notchai zählt nur Unteragenten, deren `SubagentStart` es gesehen hat.
+- Die Prompt-Vorschläge nach jedem `Stop` kommen als `SubagentStop` mit eigener `agent_id`, aber `"agent_type":""` und ohne `SubagentStart`; `last_assistant_message` ist der vorhergesagte nächste Satz des Nutzers. lumo zählt nur Unteragenten, deren `SubagentStart` es gesehen hat.
 - Ist ein Unteragent im Hintergrund fertig, kommt das in der Haupt-Session als `UserPromptSubmit` mit `prompt` „`<agent-message from=…>`“ (in der Claude-App „`<task-notification>`“) und startet einen neuen kurzen Turn, der wieder mit `Stop` endet.
 - Im Modus `auto` (`permission_mode`) entscheidet Claude Code selbst; es kommt kein `PermissionRequest`.
 
@@ -181,4 +181,4 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 - Ob Claude Code bei `/clear` und `/resume` ein `SessionEnd` für die alte Session schickt.
 - Ob Freigaben von Unteragenten ebenfalls nacheinander kommen.
 
-Am einfachsten geht das, sobald notchai die Hooks eingerichtet hat: Die Entwickler-Seite der Einstellungen zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“) und jede bekannte Session mit Herkunft und Prozess („Session-Quellen kopieren“).
+Am einfachsten geht das, sobald lumo die Hooks eingerichtet hat: Die Entwickler-Seite der Einstellungen zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“) und jede bekannte Session mit Herkunft und Prozess („Session-Quellen kopieren“).

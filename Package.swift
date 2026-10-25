@@ -2,26 +2,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "notchai",
+    name: "lumo",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "notchai", targets: ["Notchai"]),
-        .executable(name: "notchai-hook", targets: ["notchai-hook"]),
-        .executable(name: "notchai-welcome", targets: ["notchai-welcome"]),
+        .executable(name: "lumo", targets: ["Lumo"]),
+        .executable(name: "lumo-hook", targets: ["lumo-hook"]),
+        .executable(name: "lumo-welcome", targets: ["lumo-welcome"]),
     ],
     targets: [
-        .target(name: "NotchaiCore", path: "Sources/NotchaiCore"),
+        .target(name: "LumoCore", path: "Sources/LumoCore"),
         // Das Programm, das Claude Code und Codex als Hook aufrufen (siehe `HookClient`).
-        .executableTarget(name: "notchai-hook", dependencies: ["NotchaiCore"], path: "Sources/notchai-hook"),
+        .executableTarget(name: "lumo-hook", dependencies: ["LumoCore"], path: "Sources/lumo-hook"),
         // Der fahrende GT-R nach `brew install` und `brew upgrade` (siehe `InstallGreeting`).
-        .executableTarget(name: "notchai-welcome", dependencies: ["NotchaiCore"], path: "Sources/notchai-welcome"),
+        .executableTarget(name: "lumo-welcome", dependencies: ["LumoCore"], path: "Sources/lumo-welcome"),
         .executableTarget(
-            name: "Notchai",
-            dependencies: ["NotchaiCore"],
+            name: "Lumo",
+            dependencies: ["LumoCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
-        // Hängt auch von `notchai-hook` ab, damit das Programm vor den Tests gebaut ist (`HookBinaryTests`).
-        .testTarget(name: "NotchaiCoreTests", dependencies: ["NotchaiCore", "notchai-hook"],
+        // Hängt auch von `lumo-hook` ab, damit das Programm vor den Tests gebaut ist (`HookBinaryTests`).
+        .testTarget(name: "LumoCoreTests", dependencies: ["LumoCore", "lumo-hook"],
                     resources: [.copy("Fixtures")]),
     ]
 )
