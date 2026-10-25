@@ -2,8 +2,9 @@ import AppKit
 import NotchaiCore
 import Observation
 
-/// Hält das Notch-Panel auf dem Notch-Bildschirm und steuert Hover und Klickdurchlass.
-/// Lebt so lange wie die App.
+/// Hält das Notch-Panel auf dem Bildschirm, auf dem gerade gearbeitet wird, und steuert Hover und Klickdurchlass.
+/// Externe Bildschirme bekommen eine gedachte Notch (`ExternalNotch`); die anderen zeigen solange eine ruhende Kopie
+/// (`ExternalNotchMirror`). Lebt so lange wie die App.
 @MainActor
 final class NotchController {
     /// Kurzes Herausrutschen soll das Panel nicht schließen.
@@ -29,6 +30,10 @@ final class NotchController {
     private var fileDragNearNotch = false
     /// Letzter Blick in den Drag-Zwischenspeicher; jeder Blick ist eine Anfrage an einen anderen Prozess.
     private var lastDragCheck = Date.distantPast
+    /// Bildschirme, die eine Notch haben (echt oder gedacht), aus `NSScreen.screens`.
+    private var candidates: [ScreenInfo] = []
+    /// Ruhende Kopien auf externen Bildschirmen, auf denen die Notch gerade nicht ist (nach Bildschirm-Rahmen).
+    private var mirrors: [String: ExternalNotchMirror] = [:]
 
     init(model: AppModel) {
         self.model = model
@@ -80,14 +85,69 @@ final class NotchController {
 
         observeIslandSideWidth()
         observeVisibleShape()
+        observeExternalNotch()
         updateScreen()
     }
 
-    /// Liest den Notch-Bildschirm neu; ohne Notch wird das Panel ausgeblendet.
+    /// Liest die Bildschirme neu (angeschlossen, entfernt, Auflösung, Einstellung) und setzt die Notch auf den
+    /// richtigen; ohne jeden Notch-Bildschirm wird das Panel ausgeblendet.
     private func updateScreen() {
-        let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }.map(Self.screenInfo)
-        model.screen = screen
+        let external = model.settingsStore.settings.externalNotch
+        candidates = NSScreen.screens.compactMap { screen in
+            if screen.safeAreaInsets.top > 0 { return Self.screenInfo(screen) }
+            guard external else { return nil }
+            return ExternalNotch.virtualScreen(frame: screen.frame, menuBarHeight: screen.frame.maxY - screen.visibleFrame.maxY)
+        }
+        moveNotch(force: true)
+    }
+
+    /// Die Notch folgt dem Zeiger auf den Bildschirm, auf dem gearbeitet wird; so erscheinen Signale dort. Offen
+    /// (Signal, Panel, Hover) bleibt sie, wo sie ist, damit nichts unter dem Zeiger wegspringt.
+    private func moveNotch(force: Bool = false) {
+        let pointer = NSEvent.mouseLocation
+        let current = model.screen.flatMap { info in candidates.first { $0.frame == info.frame } }
+        let busy = model.notch.mode != .idle || isHovering || pointerInside
+        let underPointer = candidates.first { $0.frame.insetBy(dx: 0, dy: -2).contains(pointer) }
+        let target: ScreenInfo? = if let current, busy || underPointer == nil {
+            current
+        } else {
+            underPointer ?? candidates.first { !$0.isVirtual } ?? candidates.first
+        }
+        guard force || target != model.screen else { return }
+        model.screen = target
         refreshPanelPosition()
+        updateMirrors(active: target)
+    }
+
+    /// Jeder externe Bildschirm ohne die Notch bekommt eine ruhende Kopie; die übrigen Kopien verschwinden.
+    private func updateMirrors(active: ScreenInfo?) {
+        let wanted = candidates.filter { $0.isVirtual && $0.frame != active?.frame }
+        let keys = Set(wanted.map { Self.key($0) })
+        for (key, mirror) in mirrors where !keys.contains(key) || mirror.screenInfo != wanted.first(where: { Self.key($0) == key }) {
+            mirror.orderOut(nil)
+            mirrors[key] = nil
+        }
+        for screen in wanted where mirrors[Self.key(screen)] == nil {
+            let mirror = ExternalNotchMirror(model: model, screen: screen)
+            mirror.orderFrontRegardless()
+            mirrors[Self.key(screen)] = mirror
+        }
+    }
+
+    private static func key(_ screen: ScreenInfo) -> String {
+        NSStringFromRect(screen.frame)
+    }
+
+    /// Schalter „Notch auf externen Bildschirmen“: sofort umsetzen.
+    private func observeExternalNotch() {
+        withObservationTracking {
+            _ = model.settingsStore.settings.externalNotch
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.updateScreen()
+                self?.observeExternalNotch()
+            }
+        }
     }
 
     /// Beobachtet die Island-Breite, damit das Panel bei einem Reglerwechsel mitwächst. Gemeldet wird jede
@@ -140,6 +200,8 @@ final class NotchController {
     }
 
     private func handleMouse(_ type: NSEvent.EventType, inNotchai: Bool) {
+        // Wechselt der Zeiger den Bildschirm, kommt die Notch mit (nur mit mehreren Notch-Bildschirmen).
+        if candidates.count > 1, type == .mouseMoved || type == .leftMouseDragged { moveNotch() }
         switch type {
         case .leftMouseDown:
             // Klicks in notchai selbst (Menüleiste, Notch) fragen den Drag-Zwischenspeicher nicht; jede Frage geht an

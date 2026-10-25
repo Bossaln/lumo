@@ -42,6 +42,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var officeLongitude: Double? = nil
     public var launchAtLogin: Bool = false
     public var islandSideWidth: Double = 120
+    /// Externe Bildschirme bekommen eine simulierte Notch (oben mittig, so hoch wie die Menüleiste).
+    public var externalNotch: Bool = true
+    /// Was in deren Mitte steht, wo bei der echten Notch die Kamera ist.
+    public var externalNotchCenter: ExternalNotchCenter = .rotating
     /// Der Einrichtungs-Assistent wurde einmal durchlaufen.
     public var setupCompleted: Bool = false
     /// Beim Start und alle sechs Stunden per Git nachsehen, ob es einen neuen Stand gibt.
@@ -117,6 +121,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case musicSourceMode, musicBrowserMusic, musicIncludePodcasts, musicLoadArtwork, musicSourceRules, musicKnownSources
         case panelOpenBehavior, musicArtworkBackground, musicCoverTransition, officeHotkey, developerOptions
         case shelfEnabled, language, musicTrackChangeStyle, musicTrackChangeSeconds, musicVisualizer, notesHotkey
+        case externalNotch, externalNotchCenter
     }
 
     public init(from decoder: Decoder) throws {
@@ -159,6 +164,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         s.officeLongitude = (try? c.decodeIfPresent(Double.self, forKey: .officeLongitude)) ?? nil
         value(.launchAtLogin, &s.launchAtLogin)
         value(.islandSideWidth, &s.islandSideWidth)
+        value(.externalNotch, &s.externalNotch)
+        option(.externalNotchCenter, &s.externalNotchCenter)
         value(.setupCompleted, &s.setupCompleted)
         value(.checkForUpdates, &s.checkForUpdates)
         value(.notchBounce, &s.notchBounce)

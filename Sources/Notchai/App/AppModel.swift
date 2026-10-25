@@ -375,7 +375,7 @@ final class AppModel {
     var showsMusicBars: Bool {
         guard displayedMusicPlaying else { return false }
         switch currentPresentation() {
-        case .compact, .trackSides, .trackBanner: return true
+        case .compact, .trackSides, .trackBanner, .externalIdle: return true
         default: return musicTabOpen
         }
     }
@@ -402,6 +402,8 @@ final class AppModel {
         // Ein neuer Titel fährt kurz über alles aus, was im Ruhezustand zu sehen ist.
         case .idle:
             if let presentation = trackAnnouncement?.style.presentation { presentation }
+            // Externer Bildschirm: Die Mitte ist sichtbar und zeigt Uhrzeit, Status und Musik (`ExternalIdleView`).
+            else if screen?.isVirtual == true { .externalIdle }
             else if showsCompactMusic { .compact }
             else { .idle }
         case .signal(.island): .island

@@ -89,6 +89,11 @@ struct NotchRootView: View {
                 TrackChangeBannerView(model: model, announcement: announcement, bandHeight: notch?.height ?? 0)
                     .frame(width: width, height: height)
                     .transition(.notchContent)
+            } else if presentation == .externalIdle {
+                ExternalIdleView(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2),
+                                 height: height)
+                    .frame(width: width, height: height)
+                    .transition(.notchContent)
             } else if presentation == .compact {
                 MusicCompactView(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2),
                                  ear: Self.radii(for: .compact).top)
@@ -179,6 +184,7 @@ struct NotchRootView: View {
     static func radii(for presentation: NotchPresentation) -> (top: CGFloat, bottom: CGFloat) {
         switch presentation {
         case .idle: (0, 10)
+        case .externalIdle: (5, 11)
         case .island: (6, 14)
         case .compact: (6, 12)
         case .trackSides: (6, 14)
