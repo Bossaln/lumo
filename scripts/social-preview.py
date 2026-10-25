@@ -71,7 +71,7 @@ def main():
     # App-Symbol und Name.
     icon_path = os.path.join(root, "Resources", "AppIcon.png")
     title_font = font(92, bold=True)
-    title = "notchai"
+    title = "lumo"
     title_w = draw.textlength(title, font=title_font)
     icon_size = 112 * SCALE
     gap = 26 * SCALE
@@ -93,7 +93,7 @@ def main():
         x += draw.textlength(text, font=line_font)
 
     # Installationsbefehl als Pille.
-    command = "brew install --cask bossaln/tap/notchai"
+    command = "brew install --cask bossaln/tap/lumo"
     mono = font(24, mono=True)
     cw = draw.textlength(command, font=mono)
     px = (W * SCALE - cw) / 2

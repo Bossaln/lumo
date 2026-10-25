@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="Resources/AppIcon.png" width="128" height="128" alt="notchai icon">
+  <img src="Resources/AppIcon.png" width="128" height="128" alt="lumo icon">
 </p>
 
-<h1 align="center">notchai</h1>
+<h1 align="center">lumo</h1>
 
 <p align="center">
   Your MacBook notch as a control center for <b>Claude Code</b> and <b>Codex</b>.<br>
@@ -10,18 +10,21 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Bossaln/notchai/releases/latest"><img src="https://img.shields.io/github/v/release/Bossaln/notchai?label=release" alt="Latest release"></a>
+  <a href="https://github.com/Bossaln/lumo/releases/latest"><img src="https://img.shields.io/github/v/release/Bossaln/lumo?label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-black" alt="macOS 14+">
   <img src="https://img.shields.io/badge/Apple%20silicon-required-black" alt="Apple silicon">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0"></a>
 </p>
 
 ```sh
-brew install --cask bossaln/tap/notchai
+brew install --cask bossaln/tap/lumo
 ```
 
-notchai speaks **English** and **German** – pick your language in the first step of the setup or later in
+lumo speaks **English** and **German** – pick your language in the first step of the setup or later in
 **Settings › General**.
+
+> **Formerly notchai.** Until version 0.7.0 this app was called *notchai*. If you still have it installed, see
+> [Switching from notchai](#switching-from-notchai).
 
 ## What it does
 
@@ -58,7 +61,7 @@ real sun. Double-tap the right <kbd>⌘</kbd> key to open the warehouse in a big
 
 **A shelf for your files.** Drag files from Finder, Mail or any other app to the notch and it opens with two targets:
 drop them on **AirDrop** to send them to a device nearby, or on the **shelf** to park them for a moment and drag them
-out again later. notchai only remembers where the files are; nothing is copied or moved.
+out again later. lumo only remembers where the files are; nothing is copied or moved.
 
 **Quick notes.** Press <kbd>⌃</kbd> twice in any app and the notch opens, ready to type. Press <kbd>↩</kbd> to save
 and type the next note right away; <kbd>Esc</kbd> closes and keeps an unsaved draft. Your notes live in the notch's
@@ -69,13 +72,13 @@ signal style, animations, glow, sounds, which tab opens on hover, music sources,
 
 ## Never in the way
 
-- **notchai never blocks your agents.** If the app is not running or does not answer, its hook gives up immediately
-  and Claude Code and Codex behave exactly as without notchai.
+- **lumo never blocks your agents.** If the app is not running or does not answer, its hook gives up immediately
+  and Claude Code and Codex behave exactly as without lumo.
 - **Your settings stay yours.** The setup assistant writes its hooks to `~/.claude/settings.json` and
   `~/.codex/hooks.json` only after making a backup, shows what it changes and removes everything with one click.
   It never writes `~/.codex/config.toml`.
 - **Nothing leaves your Mac.** No account, no analytics. The only network request is the optional update check
-  against this repository's releases. For the bars, notchai listens to what is playing and only works out bar
+  against this repository's releases. For the bars, lumo listens to what is playing and only works out bar
   heights; macOS asks for the "system audio" permission once, and animated bars are the alternative.
 
 ## Requirements
@@ -83,43 +86,71 @@ signal style, animations, glow, sounds, which tab opens on hover, music sources,
 - A MacBook with a notch (Apple silicon) running macOS 14 Sonoma or later
 - [Claude Code](https://code.claude.com/docs) and/or [Codex](https://github.com/openai/codex)
 - To reply to sessions in [cmux](https://cmux.com) and jump to their tab: in cmux › Settings › Automation, set the
-  socket control mode to **Automation mode**. With the default ("cmux processes only"), cmux turns notchai away;
-  notchai then puts your reply on the clipboard and brings cmux to the front.
+  socket control mode to **Automation mode**. With the default ("cmux processes only"), cmux turns lumo away;
+  lumo then puts your reply on the clipboard and brings cmux to the front.
 
 ## Install
 
-### Homebrew (recommended)
-
 ```sh
-brew install --cask bossaln/tap/notchai
+brew install bossaln/tap/lumo
 ```
 
+That is the whole installation. The one command adds the tap [`Bossaln/homebrew-tap`](https://github.com/Bossaln/homebrew-tap),
+installs lumo to `/Applications` and marks the cask as trusted, which Homebrew 6 and later require for anything
+outside its own catalog. (`brew install --cask bossaln/tap/lumo` does the same, `--cask` is optional here.)
+
 <p align="center">
-  <img src="docs/images/install.gif" width="720" alt="Installing notchai with Homebrew">
+  <img src="docs/images/install.gif" width="720" alt="Installing lumo with Homebrew">
 </p>
 
-This adds the tap [`Bossaln/homebrew-tap`](https://github.com/Bossaln/homebrew-tap) and installs notchai to
-`/Applications`. Afterwards, `brew upgrade --cask notchai` keeps it up to date – or use the update button in
-notchai's settings, which does the same.
+Updates come in two ways, both end with the new version running:
+
+- **In lumo:** the update button in the settings or the menu bar menu. lumo checks GitHub every six hours and offers
+  the new version; one click runs `brew update && brew upgrade --cask bossaln/tap/lumo`, then lumo restarts itself.
+- **In Terminal:** `brew upgrade --cask bossaln/tap/lumo` (or just `brew upgrade`). Homebrew quits lumo, replaces it and
+  opens it again.
 
 <details>
-<summary>Why a tap, and why does the cask remove the quarantine flag?</summary>
+<summary>Why not simply <code>brew install lumo</code>?</summary>
 
-notchai is signed with its own certificate but not notarized by Apple (that needs a paid Apple Developer account).
-Homebrew's main repository only accepts notarized apps, so notchai lives in its own tap. Without notarization,
-macOS Gatekeeper would refuse to open the app, so the cask removes the quarantine flag after installing. Because
-every release is signed with the same certificate, macOS keeps the permissions you grant across updates.
+A bare `brew install lumo` only works for casks in Homebrew's own catalog, and since September 2026 that catalog only
+accepts apps that pass Gatekeeper, which means a Developer ID certificate and notarization from a paid Apple Developer
+account (plus a popularity threshold for new casks). lumo is signed with its own certificate instead. Homebrew's own
+catalog would refuse it, so it lives in its own tap, and the cask removes the quarantine flag after installing –
+otherwise macOS would refuse to open the app. Every release is signed with the same certificate, so the permissions you
+grant survive updates.
+
+If you prefer the short name, trust the tap once and the short form works from then on:
+
+```sh
+brew tap bossaln/tap && brew trust --tap bossaln/tap
+brew install lumo
+```
 
 </details>
 
+### Switching from notchai
+
+lumo was called *notchai* until 0.7.0. Replace the old app once:
+
+```sh
+brew uninstall --cask notchai      # add --zap to also delete the old settings folder
+brew install --cask bossaln/tap/lumo
+```
+
+On its first launch lumo takes over your settings, notes and shelf and rewrites the hooks in `~/.claude/settings.json`
+and `~/.codex/hooks.json` so they call `lumo-hook`. Two things macOS and Codex ask again, because lumo is a new app
+to them: the **Accessibility** and **Automation** permissions, and Codex's **"Trust all and continue"** for the
+changed hooks.
+
 ### Manual download
 
-Download `notchai-<version>.zip` from the [latest release](https://github.com/Bossaln/notchai/releases/latest),
-unzip it and move `notchai.app` to `/Applications`. On first launch macOS will block it; allow it under
+Download `lumo-<version>.zip` from the [latest release](https://github.com/Bossaln/lumo/releases/latest),
+unzip it and move `lumo.app` to `/Applications`. On first launch macOS will block it; allow it under
 **System Settings › Privacy & Security › Open Anyway**, or run:
 
 ```sh
-xattr -dr com.apple.quarantine /Applications/notchai.app
+xattr -dr com.apple.quarantine /Applications/lumo.app
 ```
 
 ## First launch
@@ -135,11 +166,11 @@ Everything else is in **Settings** (menu bar icon › Settings). Turn on **Gener
 
 ## Uninstall
 
-1. In notchai: **Settings › Agents › Remove All** removes the hooks from Claude Code and Codex.
+1. In lumo: **Settings › Agents › Remove All** removes the hooks from Claude Code and Codex.
 2. Then:
 
    ```sh
-   brew uninstall --cask notchai          # add --zap to also delete settings and logs
+   brew uninstall --cask lumo          # add --zap to also delete settings and logs
    ```
 
 ## Build from source
@@ -147,8 +178,8 @@ Everything else is in **Settings** (menu bar icon › Settings). Turn on **Gener
 You need the Xcode Command Line Tools with Swift 6 (no full Xcode required).
 
 ```sh
-git clone https://github.com/Bossaln/notchai.git
-cd notchai
+git clone https://github.com/Bossaln/lumo.git
+cd lumo
 swift test              # run the tests
 scripts/run.sh          # build the app bundle and launch it
 scripts/install.sh      # pull, test, build and install to /Applications
@@ -161,26 +192,26 @@ A build made from a source folder updates itself from that folder: the update bu
 
 | Path | What lives there |
 | --- | --- |
-| `Sources/NotchaiCore` | Logic without UI: hooks, session book, transcript readers, now playing, the warehouse renderer and simulation. Fully unit tested. |
-| `Sources/Notchai` | The app: AppKit panel at the notch, SwiftUI views, settings, setup assistant |
-| `Sources/notchai-hook` | The small program Claude Code and Codex call as a hook. Always exits 0, never blocks. |
-| `Tests/NotchaiCoreTests` | Tests (Swift Testing) with synthetic fixtures |
+| `Sources/LumoCore` | Logic without UI: hooks, session book, transcript readers, now playing, the warehouse renderer and simulation. Fully unit tested. |
+| `Sources/Lumo` | The app: AppKit panel at the notch, SwiftUI views, settings, setup assistant |
+| `Sources/lumo-hook` | The small program Claude Code and Codex call as a hook. Always exits 0, never blocks. |
+| `Tests/LumoCoreTests` | Tests (Swift Testing) with synthetic fixtures |
 | `docs/` | Notes on how the agents' hooks and macOS "now playing" behave (German) |
 | `scripts/`, `packaging/` | Building, installing, releasing and the Homebrew cask |
 
 ## Contributing
 
-Issues and pull requests are welcome. Please add tests for new logic in `NotchaiCore` (Swift Testing:
+Issues and pull requests are welcome. Please add tests for new logic in `LumoCore` (Swift Testing:
 `import Testing`, `@Test`, `#expect`). Code comments are German. Interface texts are written in German in the code
-(`L("…")`) and translated in [`English.swift`](Sources/NotchaiCore/Localization/English.swift); a test makes sure
+(`L("…")`) and translated in [`English.swift`](Sources/LumoCore/Localization/English.swift); a test makes sure
 every text has a translation, so another language is mostly one more table. How releases are made is described in
 [`docs/releasing.md`](docs/releasing.md).
 
-If notchai saves you a few window switches, a ⭐ on GitHub helps other people find it.
+If lumo saves you a few window switches, a ⭐ on GitHub helps other people find it.
 
 ## License
 
-notchai is free software under the [GNU General Public License v3.0](LICENSE). © 2026 Bossaln
+lumo is free software under the [GNU General Public License v3.0](LICENSE). © 2026 Bossaln
 
-notchai is an independent project and not affiliated with Anthropic or OpenAI. Claude and Claude Code are
+lumo is an independent project and not affiliated with Anthropic or OpenAI. Claude and Claude Code are
 trademarks of Anthropic; Codex is a trademark of OpenAI.

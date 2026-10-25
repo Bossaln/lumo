@@ -2,7 +2,7 @@
 #   mkdir -p .github/workflows && git mv packaging/github-workflows/*.yml .github/workflows/
 #   git commit -m "Workflows aktivieren" && git push
 #
-# Baut und testet notchai auf einem Mac von GitHub, bei Pull Requests und auf main.
+# Baut und testet lumo auf einem Mac von GitHub, bei Pull Requests und auf main.
 name: CI
 
 on:

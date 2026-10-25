@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Zeichnet docs/images/install.gif für die README: Terminal, getippter brew-Befehl, Homebrew-Ausgabe, dann der echte
-GT-R aus `notchai-welcome`.
+GT-R aus `lumo-welcome`.
 
 Der Wagen kommt aus einem Mitschnitt der echten Ausgabe (ANSI-Text), auf dem Mac in einem Terminal mit 72 Spalten:
 
-    LANG=en_US.UTF-8 script -q /tmp/welcome.txt /Applications/notchai.app/Contents/MacOS/notchai-welcome
+    LANG=en_US.UTF-8 script -q /tmp/welcome.txt /Applications/lumo.app/Contents/MacOS/lumo-welcome
 
 Braucht Pillow (`pip install pillow`); Schriften: DejaVu Sans Mono und Inter, sonst Menlo und SF (macOS).
 Aufruf aus dem Projektordner: python3 scripts/install-gif.py /tmp/welcome.txt
@@ -80,13 +80,13 @@ frames_gtr = [parse_frame(c) for c in chunks]
 frames_gtr[0] = frames_gtr[0][-7:]
 
 prompt = "~ % "
-command = "brew install --cask bossaln/tap/notchai"
+command = "brew install --cask bossaln/tap/lumo"
 brew_lines = [
     [("==> ", BLUE), ("Tapping bossaln/tap", TEXT)],
-    [("==> ", BLUE), ("Downloading notchai-0.3.0.zip", TEXT)],
+    [("==> ", BLUE), ("Downloading lumo-0.8.0.zip", TEXT)],
     [("######################################################### 100.0%", DIM)],
-    [("==> ", BLUE), ("Installing Cask ", TEXT), ("notchai", GREEN)],
-    [("==> ", BLUE), ("Moving App 'notchai.app' to '/Applications/notchai.app'", TEXT)],
+    [("==> ", BLUE), ("Installing Cask ", TEXT), ("lumo", GREEN)],
+    [("==> ", BLUE), ("Moving App 'lumo.app' to '/Applications/lumo.app'", TEXT)],
 ]
 
 
@@ -98,7 +98,7 @@ def base():
     draw.rectangle((32, 54, W - 32, 68), fill=BAR)
     for x, color in ((54, (255, 95, 87)), (74, (254, 188, 46)), (94, (40, 200, 64))):
         draw.ellipse((x - 6, 44, x + 6, 56), fill=color)
-    title = "Install notchai"
+    title = "Install lumo"
     draw.text(((W - draw.textlength(title, font=title_font)) / 2, 41), title, font=title_font, fill=(150, 154, 164))
     return image, draw
 
@@ -140,7 +140,7 @@ def scene(typed, brew_count, gtr=None, caret=True, done=False):
         draw.rectangle((mx, y + 6, mx + 9, y + 17), fill=(240, 176, 60))
         draw.rectangle((mx, y + 3, mx + 9, y + 6), fill=(245, 245, 240))
         draw.rectangle((mx + 10, y + 8, mx + 13, y + 14), outline=(240, 176, 60), width=2)
-        text_line(draw, y, [("   ", TEXT), ("notchai was successfully installed!", TEXT)])
+        text_line(draw, y, [("   ", TEXT), ("lumo was successfully installed!", TEXT)])
         y += LINE_H
         text_line(draw, y, [(prompt, GREEN)])
         x = LEFT + CHAR_W * len(prompt)

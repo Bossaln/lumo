@@ -3,6 +3,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-pkill -x notchai || true
+pkill -x lumo || true
 scripts/build-app.sh
-open build/notchai.app
+open build/lumo.app

@@ -1,0 +1,366 @@
+import AppKit
+import LumoCore
+
+/// Verbindet Hook-Server, Transkripte und Session-Buch mit der Notch: Ereignisse werden zu Sessions und
+/// Signalen, Entscheidungen aus der Notch gehen an den wartenden Hook zurück. Lebt so lange wie die App.
+@MainActor
+final class HookCoordinator {
+    /// So viele Hook-Ereignisse merkt sich die Entwickler-Seite der Einstellungen.
+    private static let recentLimit = 40
+
+    private let model: AppModel
+    private let home: URL
+    private var book = SessionBook()
+    private var server: HookSocketServer?
+    private var monitor: SessionMonitor?
+    private var tickTimer: Timer?
+    private let sounds = SoundPlayer()
+    let replies: ReplySender
+    private var recentEnvelopes: [HookEnvelope] = []
+    /// Zu welcher Session das angezeigte Signal gehört (Signal-ID → Session-Schlüssel).
+    private var signalSessions: [UUID: String] = [:]
+    /// Wartende Shell-Freigaben: Startet ihr Befehl unter dem Agenten, wurde sie im Terminal erlaubt.
+    private var commandWatches: [UUID: CommandWatch] = [:]
+    /// Zu diesem Signal kam schon der Ton (dieselbe Anfrage wird beim Weiterblättern neu gezeigt).
+    private var soundedSignal: UUID?
+
+    private struct CommandWatch {
+        let agentPid: Int32
+        let needle: String
+        /// Kinder des Agenten, die schon vor der Anfrage liefen (MCP-Server, Hintergrund-Shells).
+        let known: Set<Int32>
+    }
+    /// Meldet, ob irgendeine Session auf den Besitzer wartet (Menüleisten-Punkt).
+    var onWaitingChange: ((Bool) -> Void)?
+    /// Fehler beim Start des Servers, für den Bereich „Allgemein“.
+    private(set) var startError: String?
+
+    init(model: AppModel, home: URL) {
+        self.model = model
+        self.home = home
+        replies = ReplySender(home: home)
+    }
+
+    func start() {
+        installHookBinary()
+        migrateLegacyHooks()
+        let server = HookSocketServer(
+            socketPath: LumoPaths.socketPath(home: home, env: ProcessInfo.processInfo.environment),
+            onEnvelope: { [weak self] envelope in
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { MainThreadWork.measure("Hooks.event") { self?.handle(envelope) } }
+                }
+            })
+        do {
+            try server.start()
+            self.server = server
+        } catch {
+            startError = L("Hook-Server startet nicht: {0}", "\(error)")
+        }
+        let monitor = SessionMonitor(home: home, maxAgeHours: { [weak model] in model?.settingsStore.settings.sessionMaxAgeHours ?? 24 },
+                                     onUpdate: { [weak self] summaries, stats in
+                                         MainThreadWork.measure("Hooks.transcripts") { self?.apply(summaries, stats: stats) }
+                                     })
+        monitor.start()
+        self.monitor = monitor
+        tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { MainThreadWork.measure("Hooks.tick") { self?.tick() } }
+        }
+    }
+
+    /// Wartende Hooks bekommen beim Beenden sofort „keine Entscheidung“; die Agenten fragen dann selbst.
+    func stop() {
+        tickTimer?.invalidate()
+        monitor?.stop()
+        server?.stop()
+    }
+
+    /// Kopiert das mitgelieferte `lumo-hook` an seinen festen Ort (nur wenn es sich geändert hat).
+    private func installHookBinary() {
+        let bundled = Bundle.main.bundleURL.appending(path: "Contents/MacOS/lumo-hook")
+        guard FileManager.default.fileExists(atPath: bundled.path) else { return }
+        let installer = HookInstaller(home: home, hookBinaryPath: LumoPaths.hookBinary(home: home).path)
+        _ = try? installer.copyHookBinary(from: bundled)
+    }
+
+    /// Hooks einer notchai-Installation (bis 0.7.0) zeigen noch auf das alte Programm; einmal auf `lumo-hook` umstellen.
+    private func migrateLegacyHooks() {
+        let installer = HookInstaller(home: home, hookBinaryPath: LumoPaths.hookBinary(home: home).path)
+        _ = try? installer.migrateLegacy()
+    }
+
+    // MARK: - Eingänge
+
+    private func handle(_ incoming: HookEnvelope) {
+        var envelope = incoming
+        recentEnvelopes.append(envelope)
+        if recentEnvelopes.count > Self.recentLimit { recentEnvelopes.removeFirst(recentEnvelopes.count - Self.recentLimit) }
+        // Ohne Notch-Bildschirm sieht niemand das Signal: sofort „keine Entscheidung“, der Agent fragt selbst.
+        if envelope.mode == .decide, model.screen == nil {
+            server?.reply(HookReply(requestId: envelope.requestId, stdout: HookOutput.noDecision))
+            envelope.mode = .event
+        }
+        // „Wartet auf dich“ ohne Hook verschwindet, sobald dieselbe Session weiterläuft.
+        let key = SessionBook.key(envelope.agent, envelope.event.sessionId)
+        if let shown = model.activeSignal, signalSessions[shown.id] == key, !isPending(shown.id),
+           case .question = shown.kind, envelope.event.hookEventName != "Notification" {
+            closeSignal(shown.id)
+        }
+        process(book.apply(envelope: envelope, settings: settings, now: Date()))
+        watchCommand(of: envelope)
+        refreshSessions()
+    }
+
+    /// Merkt sich eine wartende Shell-Freigabe, um eine Entscheidung im Terminal zu erkennen (`checkCommands`).
+    private func watchCommand(of envelope: HookEnvelope) {
+        let e = envelope.event
+        guard envelope.mode == .decide, e.hookEventName == "PermissionRequest", let pid = envelope.agentPid,
+              let needle = PermissionText.processNeedle(tool: e.toolName ?? "", input: e.toolInput),
+              isPending(envelope.requestId) else { return }
+        commandWatches[envelope.requestId] = CommandWatch(agentPid: pid, needle: needle,
+                                                          known: Set(ProcessTree.systemChildren(pid)))
+    }
+
+    /// Claude Code meldet nicht, wenn eine Freigabe im Terminal erlaubt wird. Der Befehl startet dann aber als Kind
+    /// des Agenten; ab da ist die Anfrage in der Notch überholt.
+    private func checkCommands() {
+        guard !commandWatches.isEmpty else { return }
+        for (id, watch) in commandWatches {
+            guard isPending(id) else {
+                commandWatches[id] = nil
+                continue
+            }
+            if ProcessTree.startedChild(of: watch.agentPid, containing: watch.needle, except: watch.known) {
+                commandWatches[id] = nil
+                process(book.answeredElsewhere(requestId: id))
+            }
+        }
+    }
+
+    private func apply(_ summaries: [TranscriptSummary], stats: DailyStats) {
+        let now = Date()
+        for summary in summaries {
+            process(book.apply(summary: summary, settings: settings, now: now))
+        }
+        if model.dailyStats != stats { model.dailyStats = stats }
+        refreshSessions()
+    }
+
+    private func tick() {
+        let (changes, expired) = book.tick(now: Date())
+        for id in expired {
+            server?.reply(HookReply(requestId: id, stdout: HookOutput.noDecision))
+        }
+        process(changes)
+        checkCommands()
+        // Terminal oder App geschlossen, ohne dass `SessionEnd` kam: Der Agent-Prozess ist weg, die Session auch.
+        process(book.removeEnded(isAlive: ProcessTree.isAlive))
+        refreshSessions()
+    }
+
+    /// Nimmt eine Session aus der Notch, bis sie wieder etwas tut (Detailansicht, „Aus der Notch entfernen“).
+    func dismiss(_ session: AgentSession) {
+        process(book.dismiss(session.id, now: Date()))
+        refreshSessions()
+    }
+
+    private var settings: AppSettings { model.settingsStore.settings }
+
+    // MARK: - Änderungen des Session-Buchs
+
+    private func process(_ changes: [SessionChange]) {
+        for change in changes {
+            switch change {
+            case .release(let requestId):
+                server?.reply(HookReply(requestId: requestId, stdout: HookOutput.noDecision))
+                closeSignal(requestId)
+            case .clear(let key):
+                if let shown = model.activeSignal, signalSessions[shown.id] == key, !isPending(shown.id) {
+                    closeSignal(shown.id)
+                }
+                showNextRequest()
+            case .raise(let key, let trigger):
+                // Der Ton kommt mit dem Signal (`show`), nicht schon hier: Wartet es hinter einem anderen,
+                // passte er sonst nicht zu dem, was zu sehen ist.
+                switch trigger {
+                case .permission, .question:
+                    if !showNextRequest(), book.sessions[key]?.pending == nil, let content = attentionSignal(key) {
+                        show(content, for: key)
+                    }
+                case .done, .error:
+                    if let content = statusSignal(key, trigger: trigger) { show(content, for: key) }
+                }
+            }
+        }
+    }
+
+    /// Zeigt die älteste offene Anfrage, solange keine andere angezeigt wird. Echte Anfragen haben Vorrang
+    /// vor „Wartet auf dich“, „fertig“ und „Fehler“. `true`, wenn danach eine Anfrage angezeigt wird.
+    @discardableResult
+    private func showNextRequest() -> Bool {
+        if let shown = model.activeSignal, isPending(shown.id) { return true }
+        let candidates = book.pendingRequests().filter { entry in
+            switch entry.request.kind {
+            case .permission: settings.signalOnPermission
+            case .question: settings.signalOnQuestion
+            }
+        }
+        guard let next = candidates.first, let content = requestSignal(next) else { return false }
+        show(content, for: next.sessionKey)
+        return true
+    }
+
+    /// Ein wartendes Signal wird nie von „fertig“ oder „Fehler“ verdrängt.
+    private func show(_ content: SignalContent, for key: String) {
+        if let shown = model.activeSignal, shown.id != content.id, shown.kind.isAwaitingOwner, !content.kind.isAwaitingOwner,
+           isPending(shown.id) {
+            return
+        }
+        // Es ist immer nur ein Signal zu sehen; ältere Zuordnungen (auch von selbst geschlossenen) verfallen.
+        signalSessions = [content.id: key]
+        if soundedSignal != content.id {
+            soundedSignal = content.id
+            sounds.play(Self.trigger(of: content.kind), settings: settings)
+        }
+        model.raiseSignal(content)
+    }
+
+    private static func trigger(of kind: SignalKind) -> SignalTrigger {
+        switch kind {
+        case .permission: .permission
+        case .question: .question
+        case .done: .done
+        case .error: .error
+        }
+    }
+
+    private func closeSignal(_ id: UUID) {
+        guard model.activeSignal?.id == id else { return }
+        signalSessions[id] = nil
+        model.clearSignal(id)
+    }
+
+    /// Signale zu Anfragen tragen die ID der Anfrage, alle anderen eine eigene.
+    private func isPending(_ id: UUID) -> Bool {
+        book.pendingRequests().contains { $0.request.requestId == id }
+    }
+
+    // MARK: - Signal-Inhalte
+
+    private func title(_ session: AgentSession) -> String {
+        "\(session.projectName) · \(session.agent.displayName)"
+    }
+
+    private func requestSignal(_ entry: PendingEntry) -> SignalContent? {
+        guard let session = book.sessions[entry.sessionKey] else { return nil }
+        let request = entry.request
+        switch request.kind {
+        case .permission(let tool, let summary):
+            let isShell = ["Bash", "exec_command", "shell"].contains(tool)
+            let full = request.fullCommand
+            let subtitle = switch (request.subagent, isShell) {
+            case (let agent?, true): L("{0} möchte ausführen:", agent)
+            case (let agent?, false): L("{0} möchte {1} verwenden:", agent, tool)
+            case (nil, true): L("Möchte ausführen:")
+            case (nil, false): L("Möchte {0} verwenden:", tool)
+            }
+            return SignalContent(id: request.requestId, agent: session.agent, title: title(session),
+                                 subtitle: subtitle,
+                                 detail: summary, kind: .permission, fullDetail: full,
+                                 detailNote: full.map(PermissionText.note))
+        case .question(let questions):
+            guard let current = request.currentQuestion else { return nil }
+            let progress = questions.count > 1 ? "\(current.index + 1)/\(questions.count)" : nil
+            return SignalContent(id: request.requestId, agent: session.agent, title: title(session),
+                                 subtitle: current.prompt.question, kind: .question(options: current.prompt.options),
+                                 progress: progress, multiSelect: current.prompt.multiSelect)
+        }
+    }
+
+    /// Der Agent wartet, ohne dass lumo die Frage kennt (`Notification`): Antwort geht über `ReplySender`.
+    private func attentionSignal(_ key: String) -> SignalContent? {
+        guard let session = book.sessions[key] else { return nil }
+        return SignalContent(agent: session.agent, title: title(session), subtitle: L("Wartet auf dich"),
+                             kind: .question(options: []))
+    }
+
+    private func statusSignal(_ key: String, trigger: SignalTrigger) -> SignalContent? {
+        guard let session = book.sessions[key] else { return nil }
+        let kind: SignalKind = trigger == .error ? .error : .done
+        let fallback = trigger == .error ? L("Fehler") : L("Fertig")
+        return SignalContent(agent: session.agent, title: title(session), subtitle: session.lastStep ?? fallback, kind: kind)
+    }
+
+    // MARK: - Entscheidungen
+
+    /// Entscheidung aus Signal oder Session-Zeile. `id` ist die Signal-ID, bei Anfragen deren `requestId`.
+    func decide(_ id: UUID, action: SignalAction) {
+        if let entry = book.pendingRequests().first(where: { $0.request.requestId == id }) {
+            let output: String
+            switch (entry.request.kind, action) {
+            case (.permission, .allow): output = HookOutput.permissionAllow()
+            case (.permission, .deny): output = HookOutput.permissionDeny(message: L("In lumo abgelehnt"))
+            case (.question, .answer(let text)):
+                // Mehrere Fragen: erst mit der letzten Antwort geht alles zusammen zurück, vorher die nächste Frage.
+                guard let answers = book.recordAnswer(requestId: id, answer: text) else {
+                    if let next = book.pendingRequests().first(where: { $0.request.requestId == id }),
+                       let content = requestSignal(next) {
+                        show(content, for: next.sessionKey)
+                    }
+                    refreshSessions()
+                    return
+                }
+                output = HookOutput.questionAnswer(toolInput: entry.request.toolInput ?? .object([:]), answers: answers)
+            case (_, .dismiss): output = HookOutput.noDecision
+            default: return
+            }
+            server?.reply(HookReply(requestId: id, stdout: output))
+            closeSignal(id)
+            process(book.resolvePending(requestId: id))
+            refreshSessions()
+            return
+        }
+        // Kein wartender Hook: „fertig“, „Fehler“ oder eine Frage, die nur im Terminal steht.
+        let key = signalSessions[id]
+        closeSignal(id)
+        if case .answer(let text) = action, let key, let session = book.sessions[key] {
+            reply(text, to: session)
+        }
+        showNextRequest()
+    }
+
+    /// Antwort aus Liste, Details oder Signal an eine Session schicken.
+    func reply(_ text: String, to session: AgentSession) {
+        let current = self.settings
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await replies.send(text, to: session, settings: current)
+            model.showNotice(result.notice)
+        }
+    }
+
+    // MARK: - Ausgaben
+
+    private func refreshSessions() {
+        let visible = book.visibleSessions(settings: settings, now: Date())
+        if visible != model.sessions { model.sessions = visible }
+        onWaitingChange?(visible.contains { $0.status.isWaiting })
+    }
+
+    /// Woher die Sessions kommen und warum eine fehlt (Entwickler-Seite): Transkripte je Agent, dann jede bekannte
+    /// Session mit Herkunft, Prozess und ob die Notch sie zeigt.
+    func sessionSourcesText() -> String {
+        let now = Date()
+        let report = TranscriptLibrary.sourceReport(home: home, now: now, maxAgeHours: settings.sessionMaxAgeHours,
+                                                    calendar: .current)
+        return ([report, ""] + book.diagnosticLines(settings: settings, now: now)).joined(separator: "\n")
+    }
+
+    /// Die letzten Hook-Ereignisse als JSON-Zeilen (Entwickler-Seite der Einstellungen; hilft bei den offenen Mac-Prüfungen).
+    /// Zugangsdaten sind unkenntlich, lange Texte gekürzt (`HookExport`): Der Text landet in Issues und Chats.
+    func recentEventsText() -> String {
+        recentEnvelopes.map(HookExport.redacted).compactMap { try? HookWire.encodeLine($0) }
+            .map { String(decoding: $0, as: UTF8.self) }
+            .joined()
+    }
+}

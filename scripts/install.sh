@@ -1,5 +1,5 @@
 #!/bin/bash
-# Holt den neuesten Stand von GitHub, testet und baut notchai und installiert es in den Programme-Ordner.
+# Holt den neuesten Stand von GitHub, testet und baut lumo und installiert es in den Programme-Ordner.
 # Aufruf: scripts/install.sh [--ohne-tests] [Branch]
 #   ohne Branch: der Branch, auf dem der Ordner gerade steht
 # Später reicht der Knopf „Nach Updates suchen“ in der App.
@@ -36,9 +36,9 @@ fi
 echo "== App bauen"
 scripts/build-app.sh
 
-TARGET="/Applications/notchai.app"
+TARGET="/Applications/lumo.app"
 if [ ! -w /Applications ]; then
-  TARGET="$HOME/Applications/notchai.app"
+  TARGET="$HOME/Applications/lumo.app"
 fi
 echo "== Installieren nach $TARGET"
-scripts/install-app.sh "$(pgrep -x notchai | head -n 1 || true)" build/notchai.app "$TARGET"
+scripts/install-app.sh "$(pgrep -x lumo | head -n 1 || true)" build/lumo.app "$TARGET"
