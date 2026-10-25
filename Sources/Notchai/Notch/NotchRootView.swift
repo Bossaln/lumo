@@ -89,10 +89,6 @@ struct NotchRootView: View {
                 TrackChangeBannerView(model: model, announcement: announcement, bandHeight: notch?.height ?? 0)
                     .frame(width: width, height: height)
                     .transition(.notchContent)
-            } else if model.showsCirclesWhileIdle {
-                SessionCirclesIsland(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2))
-                    .frame(width: width, height: height)
-                    .transition(.notchContent)
             } else if presentation == .compact {
                 MusicCompactView(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2),
                                  ear: Self.radii(for: .compact).top)
@@ -145,13 +141,7 @@ struct NotchRootView: View {
                     // Ränder regelt der Reiter selbst.
                     MusicPanelView(model: model)
                 case .sessions:
-                    Group {
-                        if model.settingsStore.settings.sessionViewStyle == .circles {
-                            SessionCirclesPanel(model: model)
-                        } else {
-                            SessionListView(model: model)
-                        }
-                    }
+                    SessionListView(model: model)
                     .padding(.horizontal, 22)
                     .padding(.top, 10)
                     .padding(.bottom, 16)

@@ -3,8 +3,8 @@ import ApplicationServices
 import NotchaiCore
 import SwiftUI
 
-/// Einrichtungs-Assistent: links die Schritte auf farbigem Grund, rechts der aktuelle Schritt mit Symbol,
-/// Erklärung und interaktiven Vorschauen. Hooks verbinden, Design wählen (mit „In der Notch ausprobieren“),
+/// Einrichtungs-Assistent, filmisch: ein Schritt pro Bild, mittig ein großes Motiv (die Notch selbst oder das
+/// Symbol des Schritts), darunter Titel, Inhalt und unten Fortschrittspunkte mit der Hauptaktion. Hooks verbinden, Design wählen (mit „In der Notch ausprobieren“),
 /// Berechtigungen. Jeder Schritt lässt sich überspringen; alles ist später in den Einstellungen änderbar.
 struct SetupAssistantView: View {
     let setup: SetupController
@@ -20,29 +20,35 @@ struct SetupAssistantView: View {
     private static let codexEvents = "SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop"
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-                .frame(width: 236)
-            VStack(alignment: .leading, spacing: 0) {
+        ZStack {
+            LuxBackdrop(colors: [claude, codex, StepInfo(step).colors.0], intensity: 0.9)
+                .animation(.easeInOut(duration: 1.0), value: step)
+            VStack(spacing: 0) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(spacing: 26) {
+                        SetupHero(step: step, claude: claude, codex: codex)
                         header
                         content
+                            .frame(maxWidth: 560, alignment: .leading)
                     }
-                    .padding(.horizontal, 36)
-                    .padding(.top, 46)
-                    .padding(.bottom, 24)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 48)
+                    .padding(.top, 54)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: .infinity)
                     .id(step)
-                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 18)).combined(with: .scale(scale: 0.97)),
+                        removal: .opacity.combined(with: .scale(scale: 1.02))))
                 }
-                Divider()
+                .scrollIndicators(.never)
                 footer
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 16)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 22)
             }
         }
-        .frame(width: 820, height: 580)
+        .frame(width: 880, height: 660)
+        .background(Lux.background)
+        .luxControls()
         // Neue Sprache: alles neu aufbauen, damit jeder Text sie zeigt.
         .id(settingsStore.settings.language)
         .onAppear { setup.refresh() }
@@ -53,121 +59,72 @@ struct SetupAssistantView: View {
     private var codex: Color { Color(hex: settings.codexColorHex) }
 
     private func go(to target: SetupStep) {
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) { step = target }
-    }
-
-    // MARK: - Seitenleiste
-
-    private var sidebar: some View {
-        ZStack(alignment: .topLeading) {
-            LinearGradient(colors: [Self.rgb(0.09, 0.07, 0.18), Self.rgb(0.18, 0.09, 0.27)], startPoint: .top, endPoint: .bottom)
-            // Weicher Schein in den Agentenfarben.
-            Circle().fill(claude.opacity(0.45)).frame(width: 260, height: 260).blur(radius: 90).offset(x: -90, y: -60)
-            Circle().fill(codex.opacity(0.40)).frame(width: 240, height: 240).blur(radius: 90).offset(x: 60, y: 380)
-            VStack(alignment: .leading, spacing: 22) {
-                HStack(spacing: 10) {
-                    Image(nsImage: NSApp.applicationIconImage)
-                        .resizable()
-                        .frame(width: 38, height: 38)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("notchai")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color.white)
-                        Text(L("Einrichtung"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.white.opacity(0.6))
-                    }
-                }
-                .padding(.top, 46)
-                VStack(alignment: .leading, spacing: 3) {
-                    ForEach(SetupStep.allCases, id: \.self) { item in
-                        stepRow(item)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-        }
-        .clipped()
-    }
-
-    private func stepRow(_ item: SetupStep) -> some View {
-        let info = StepInfo(item)
-        let current = item == step
-        let done = item.rawValue < step.rawValue
-        return Button {
-            go(to: item)
-        } label: {
-            HStack(spacing: 10) {
-                StepTile(info: info, size: 24, active: current || done)
-                Text(info.short)
-                    .font(.system(size: 13, weight: current ? .semibold : .regular))
-                    .foregroundStyle(Color.white.opacity(current ? 1 : done ? 0.85 : 0.55))
-                Spacer(minLength: 0)
-                if done {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.white.opacity(0.7))
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.white.opacity(current ? 0.14 : 0)))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.9)) { step = target }
     }
 
     // MARK: - Kopf und Fuß
 
     private var header: some View {
         let info = StepInfo(step)
-        return HStack(spacing: 16) {
-            if step == .welcome {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .frame(width: 64, height: 64)
-                    .shadow(color: claude.opacity(0.5), radius: 14, x: 0, y: 4)
-            } else {
-                StepTile(info: info, size: 56, active: true)
-                    .shadow(color: info.colors.1.opacity(0.45), radius: 12, x: 0, y: 5)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(info.title)
-                    .font(.system(size: 26, weight: .bold))
-                Text(info.subtitle)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        return VStack(spacing: 10) {
+            Text(info.title)
+                .font(.system(size: 36, weight: .bold))
+                .tracking(-0.6)
+                .foregroundStyle(Lux.primary)
+            Text(info.subtitle)
+                .font(.system(size: 15))
+                .foregroundStyle(Lux.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 520)
         }
     }
 
+    /// Links zurück, in der Mitte die Punkte (anklickbar), rechts die Hauptaktion.
     private var footer: some View {
-        HStack(spacing: 12) {
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.primary.opacity(0.1)).frame(width: 150, height: 5)
-                Capsule().fill(LinearGradient(colors: [claude, codex], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: CGFloat(max(8, 150 * step.progress)), height: 5)
+        HStack(spacing: 14) {
+            HStack(spacing: 18) {
+                if step == .language {
+                    quietButton(L("Später")) { finish() }
+                } else if let previous = step.previous, step != .done {
+                    quietButton(L("Zurück")) { go(to: previous) }
+                }
+                if step == .claude || step == .codex {
+                    quietButton(L("Überspringen")) { advance() }
+                }
             }
-            .animation(.spring(response: 0.45, dampingFraction: 0.85), value: step)
-            Text(L("Schritt {0} von {1}", step.rawValue + 1, SetupStep.allCases.count))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Spacer()
-            if step == .language {
-                Button(L("Später")) { finish() }
-            } else if let previous = step.previous, step != .done {
-                Button(L("Zurück")) { go(to: previous) }
-            }
-            if step == .claude || step == .codex {
-                Button(L("Überspringen")) { advance() }
-            }
+            .frame(width: 220, alignment: .leading)
+            Spacer(minLength: 0)
+            progressDots
+            Spacer(minLength: 0)
             primaryButton
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(LuxButtonStyle(prominent: true, large: true))
                 .keyboardShortcut(.defaultAction)
+                .frame(width: 220, alignment: .trailing)
         }
-        .controlSize(.large)
+    }
+
+    private var progressDots: some View {
+        HStack(spacing: 7) {
+            ForEach(SetupStep.allCases, id: \.self) { item in
+                Capsule()
+                    .fill(item == step ? Color.white : Color.white.opacity(item.rawValue < step.rawValue ? 0.5 : 0.18))
+                    .frame(width: item == step ? 22 : 6, height: 6)
+                    .contentShape(Rectangle().inset(by: -6))
+                    .onTapGesture { go(to: item) }
+            }
+        }
+        .animation(Lux.spring, value: step)
+    }
+
+    private func quietButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Lux.secondary)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -215,7 +172,6 @@ struct SetupAssistantView: View {
         case .codex: codexStep
         case .signalStyle: signalStyleStep
         case .appearance: appearanceStep
-        case .sessions: sessionsStep
         case .permissions: permissionsStep
         case .done: doneStep
         }
@@ -236,7 +192,8 @@ struct SetupAssistantView: View {
     }
 
     private var welcome: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 22, alignment: .top), GridItem(.flexible(), alignment: .top)],
+                  alignment: .leading, spacing: 20) {
             FeatureRow(symbol: "bell.badge.fill", color: Self.rgb(1.0, 0.55, 0.25), title: L("Signale"),
                        text: L("Fragen, Freigaben, „Fertig“ und Fehler erscheinen direkt in der Notch. Erlauben, ablehnen oder antworten, ohne das Fenster zu wechseln."))
             FeatureRow(symbol: "rectangle.stack.fill", color: Self.rgb(0.35, 0.6, 1.0), title: L("Sessions"),
@@ -341,17 +298,6 @@ struct SetupAssistantView: View {
         }
     }
 
-    private var sessionsStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SessionStylePicker(selection: settingsStore.binding(\.sessionViewStyle), claude: claude, codex: codex)
-            Text(SessionStylePicker.explanation(settings.sessionViewStyle))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            InfoBox(symbol: "bell.badge.fill", text: L("Fragt dich ein Agent etwas oder braucht eine Freigabe, meldet sich die Notch von selbst – egal welche Ansicht du wählst."))
-        }
-    }
-
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Den Status alle zwei Sekunden neu zeigen: Die Freigabe passiert in den Systemeinstellungen
@@ -372,7 +318,8 @@ struct SetupAssistantView: View {
     }
 
     private var doneStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 22, alignment: .top), GridItem(.flexible(), alignment: .top)],
+                  alignment: .leading, spacing: 20) {
             FeatureRow(symbol: "cursorarrow.motionlines", color: Self.rgb(0.62, 0.4, 1.0), title: L("Notch aufklappen"),
                        text: L("Fahr mit der Maus an die Notch: Dort warten Musik, Sessions, die Lagerhalle und die Ablage."))
             FeatureRow(symbol: "tray.and.arrow.down.fill", color: Self.rgb(1.0, 0.68, 0.12), title: L("Dateien ablegen"),
@@ -439,10 +386,6 @@ private struct StepInfo {
             return StepInfo(title: L("Farben und Leuchten"), short: L("Farben"),
                      subtitle: L("Hintergrund, Agentenfarben und das Leuchten bei Signalen."),
                      symbol: "paintpalette.fill", colors: (rgb(1.0, 0.62, 0.22), rgb(0.95, 0.30, 0.45)))
-        case .sessions:
-            return StepInfo(title: L("Deine Sessions"), short: "Sessions",
-                     subtitle: L("Wie die Notch deine laufenden Sessions zeigt."),
-                     symbol: "rectangle.stack.fill", colors: (rgb(1.0, 0.66, 0.12), rgb(0.98, 0.42, 0.0)))
         case .permissions:
             return StepInfo(title: L("Berechtigungen"), short: L("Berechtigungen"),
                      subtitle: L("Freiwillig – für Tastenkürzel, Antworten und Musik."),
@@ -490,12 +433,13 @@ private struct FeatureRow: View {
                 .overlay(Image(systemName: symbol)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(color))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Lux.primary)
                 Text(text)
                     .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Lux.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -508,16 +452,18 @@ private struct InfoBox: View {
     let text: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Lux.secondary)
             Text(text)
-                .font(.callout)
+                .font(.system(size: 12.5))
+                .foregroundStyle(Lux.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.accentColor.opacity(0.08)))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Lux.card))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Lux.hairline, lineWidth: 1))
     }
 }
 
@@ -528,10 +474,11 @@ private struct SectionTitle: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .padding(.top, 4)
+        Text(L(text).uppercased())
+            .font(.system(size: 11, weight: .semibold))
+            .tracking(1.2)
+            .foregroundStyle(Lux.tertiary)
+            .padding(.top, 8)
     }
 }
 
@@ -565,9 +512,10 @@ private struct ConnectionCard: View {
                 Button(L("Verbinden"), action: connect)
             }
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.05)))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(color.opacity(installed ? 0.5 : 0.15), lineWidth: 1))
+        .padding(18)
+        .background(RoundedRectangle(cornerRadius: Lux.cardRadius, style: .continuous).fill(Lux.card))
+        .overlay(RoundedRectangle(cornerRadius: Lux.cardRadius, style: .continuous).strokeBorder(installed ? color.opacity(0.6) : Lux.hairline, lineWidth: 1))
+        .shadow(color: color.opacity(installed ? 0.25 : 0), radius: 24, y: 8)
     }
 }
 
@@ -607,8 +555,9 @@ private struct PermissionCard: View {
                 Button(L("Erlauben …"), action: action)
             }
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.05)))
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: Lux.cardRadius, style: .continuous).fill(Lux.card))
+        .overlay(RoundedRectangle(cornerRadius: Lux.cardRadius, style: .continuous).strokeBorder(Lux.hairline, lineWidth: 1))
     }
 }
 
@@ -629,7 +578,7 @@ private struct LanguageCard: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Lux.cardRadius, style: .continuous)
         Button(action: choose) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -644,7 +593,7 @@ private struct LanguageCard: View {
                     Spacer()
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 20))
-                        .foregroundStyle(selected ? Color.accentColor : Color.secondary.opacity(0.5))
+                        .foregroundStyle(selected ? Color.white : Lux.tertiary)
                 }
                 Text(language.nativeName)
                     .font(.system(size: 18, weight: .bold))
@@ -652,16 +601,116 @@ private struct LanguageCard: View {
                     .font(.system(size: 12.5))
                     .foregroundStyle(.secondary)
             }
-            .padding(16)
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(shape.fill(selected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(hovering ? 0.07 : 0.04)))
-            .overlay(shape.strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 2 : 1))
+            .background(shape.fill(selected ? Lux.cardHover : hovering ? Lux.cardHover : Lux.card))
+            .overlay(shape.strokeBorder(selected ? Color.white.opacity(0.85) : Lux.hairline, lineWidth: selected ? 1.5 : 1))
+            .shadow(color: Color.white.opacity(selected ? 0.12 : 0), radius: 20)
             .scaleEffect(hovering && !selected ? 1.02 : 1)
             .contentShape(shape)
         }
         .buttonStyle(.plain)
         .onHover { inside in
             withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) { hovering = inside }
+        }
+    }
+}
+
+/// Motiv über dem Titel. Zur Begrüßung und am Ende die Notch selbst, die atmet und Signale zeigt; sonst das Symbol
+/// des Schritts, das leicht schwebt und in seinen Farben leuchtet.
+private struct SetupHero: View {
+    let step: SetupStep
+    let claude: Color
+    let codex: Color
+
+    var body: some View {
+        switch step {
+        case .welcome, .done:
+            CinematicNotch(claude: claude, codex: codex, finished: step == .done)
+        default:
+            TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                let info = StepInfo(step)
+                ZStack {
+                    Circle()
+                        .fill(info.colors.0.opacity(0.35))
+                        .frame(width: 150, height: 150)
+                        .blur(radius: 40)
+                        .scaleEffect(1 + 0.06 * sin(t * 1.3))
+                    StepTile(info: info, size: 84, active: true)
+                        .shadow(color: info.colors.1.opacity(0.6), radius: 24, y: 10)
+                        .offset(y: 4 * sin(t * 1.1))
+                }
+                .frame(height: 120)
+            }
+        }
+    }
+}
+
+/// Die Notch als Hauptdarsteller: eine große schwarze Form oben am Rand eines angedeuteten Bildschirms. Sie klappt im
+/// Wechsel auf und zu, leuchtet abwechselnd in den Agentenfarben und zeigt kurze Signale.
+private struct CinematicNotch: View {
+    let claude: Color
+    let codex: Color
+    let finished: Bool
+
+    /// Länge eines Signals im Wechsel.
+    private static let period: Double = 3.2
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let index = Int(t / Self.period) % 2
+            let phase = t.truncatingRemainder(dividingBy: Self.period) / Self.period
+            // Auf, kurz stehen, wieder zu.
+            let open = min(1, max(0, phase < 0.5 ? phase * 5 : (0.9 - phase) * 5))
+            let color = index == 0 ? claude : codex
+            let width = 150 + 210 * open
+            let height = 34 + 58 * open
+            ZStack(alignment: .top) {
+                // Angedeuteter Bildschirmrand.
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(LinearGradient(colors: [Color.white.opacity(0.06), Color.white.opacity(0.0)], startPoint: .top, endPoint: .bottom))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Lux.hairline, lineWidth: 1))
+                    .frame(width: 520, height: 150)
+                let shape = NotchShape(bottomRadius: 12 + 14 * open, topCornerRadius: 6)
+                shape
+                    .fill(Color.black)
+                    .frame(width: width, height: height)
+                    .shadow(color: color.opacity(0.75 * open), radius: 22)
+                    .shadow(color: color.opacity(0.4 * open), radius: 4)
+                    .overlay(alignment: .bottom) {
+                        signal(index: index, color: color)
+                            .opacity(max(0, open * 1.6 - 0.6))
+                            .padding(.bottom, 12)
+                    }
+                    .clipShape(shape)
+            }
+            .frame(width: 520, height: 150)
+        }
+    }
+
+    private func signal(index: Int, color: Color) -> some View {
+        HStack(spacing: 10) {
+            Circle().fill(color).frame(width: 8, height: 8).shadow(color: color, radius: 4)
+            Text(text(index))
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Capsule().fill(color).frame(width: 54, height: 20)
+                .overlay(Text(index == 0 && !finished ? L("Erlauben") : "✓")
+                    .font(.system(size: 10.5, weight: .bold)).foregroundStyle(Color.black))
+        }
+        .padding(.horizontal, 20)
+        .frame(width: 360)
+    }
+
+    private func text(_ index: Int) -> String {
+        switch (index, finished) {
+        case (0, false): L("Claude möchte ausführen: npm test")
+        case (_, true): L("Alles bereit")
+        default: L("Codex ist fertig")
         }
     }
 }

@@ -44,8 +44,6 @@ final class AppModel {
     private(set) var notice: String?
     /// Session, deren Antwortfeld in der Liste bzw. Detailkarte offen ist.
     var replyTargetID: String?
-    /// Kreise-Ansicht: Session, deren Detailkarte gezeigt wird.
-    var selectedCircleID: String?
     /// Session, deren Details der Reiter „Sessions“ statt der Liste zeigt (Klick auf eine Zeile).
     var detailSessionID: String?
     /// Die Session zu `detailSessionID`, solange sie noch zu sehen ist; sonst zeigt der Reiter wieder die Liste.
@@ -382,10 +380,6 @@ final class AppModel {
         }
     }
 
-    /// Im Ruhezustand stehen statt der bloßen Notch die Session-Kreise neben der Kamera.
-    var showsCirclesWhileIdle: Bool {
-        settingsStore.settings.sessionViewStyle == .circles && !sessions.isEmpty
-    }
 
     /// Im aufgeklappten Panel ist ein Antwortfeld offen, oder der Reiter „Notizen“ mit seinem Notizfeld.
     var panelAcceptsText: Bool {
@@ -404,12 +398,10 @@ final class AppModel {
 
     func currentPresentation() -> NotchPresentation {
         switch notch.mode {
-        // Die Kreise nutzen die vorhandene Island-Form; an Geometrie und Zustandsautomat ändert sich nichts.
-        // Laufende Musik zeigt sich eingeklappt, wenn keine Kreise stehen; ein Signal verdrängt beides.
+        // Laufende Musik zeigt sich eingeklappt; ein Signal verdrängt sie.
         // Ein neuer Titel fährt kurz über alles aus, was im Ruhezustand zu sehen ist.
         case .idle:
             if let presentation = trackAnnouncement?.style.presentation { presentation }
-            else if showsCirclesWhileIdle { .island }
             else if showsCompactMusic { .compact }
             else { .idle }
         case .signal(.island): .island
@@ -428,7 +420,7 @@ final class AppModel {
         switch notch.mode {
         case .idle:
             parts.append(trackAnnouncement != nil ? L("Notch: neuer Titel")
-                : showsCirclesWhileIdle ? L("Notch: Kreise") : showsCompactMusic ? L("Notch: Musik eingeklappt") : L("Notch: zu"))
+                : showsCompactMusic ? L("Notch: Musik eingeklappt") : L("Notch: zu"))
         case .signal(let style): parts.append("Notch: Signal (\(style.rawValue))")
         case .panel(let tab): parts.append("Notch: \(tab.title)")
         }

@@ -316,7 +316,7 @@ final class HookCoordinator {
         showNextRequest()
     }
 
-    /// Antwort aus Liste, Kreisen oder Signal an eine Session schicken.
+    /// Antwort aus Liste, Details oder Signal an eine Session schicken.
     func reply(_ text: String, to session: AgentSession) {
         let current = self.settings
         Task { [weak self] in
