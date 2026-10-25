@@ -146,9 +146,9 @@ struct ExternalIdleView: View {
     }
 }
 
-/// Ruhende Kopie der Notch auf einem Bildschirm, auf dem gerade nicht gearbeitet wird. Nimmt keine Klicks an:
-/// Kommt der Zeiger dorthin, wandert die eigentliche Notch auf diesen Bildschirm. Auf einem externen Bildschirm zeigt
-/// sie Uhrzeit und Info (`ExternalIdleView`), am MacBook die eingeklappte Musik neben der Kamera, falls sie läuft.
+/// Ruhende Kopie der Notch: Mit mehreren Notch-Bildschirmen zeichnet sie auf jedem dauerhaft den Ruhezustand, unter
+/// der echten Notch, die erst beim Aufklappen oder für ein Signal sichtbar wird. Nimmt keine Klicks an. Auf einem
+/// externen Bildschirm zeigt sie Uhrzeit und Info (`ExternalIdleView`), am MacBook die eingeklappte Musik.
 final class ExternalNotchMirror: NSPanel {
     let screenInfo: ScreenInfo
 
@@ -158,7 +158,8 @@ final class ExternalNotchMirror: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 3)
+        // Eine Stufe unter der echten Notch, die beim Aufklappen darüber liegt.
+        level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 2)
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         ignoresMouseEvents = true
         isReleasedWhenClosed = false

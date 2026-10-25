@@ -28,13 +28,16 @@ struct NotchRootView: View {
             ? .spring(response: spring.collapseResponse, dampingFraction: spring.collapseDampingFraction)
             : .spring(response: spring.response, dampingFraction: spring.dampingFraction)
 
+        // Im Ruhezustand zeichnet die ruhende Kopie darunter; die Form bleibt fast durchsichtig da, damit Hover und
+        // Klicks weiter ankommen.
+        let mirrored = model.mirrorsDrawIdle && model.notch.mode == .idle && model.idleSettled && announcement == nil
         shape
-            .fill(backgroundColor)
+            .fill(backgroundColor.opacity(mirrored ? 0.004 : 1))
             .modifier(ClampedFrame(width: size.width, height: size.height, minimum: model.notchSize))
             .overlay(alignment: .top) {
                 ZStack(alignment: .top) {
                     musicBackdrop(size: size)
-                    content(width: size.width, height: size.height)
+                    if !mirrored { content(width: size.width, height: size.height) }
                 }
                 .animation(.easeInOut(duration: 0.28), value: MusicBackdrop.isShown(for: model))
             }

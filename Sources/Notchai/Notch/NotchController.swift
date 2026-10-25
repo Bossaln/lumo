@@ -122,28 +122,23 @@ final class NotchController {
         instant.disablesAnimations = true
         withTransaction(instant) { model.screen = target }
         refreshPanelPosition()
-        showMirrors(except: target)
     }
 
-    /// Eine ruhende Kopie für jeden Notch-Bildschirm. Sie stehen dauerhaft bereit und werden nur ein- und
-    /// ausgeblendet, damit beim Wechsel nichts flackert.
+    /// Mit mehreren Notch-Bildschirmen zeichnet je Bildschirm eine ruhende Kopie den Ruhezustand, dauerhaft und
+    /// unter der echten Notch. Wechselt die Notch den Bildschirm, bleibt das Bild damit unverändert. Am MacBook zeigt
+    /// die Kopie die eingeklappte Musik neben der Kamera, falls sie läuft.
     private func rebuildMirrors() {
         for mirror in mirrors.values { mirror.orderOut(nil) }
         mirrors = [:]
+        model.mirrorsDrawIdle = candidates.count > 1
+        guard model.mirrorsDrawIdle else { return }
         for screen in candidates {
             let mirror = ExternalNotchMirror(model: model, screen: screen)
-            mirror.alphaValue = 0
             mirror.orderFrontRegardless()
             mirrors[Self.key(screen)] = mirror
         }
-    }
-
-    /// Die Kopie des Bildschirms, auf dem die Notch gerade ist, verschwindet; alle anderen sind zu sehen. Am MacBook
-    /// zeigt die Kopie, was im Ruhezustand neben der Kamera steht (eingeklappte Musik), sonst bleibt sie leer.
-    private func showMirrors(except active: ScreenInfo?) {
-        for (key, mirror) in mirrors {
-            mirror.alphaValue = key == active.map(Self.key) ? 0 : 1
-        }
+        // Die echte Notch liegt darüber.
+        panel.orderFrontRegardless()
     }
 
     private static func key(_ screen: ScreenInfo) -> String {
