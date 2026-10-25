@@ -7,7 +7,11 @@ struct NotchRootView: View {
 
     var body: some View {
         let presentation = model.currentPresentation()
-        let size = model.visibleFrame()?.size ?? .zero
+        let frame = model.visibleFrame()
+        let size = frame?.size ?? .zero
+        // Die Form sitzt mittig zur Kamera; eine Systemanzeige ist links schmaler als rechts und rückt so weit,
+        // dass ihre Lücke genau unter der Kamera liegt.
+        let shift = frame.flatMap { frame in model.screen.flatMap(NotchGeometry.notchRect).map { frame.midX - $0.midX } } ?? 0
         let radii = Self.radii(for: presentation)
         let shape = NotchShape(bottomRadius: radii.bottom, topCornerRadius: radii.top)
         let settings = model.settingsStore.settings
@@ -54,6 +58,7 @@ struct NotchRootView: View {
                           cycle: isSignal || setupGlows ? GlowPulse.cycle : GlowPulse.musicCycle,
                           rainbow: setupGlows && !musicGlows)
             }
+            .offset(x: shift)
             .animation(animation, value: presentation)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .ignoresSafeArea()

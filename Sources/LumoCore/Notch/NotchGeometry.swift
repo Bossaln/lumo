@@ -68,7 +68,7 @@ public enum NotchGeometry {
     /// Systemanzeige: links Rand, Symbol und Abstand zur Kamera.
     public static let hudLeftWidth: CGFloat = 44
     /// Rechts: Abstand zur Kamera (die Aussparung ist unten gerundet, deshalb großzügig) und Rand außen.
-    public static let hudInnerPadding: CGFloat = 20
+    public static let hudInnerPadding: CGFloat = 12
     public static let hudOuterPadding: CGFloat = 14
     public static let hudRightPadding: CGFloat = hudInnerPadding + hudOuterPadding
     public static let hudBarWidth: CGFloat = 60
