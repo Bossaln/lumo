@@ -14,8 +14,9 @@ struct SignalIslandView: View {
     /// Meldet den Knopfbereich rechts in Panel-Koordinaten (`nil`, wenn die Island verschwindet).
     let reportButtonArea: (CGRect?) -> Void
 
-    /// Abstand zum äußeren Rand, auf beiden Seiten gleich. Reicht, damit ✓ ganz in der unteren Rundung liegt.
-    private static let outerPadding: CGFloat = 12
+    /// Abstand zum äußeren Rand, auf beiden Seiten gleich: 12 pt, damit ✓ ganz in der unteren Rundung liegt, plus
+    /// der zusätzliche Rand der Form (`NotchGeometry.islandEdge`).
+    private static let outerPadding: CGFloat = 12 + NotchGeometry.islandEdge
     /// Abstand zur Kamera-Aussparung, auf beiden Seiten gleich.
     private static let innerPadding: CGFloat = 6
     /// Abstand zwischen den Teilen innerhalb einer Seite.

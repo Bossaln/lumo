@@ -38,7 +38,7 @@ final class NotchPanel: NSPanel {
     /// Setzt das Panel oben bündig und mittig auf die Notch, groß genug für jede Darstellung.
     func position(around notch: CGRect, islandSideWidth: CGFloat) {
         let contentWidth = max(NotchGeometry.bannerMaxWidth, NotchGeometry.panelWidth,
-                               NotchGeometry.verticalWidth, notch.width + 2 * islandSideWidth,
+                               NotchGeometry.verticalWidth, NotchGeometry.islandWidth(notch: notch, sideWidth: islandSideWidth),
                                notch.width + 2 * NotchGeometry.trackSideWidth, NotchGeometry.trackBannerWidth)
         let contentHeight = max(NotchGeometry.panelMaxHeight,
                                 notch.height + NotchGeometry.bannerExtraHeight,
