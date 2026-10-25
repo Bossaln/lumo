@@ -3,8 +3,9 @@ import Foundation
 /// Findet die Transkripte laufender Sessions und liest sie inkrementell:
 /// `~/.claude/projects/<projekt>/<session>.jsonl` und `~/.codex/sessions/<jahr>/<monat>/<tag>/*.jsonl`.
 /// Gezählt werden nur Dateien, die innerhalb von `maxAgeHours` geändert wurden. Codex-Titel kommen aus
-/// `~/.codex/session_index.jsonl`. Nicht threadsicher: gehört einer seriellen Warteschlange (`SessionMonitor`).
-public final class TranscriptLibrary {
+/// `~/.codex/session_index.jsonl`. Nicht threadsicher: gehört einer seriellen Warteschlange (`SessionMonitor`), die
+/// als einzige darauf zugreift; deshalb `@unchecked Sendable`.
+public final class TranscriptLibrary: @unchecked Sendable {
     /// So oft werden die Ordner neu durchsucht; dazwischen werden nur die bekannten Dateien gelesen.
     static let discoveryInterval: TimeInterval = 10
     /// Codex legt ein Rollout im Ordner seines Starttags ab und schreibt weitergeführte Threads (etwa in der

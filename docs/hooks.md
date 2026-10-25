@@ -154,9 +154,27 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 - **Abgelehnt ist kein Fehler:** Eine Ablehnung kommt beim Modell als `tool_result` mit `is_error: true` an („In notchai abgelehnt“, „The user doesn't want to proceed …“). Der Fehlerzähler lässt sie weg und zählt je Turn (`ToolFailure`).
 - **Sessions ohne Transkript:** Echte Sessions schicken immer `transcript_path`. Ereignisse ohne (von Hand an `notchai-hook` geschickt) ergeben keine Session in der Liste. Teilen sich mehrere Claude-Sessions einen Prozess (`/resume`), gehört er der zuletzt aktiven.
 
+## Claude-App (Claude Code 2.1.308 in Claude Desktop 3.6556.2, Oktober 2026)
+
+- **Herkunft:** `CLAUDE_CODE_ENTRYPOINT=claude-desktop`, `__CFBundleIdentifier=com.anthropic.claudefordesktop`. „Session-Quellen kopieren“ zeigt `source=claudeApp`, die PID ist der `claude`-Prozess unter `~/Library/Application Support/Claude/claude-code/<version>/…/claude.app`.
+- **Ereignisse:** `UserPromptSubmit` (mit `session_title`, dem Titel der App-Session), `PreToolUse`, `PostToolUse` (auch für MCP-Werkzeuge der App wie `mcp__ccd_turn__update_plan`), `PostToolUseFailure` mit `error`, `PermissionRequest` (decide), `Notification`, `SubagentStart`, `SubagentStop` mit `last_assistant_message`, `Stop`.
+- **Freigaben:** Im Modus `default` fragt die App wie das Terminal über `PermissionRequest`. Eine Entscheidung aus der Notch steht im Transkript als `"permissionDecision":{"decision":"accept","source":"hook","reasonType":"hook",…}`; `source: hook` gegenüber `config` zeigt nachträglich, wer entschieden hat (`reasonCode` z. B. `bashMiss:no-rule-match`, `bashMiss:too-complex`, `workingDir`).
+- **`Notification`** kommt etwa 6 s nach der Freigabe, `notification_type: "permission_prompt"`, Text mit Werkzeug: „Claude needs your permission to use Write“.
+- **Fragen:** `AskUserQuestion` über `PreToolUse` (decide) funktioniert; die Antwort aus der Notch steht in `PostToolUse` als `answers`.
+- **Hintergrund-Agenten** melden ihr Ende als `UserPromptSubmit` mit `prompt` „`<task-notification>…`“, mitten im Turn. Ein Prompt, der mit `<` beginnt, beginnt deshalb keinen neuen Turn: Offene Anfragen und die Fehler des Turns bleiben (`SessionBook`, Test `taskNotificationIsNoNewTurn`).
+- **Unteragenten** schicken ihre Werkzeug-Ereignisse mit der `session_id` der Haupt-Session. Schritte mit `agent_id` werden nicht zum letzten Schritt der Haupt-Session, Freigaben tragen „Von <agent_type>“, und die Details zählen laufende Unteragenten nach `agent_id` aus `SubagentStart`/`SubagentStop`. Ein `SubagentStop` mit unbekannter ID (etwa die Prompt-Vorschläge nach jedem `Stop`) zählt nicht.
+
+## Unteragenten im Terminal (Claude Code 2.1.310, Oktober 2026)
+
+- `agent_id` und `agent_type` kommen bei `SubagentStart`, `SubagentStop` und bei jedem `PreToolUse`/`PostToolUse` aus dem Unteragenten mit (`"agent_type":"general-purpose"`).
+- Die Prompt-Vorschläge nach jedem `Stop` kommen als `SubagentStop` mit eigener `agent_id`, aber `"agent_type":""` und ohne `SubagentStart`; `last_assistant_message` ist der vorhergesagte nächste Satz des Nutzers. notchai zählt nur Unteragenten, deren `SubagentStart` es gesehen hat.
+- Ist ein Unteragent im Hintergrund fertig, kommt das in der Haupt-Session als `UserPromptSubmit` mit `prompt` „`<agent-message from=…>`“ (in der Claude-App „`<task-notification>`“) und startet einen neuen kurzen Turn, der wieder mit `Stop` endet.
+- Im Modus `auto` (`permission_mode`) entscheidet Claude Code selbst; es kommt kein `PermissionRequest`.
+
 ## Offene Punkte
 
-- `CLAUDE_CODE_ENTRYPOINT` und `__CFBundleIdentifier` für Sessions in der Claude-App (erwartet `claude-desktop` bzw. `com.anthropic.claudefordesktop`) und im VS-Code-Terminal (`TERM_PROGRAM=vscode`).
+- `TERM_PROGRAM` und `__CFBundleIdentifier` für Sessions im VS-Code-Terminal (erwartet `TERM_PROGRAM=vscode`).
+- Claude-App: `SessionStart` und `SessionEnd` beim Öffnen bzw. Schließen oder Archivieren einer Session, `StopFailure` und `Notification` mit `idle_prompt`.
 - `originator` von Sessions aus der Codex-App (erwartet `Codex Desktop`, siehe oben).
 - Ob die Codex-App die Hook-Freigabe genauso abfragt wie die Kommandozeile.
 - Ob `rate_limits` in echten Rollouts genau so aussieht wie oben.

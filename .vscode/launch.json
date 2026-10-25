@@ -1,0 +1,64 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:notchai}",
+            "name": "Debug notchai",
+            "target": "notchai",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug notchai"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:notchai}",
+            "name": "Release notchai",
+            "target": "notchai",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release notchai"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:notchai}",
+            "name": "Debug notchai-hook",
+            "target": "notchai-hook",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug notchai-hook"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:notchai}",
+            "name": "Release notchai-hook",
+            "target": "notchai-hook",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release notchai-hook"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:notchai}",
+            "name": "Debug notchai-welcome",
+            "target": "notchai-welcome",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug notchai-welcome"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:notchai}",
+            "name": "Release notchai-welcome",
+            "target": "notchai-welcome",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release notchai-welcome"
+        }
+    ]
+}

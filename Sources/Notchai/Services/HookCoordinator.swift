@@ -54,7 +54,7 @@ final class HookCoordinator {
             try server.start()
             self.server = server
         } catch {
-            startError = "Hook-Server startet nicht: \(error)"
+            startError = L("Hook-Server startet nicht: {0}", "\(error)")
         }
         let monitor = SessionMonitor(home: home, maxAgeHours: { [weak model] in model?.settingsStore.settings.sessionMaxAgeHours ?? 24 },
                                      onUpdate: { [weak self] summaries, stats in
@@ -251,8 +251,14 @@ final class HookCoordinator {
         case .permission(let tool, let summary):
             let isShell = ["Bash", "exec_command", "shell"].contains(tool)
             let full = request.fullCommand
+            let subtitle = switch (request.subagent, isShell) {
+            case (let agent?, true): L("{0} möchte ausführen:", agent)
+            case (let agent?, false): L("{0} möchte {1} verwenden:", agent, tool)
+            case (nil, true): L("Möchte ausführen:")
+            case (nil, false): L("Möchte {0} verwenden:", tool)
+            }
             return SignalContent(id: request.requestId, agent: session.agent, title: title(session),
-                                 subtitle: isShell ? L("Möchte ausführen:") : L("Möchte {0} verwenden:", tool),
+                                 subtitle: subtitle,
                                  detail: summary, kind: .permission, fullDetail: full,
                                  detailNote: full.map(PermissionText.note))
         case .question(let questions):

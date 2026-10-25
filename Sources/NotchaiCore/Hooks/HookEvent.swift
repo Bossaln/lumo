@@ -24,6 +24,10 @@ public struct HookEvent: Codable, Equatable, Sendable {
     public var sessionTitle: String?
     public var model: String?
     public var turnId: String?
+    /// Nur bei Ereignissen aus einem Unteragenten: seine ID und Art (`Explore`, `general-purpose` …). Unteragenten
+    /// schicken sonst dieselbe `session_id` wie die Haupt-Session.
+    public var agentId: String?
+    public var agentType: String?
 
     public init(hookEventName: String, sessionId: String) {
         self.hookEventName = hookEventName
@@ -47,6 +51,8 @@ public struct HookEvent: Codable, Equatable, Sendable {
         case sessionTitle = "session_title"
         case model
         case turnId = "turn_id"
+        case agentId = "agent_id"
+        case agentType = "agent_type"
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,5 +77,7 @@ public struct HookEvent: Codable, Equatable, Sendable {
         sessionTitle = text(.sessionTitle)
         model = text(.model)
         turnId = text(.turnId)
+        agentId = text(.agentId)
+        agentType = text(.agentType)
     }
 }
