@@ -3,6 +3,7 @@ extension Localization {
     /// `everyTextInTheCodeHasAnEnglishTranslation` meldet jeden fehlenden Eintrag, `everyTranslationIsStillUsed`
     /// jeden überflüssigen. Neue Texte: deutsch in den Code schreiben, hier die Übersetzung ergänzen.
     static let english: [String: String] = [
+        "Weniger Unterbrechungen": "Reduce Interruptions",
         "(nicht lesbar)": "(not readable)",
         "ModeConfigurations.json ist kein lesbares JSON.": "ModeConfigurations.json is not readable JSON.",
         "Noch nicht gelesen.": "Not read yet.",

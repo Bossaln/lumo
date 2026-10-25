@@ -17,8 +17,12 @@ public struct FocusMode: Equatable, Sendable {
 
 /// Farben, die macOS einem Fokus gibt (`tintColorName`), in den Werten der Systemfarben.
 public enum FocusTint {
+    /// `name` wie in den Dateien von macOS: „indigo“ oder „systemIndigoColor“.
     public static func rgb(named name: String?) -> RGB {
-        switch name?.lowercased() {
+        var key = name?.lowercased() ?? ""
+        if key.hasPrefix("system") { key.removeFirst("system".count) }
+        if key.hasSuffix("color") { key.removeLast("color".count) }
+        return switch key {
         case "red": RGB(r: 1.0, g: 0.271, b: 0.227)
         case "orange": SystemTint.orange
         case "yellow": SystemTint.yellow
@@ -61,7 +65,9 @@ public struct FocusModes: Equatable, Sendable {
         for dictionary in JSONSearch.dictionaries(named: "modeConfigurations", in: config) {
             for (identifier, value) in dictionary {
                 guard let entry = value as? [String: Any], let mode = entry["mode"] as? [String: Any] else { continue }
-                let name = (mode["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? Self.defaultName(for: identifier)
+                // Die Systemfokus stehen englisch in der Datei; lumo benennt sie wie macOS.
+                let name = Self.systemName(for: identifier) ?? (mode["name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                    ?? Self.defaultName(for: identifier)
                 modes[identifier] = FocusMode(identifier: identifier, name: name,
                                               symbol: (mode["symbolImageName"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "moon.fill",
                                               tint: FocusTint.rgb(named: mode["tintColorName"] as? String))
@@ -69,13 +75,30 @@ public struct FocusModes: Equatable, Sendable {
         }
         var active: String?
         if let assertions, let object = try? JSONSerialization.jsonObject(with: assertions) {
-            // Jede Zusicherung nennt ihren Fokus; die jüngste zählt. Der Schlüssel dafür hat sich schon geändert,
-            // deshalb zählt jeder Text, der einen bekannten Fokus nennt, und der bekannte Schlüssel als Rückfall.
-            let strings = JSONSearch.strings(in: object)
-            active = strings.last { modes[$0] != nil }
-                ?? JSONSearch.values(named: "assertionDetailsModeIdentifier", in: object).compactMap { $0 as? String }.last
+            // Nur die laufenden Zusicherungen (`storeAssertionRecords`) zählen; beendete stehen daneben unter
+            // `storeInvalidationRecords` und nennen ihren Fokus genauso. Die jüngste laufende gewinnt.
+            var latest: (start: Double, identifier: String)?
+            for records in JSONSearch.values(named: "storeAssertionRecords", in: object) {
+                for record in (records as? [Any]) ?? [] {
+                    let start = JSONSearch.values(named: "assertionStartDateTimestamp", in: record).compactMap { $0 as? Double }.first ?? 0
+                    for identifier in JSONSearch.values(named: "assertionDetailsModeIdentifier", in: record).compactMap({ $0 as? String })
+                    where latest.map({ start >= $0.start }) ?? true {
+                        latest = (start, identifier)
+                    }
+                }
+            }
+            active = latest?.identifier
         }
         return FocusModes(modes: modes, activeIdentifier: active)
+    }
+
+    /// Fokus, die macOS selbst benennt (in der Datei stehen sie englisch oder leer).
+    static func systemName(for identifier: String) -> String? {
+        switch identifier {
+        case "com.apple.donotdisturb.mode.default": L("Nicht stören")
+        case "com.apple.focus.reduce-interruptions": L("Weniger Unterbrechungen")
+        default: nil
+        }
     }
 
     /// „Nicht stören“ hat in der Datei keinen Namen; die anderen Standard-Fokus auch nicht immer.
@@ -113,21 +136,5 @@ enum JSONSearch {
 
     static func dictionaries(named key: String, in object: Any) -> [[String: Any]] {
         values(named: key, in: object).compactMap { $0 as? [String: Any] }
-    }
-
-    /// Alle Texte im JSON in Lesereihenfolge.
-    static func strings(in object: Any) -> [String] {
-        var found: [String] = []
-        func walk(_ node: Any) {
-            if let string = node as? String {
-                found.append(string)
-            } else if let dictionary = node as? [String: Any] {
-                for key in dictionary.keys.sorted() { walk(dictionary[key]!) }
-            } else if let array = node as? [Any] {
-                for value in array { walk(value) }
-            }
-        }
-        walk(object)
-        return found
     }
 }

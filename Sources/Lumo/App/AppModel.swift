@@ -462,7 +462,9 @@ final class AppModel {
         // Ein neuer Titel fährt kurz über alles aus, was im Ruhezustand zu sehen ist.
         case .idle:
             // Eine Systemanzeige geht vor: Sie antwortet auf eine Taste oder ein Ereignis von eben.
-            if let indicator = systemIndicator { .hud(sideWidth: NotchGeometry.hudSideWidth(forText: indicator.value.isText)) }
+            if let indicator = systemIndicator {
+                .hud(left: NotchGeometry.hudLeftWidth, right: NotchGeometry.hudRightWidth(contentWidth: SystemIndicatorView.contentWidth(of: indicator)))
+            }
             else if let presentation = trackAnnouncement?.style.presentation { presentation }
             // Externer Bildschirm: Die Mitte ist sichtbar und zeigt Uhrzeit, Status und Musik (`ExternalIdleView`).
             else if screen?.isVirtual == true { .externalIdle }

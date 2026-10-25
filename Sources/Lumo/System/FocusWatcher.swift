@@ -15,12 +15,16 @@ final class FocusWatcher {
     private(set) var problem: String?
 
     private let directory: URL
+    /// Kopie der zuletzt gelesenen Dateien unter ~/Library/Logs/lumo, falls lumo einen Fokus nicht erkennt.
+    private let dumpURL: URL
+    private var lastDump: Int?
     private var source: DispatchSourceFileSystemObject?
     private var timer: Timer?
     private var known = false
 
     init(home: URL) {
         directory = home.appending(path: "Library/DoNotDisturb/DB", directoryHint: .isDirectory)
+        dumpURL = home.appending(path: "Library/Logs/lumo/focus-files.txt")
     }
 
     func start() {
@@ -67,6 +71,17 @@ final class FocusWatcher {
         self.source = source
     }
 
+    /// Schreibt beide Dateien ins Protokoll, wenn sie sich geändert haben.
+    private func dump(configurations: Data, assertions: Data?) {
+        let hash = configurations.hashValue ^ (assertions?.hashValue ?? 0)
+        guard hash != lastDump else { return }
+        lastDump = hash
+        let text = "=== ModeConfigurations.json\n" + (String(data: configurations, encoding: .utf8) ?? "?")
+            + "\n\n=== Assertions.json\n" + (assertions.flatMap { String(data: $0, encoding: .utf8) } ?? "(fehlt)") + "\n"
+        try? FileManager.default.createDirectory(at: dumpURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? text.write(to: dumpURL, atomically: true, encoding: .utf8)
+    }
+
     private func read(initial: Bool) {
         let configurations: Data
         do {
@@ -85,6 +100,7 @@ final class FocusWatcher {
             schedule()
         }
         let assertions = try? Data(contentsOf: directory.appending(path: "Assertions.json"))
+        dump(configurations: configurations, assertions: assertions)
         guard let next = FocusModes.parse(configurations: configurations, assertions: assertions) else {
             problem = L("ModeConfigurations.json ist kein lesbares JSON.")
             return

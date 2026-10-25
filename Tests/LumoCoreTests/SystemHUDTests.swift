@@ -60,15 +60,20 @@ import Testing
     #expect(!SystemIndicatorValue.level(0.5).isText)
     #expect(SystemIndicatorValue.text("AirPods").isText)
     #expect(SystemIndicatorValue.countdown(until: .now).isText)
-    #expect(NotchGeometry.hudSideWidth(forText: true) > NotchGeometry.hudSideWidth(forText: false))
+    // Rechts mindestens so breit wie ein Balken, nie breiter als das Maximum.
+    #expect(NotchGeometry.hudRightWidth(contentWidth: 10) == NotchGeometry.hudBarWidth + NotchGeometry.hudRightPadding)
+    #expect(NotchGeometry.hudRightWidth(contentWidth: 100) == 124)
+    #expect(NotchGeometry.hudRightWidth(contentWidth: 900) == NotchGeometry.hudMaxRightWidth)
 }
 
-@Test func hudPresentationIsAsHighAsTheNotch() {
+@Test func hudPresentationHugsTheContent() {
     let screen = ScreenInfo(frame: CGRect(x: 0, y: 0, width: 1512, height: 982), topInset: 32, leftAuxWidth: 656, rightAuxWidth: 656)
-    let frame = NotchGeometry.frame(for: .hud(sideWidth: 92), screen: screen, islandSideWidth: 120)
+    let frame = NotchGeometry.frame(for: .hud(left: 44, right: 100), screen: screen, islandSideWidth: 120)
     #expect(frame?.height == 32)
-    #expect(frame?.width == 384)
-    #expect(frame?.midX == 756)
+    // Links nur das Symbol, rechts der Inhalt: Die Form sitzt nicht mittig zur Kamera.
+    #expect(frame?.minX == 612)
+    #expect(frame?.maxX == 956)
+    #expect(frame?.maxY == 982)
 }
 
 // MARK: - Ablauf
@@ -175,18 +180,31 @@ private let assertionsJSON = """
     #expect(state.activeIdentifier == "com.apple.focus.work")
     let active = try #require(state.activeMode)
     #expect(active.name == "Arbeit" && active.symbol == "briefcase.fill" && active.tint == FocusTint.rgb(named: "teal"))
-    // „Nicht stören“ hat in der Datei keinen Namen.
+    // „Nicht stören“ heißt in der Datei „Do Not Disturb“ oder gar nichts; lumo nennt es wie macOS.
     #expect(state.modes["com.apple.donotdisturb.mode.default"]?.name == "Nicht stören")
 }
 
-@Test func activeModeIsFoundEvenUnderAnotherKey() throws {
-    // macOS benennt die Schlüssel um; ein Text, der einen bekannten Fokus nennt, reicht.
-    let assertions = Data("{\"data\":[{\"records\":[{\"details\":{\"mode\":\"com.apple.focus.work\"},\"time\":1}]}]}".utf8)
-    let state = try #require(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: assertions))
+@Test func endedAssertionsDoNotCountAsActive() throws {
+    // So sieht die Datei aus, wenn gerade kein Fokus an ist: nur beendete Zusicherungen.
+    let ended = Data("""
+    {"data":[{"storeInvalidationRequestRecords":[],"storeInvalidationRecords":[{"invalidationAssertion":{"assertionStartDateTimestamp":814635184.6,
+    "assertionDetails":{"assertionDetailsModeIdentifier":"com.apple.sleep.sleep-mode"}},"invalidationReason":"user-changed-state"}]}],"header":{}}
+    """.utf8)
+    #expect(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: ended)?.activeIdentifier == nil)
+    // Mit mehreren laufenden Zusicherungen zählt die jüngste.
+    let two = Data("""
+    {"data":[{"storeAssertionRecords":[
+    {"assertionStartDateTimestamp":100,"assertionDetails":{"assertionDetailsModeIdentifier":"com.apple.donotdisturb.mode.default"}},
+    {"assertionStartDateTimestamp":200,"assertionDetails":{"assertionDetailsModeIdentifier":"com.apple.focus.work"}}]}]}
+    """.utf8)
+    let state = try #require(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: two))
     #expect(state.activeIdentifier == "com.apple.focus.work")
-    // Unbekannte Kennungen zählen nur über den bekannten Schlüssel.
-    let unknown = Data("{\"data\":[{\"storeAssertionRecords\":[{\"assertionDetails\":{\"assertionDetailsModeIdentifier\":\"com.apple.focus.custom\"}}]}]}".utf8)
-    #expect(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: unknown)?.activeIdentifier == "com.apple.focus.custom")
+}
+
+@Test func systemColorNamesAreUnderstood() {
+    #expect(FocusTint.rgb(named: "systemTealColor") == FocusTint.rgb(named: "teal"))
+    #expect(FocusTint.rgb(named: "systemIndigoColor") == FocusTint.rgb(named: "indigo"))
+    #expect(FocusTint.rgb(named: "systemPurpleColor") != FocusTint.rgb(named: "indigo"))
 }
 
 @Test func noAssertionMeansNoFocus() throws {

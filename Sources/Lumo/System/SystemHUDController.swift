@@ -74,6 +74,8 @@ final class SystemHUDController {
             guard let self else { return }
             deviceChangedAt = Date()
             show(.audioOutput(name: name, symbol: AudioOutputKind.symbol(name: name, transport: transport)))
+            // Ob sich die Lautstärke stellen lässt, hängt am Gerät.
+            updateKeyTap()
         }
         audio.onMicrophone = { [weak self] active in
             guard let self else { return }
@@ -85,7 +87,7 @@ final class SystemHUDController {
             model.cameraInUse = active && settings.shows(.camera)
             show(.camera(active: active))
         }
-        keys.handler = { [weak self] press, modifiers in self?.handle(press, modifiers: modifiers) ?? false }
+        keys.handler = { [weak self] press, modifiers, consumed in self?.handle(press, modifiers: modifiers, consumed: consumed) }
         power.onChange = { [weak self] state in
             guard let self, let indicator = powerTracker.update(state) else { return }
             show(indicator)
@@ -127,15 +129,22 @@ final class SystemHUDController {
     /// und Tastaturlicht (ohne eigene Meldung von macOS) trotzdem in der Notch erscheinen.
     private func updateKeyTap() {
         let settings = settings
-        let wantsKeys = settings.systemHUD && (settings.shows(.volume) || settings.shows(.brightness) || settings.shows(.keyboardBacklight))
-        guard wantsKeys, accessibilityTrusted else {
+        let intercept = settings.suppressMacHUD
+        var policy = MediaKeyTap.Policy(intercept: intercept)
+        // Abgefangen wird nur, was lumo auch stellen kann; sonst bliebe die Taste wirkungslos.
+        if settings.shows(.volume), !intercept || audio.canSetVolume { policy.keys.formUnion([.soundUp, .soundDown, .mute]) }
+        if settings.shows(.brightness), !intercept || brightness.isAvailable { policy.keys.formUnion([.brightnessUp, .brightnessDown]) }
+        if settings.shows(.keyboardBacklight), !intercept || backlight.isAvailable {
+            policy.keys.formUnion([.illuminationUp, .illuminationDown, .illuminationToggle])
+        }
+        keys.setPolicy(policy)
+        guard settings.systemHUD, !policy.keys.isEmpty, accessibilityTrusted else {
             keys.stop()
             interceptsKeys = false
             return
         }
-        let intercept = settings.suppressMacHUD
         keys.start(listenOnly: !intercept)
-        interceptsKeys = keys.isActive && intercept
+        interceptsKeys = keys.isIntercepting
     }
 
     private func checkTrust() {
@@ -210,63 +219,51 @@ final class SystemHUDController {
 
     // MARK: - Sondertasten
 
-    /// Stellt Lautstärke, Helligkeit und Tastaturlicht selbst, wenn lumo die Tasten abfängt; `true` heißt, macOS
-    /// bekommt die Taste nicht mehr.
-    private func handle(_ press: MediaKeyPress, modifiers: MediaKeyTap.Modifiers) -> Bool {
-        guard press.key.isHandledByLumo, !modifiers.optionOnly else { return false }
-        let settings = settings
-        // Losgelassene Tasten schlucken, sonst sähe macOS ein Loslassen ohne Drücken.
-        guard press.down else { return interceptsKeys }
+    /// Eine Taste aus der `Policy` des Abgriffs. Hat lumo sie macOS weggenommen (`consumed`), stellt es den Wert
+    /// selbst; sonst stellt macOS, und lumo liest kurz danach nach, um ihn zu zeigen.
+    private func handle(_ press: MediaKeyPress, modifiers: MediaKeyTap.Modifiers, consumed: Bool) {
+        // Nur gedrückte Tasten (auch gehaltene) zählen; das Loslassen wird nur geschluckt.
+        guard press.down else { return }
         switch press.key {
         case .soundUp, .soundDown:
-            guard settings.shows(.volume) else { return false }
-            guard interceptsKeys else { return false }
-            guard audio.canSetVolume, let level = audio.volume else { return false }
+            guard consumed, let level = audio.volume else { return }
             let next = MediaKeys.adjusted(level, up: press.key == .soundUp, fine: modifiers.fine)
             audio.setVolume(next)
             if next > 0, audio.isMuted { audio.setMuted(false) }
             show(.volume(level: next, muted: next == 0))
             Self.playVolumeFeedback()
-            return true
         case .mute:
-            guard settings.shows(.volume), interceptsKeys, audio.canSetVolume else { return false }
+            guard consumed else { return }
             let muted = !audio.isMuted
             audio.setMuted(muted)
             show(.volume(level: audio.volume ?? 0, muted: muted))
-            return true
         case .brightnessUp, .brightnessDown:
-            guard settings.shows(.brightness) else { return false }
-            guard interceptsKeys else {
+            guard consumed else {
                 readSoon { [weak self] in self?.brightness.level.map { self?.show(.brightness(level: $0)) } }
-                return false
+                return
             }
-            guard brightness.isAvailable, let level = brightness.level else { return false }
+            guard let level = brightness.level else { return }
             let next = MediaKeys.adjusted(level, up: press.key == .brightnessUp, fine: modifiers.fine)
             brightness.setLevel(next)
             show(.brightness(level: next))
-            return true
         case .illuminationUp, .illuminationDown:
-            guard settings.shows(.keyboardBacklight) else { return false }
-            guard interceptsKeys else {
+            guard consumed else {
                 readSoon { [weak self] in self?.backlight.level.map { self?.show(.keyboardBacklight(level: $0)) } }
-                return false
+                return
             }
-            guard backlight.isAvailable, let level = backlight.level else { return false }
+            guard let level = backlight.level else { return }
             let next = MediaKeys.adjusted(level, up: press.key == .illuminationUp, fine: modifiers.fine)
             backlight.setLevel(next)
             show(.keyboardBacklight(level: next))
-            return true
         case .illuminationToggle:
-            guard settings.shows(.keyboardBacklight) else { return false }
-            guard interceptsKeys else {
+            guard consumed else {
                 readSoon { [weak self] in self?.backlight.level.map { self?.show(.keyboardBacklight(level: $0)) } }
-                return false
+                return
             }
-            guard let level = backlight.toggle() else { return false }
+            guard let level = backlight.toggle() else { return }
             show(.keyboardBacklight(level: level))
-            return true
         default:
-            return false
+            break
         }
     }
 

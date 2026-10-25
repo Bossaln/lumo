@@ -7,14 +7,32 @@ import SwiftUI
 struct SystemIndicatorView: View {
     let indicator: SystemIndicator
     let notchWidth: CGFloat
-    let sideWidth: CGFloat
+    let leftWidth: CGFloat
+    let rightWidth: CGFloat
     let height: CGFloat
     /// Breite der oberen Wölbung je Seite.
     let ear: CGFloat
     @ViewState private var dimmed = false
 
+    private static let symbolFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+    private static let textFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    private static let digitFont = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .semibold)
+
+    /// Breite des Inhalts rechts, damit die Insel genau so breit wird wie nötig.
+    static func contentWidth(of indicator: SystemIndicator) -> CGFloat {
+        switch indicator.value {
+        case .level: NotchGeometry.hudBarWidth
+        case .text(let text): ceil(measure(text, font: textFont))
+        case .countdown(let until): ceil(measure(SystemIndicatorFormat.countdown(max(until.timeIntervalSinceNow, 0)), font: digitFont))
+        case .remaining(let seconds): ceil(measure(SystemIndicatorFormat.countdown(seconds), font: digitFont))
+        }
+    }
+
+    private static func measure(_ text: String, font: NSFont) -> CGFloat {
+        (text as NSString).size(withAttributes: [.font: font]).width
+    }
+
     var body: some View {
-        let inner = max(0, sideWidth - ear)
         let tint = Color(indicator.tint)
         HStack(spacing: 0) {
             Color.clear.frame(width: ear)
@@ -24,13 +42,13 @@ struct SystemIndicatorView: View {
                 .foregroundStyle(tint)
                 .symbolRenderingMode(.hierarchical)
                 .contentTransition(.symbolEffect(.replace))
-                .padding(.leading, 14)
-                .frame(width: inner, alignment: .leading)
+                .padding(.leading, 12 - ear)
+                .frame(width: max(0, leftWidth - ear), alignment: .leading)
             Color.clear.frame(width: notchWidth)
             trailing(tint: tint)
                 .padding(.leading, 10)
-                .padding(.trailing, 14)
-                .frame(width: inner, alignment: .leading)
+                .padding(.trailing, 14 - ear)
+                .frame(width: max(0, rightWidth - ear), alignment: .leading)
             Color.clear.frame(width: ear)
         }
         .frame(height: height)

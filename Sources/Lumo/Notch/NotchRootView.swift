@@ -101,8 +101,8 @@ struct NotchRootView: View {
             let notch = model.screen.flatMap(NotchGeometry.notchRect)
             let notchWidth = notch?.width ?? 0
             let presentation = model.currentPresentation()
-            if let indicator = model.systemIndicator, case .hud = presentation {
-                SystemIndicatorView(indicator: indicator, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2),
+            if let indicator = model.systemIndicator, case .hud(let left, let right) = presentation {
+                SystemIndicatorView(indicator: indicator, notchWidth: notchWidth, leftWidth: left, rightWidth: right,
                                     height: height, ear: Self.radii(for: presentation).top)
                     .id(indicator.id)
                     .frame(width: width, height: height)
