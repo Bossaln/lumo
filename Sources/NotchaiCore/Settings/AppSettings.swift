@@ -1,7 +1,6 @@
 import Foundation
 
 public enum SignalStyle: String, Codable, Equatable, Sendable { case vertical, island, banner }
-public enum SessionViewStyle: String, Codable, Equatable, Sendable { case list, circles }
 public enum BackgroundStyle: String, Codable, Equatable, Sendable { case black, darkGray, custom }
 public enum SessionTitleSource: String, Codable, Equatable, Sendable { case lastPrompt, sessionTitle }
 public enum OfficeLighting: String, Codable, Equatable, Sendable { case realSun, fixedDay, fixedNight }
@@ -13,7 +12,6 @@ public enum CoverTransitionStyle: String, Codable, Equatable, Sendable, CaseIter
 /// in `AppSettingsTests` (deren Roundtrip-Test meldet jede vergessene Stelle).
 public struct AppSettings: Codable, Equatable, Sendable {
     public var signalStyle: SignalStyle = .island
-    public var sessionViewStyle: SessionViewStyle = .list
     public var background: BackgroundStyle = .black
     public var customBackgroundHex: String = "#000000"
     public var claudeColorHex: String = "#E0764A"
@@ -109,7 +107,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case signalStyle, sessionViewStyle, background, customBackgroundHex, claudeColorHex, codexColorHex
+        case signalStyle, background, customBackgroundHex, claudeColorHex, codexColorHex
         case glowEnabled, glowIntensity, soundsEnabled, hoverDelayMs, watchClaude, watchCodex
         case signalOnQuestion, signalOnPermission, signalOnDone, signalOnError
         case approvalTimeoutSeconds, autoSendClaudeReplies, sessionTitleSource, sessionMaxAgeHours
@@ -132,7 +130,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
             if let raw = try? c.decodeIfPresent(String.self, forKey: key), let v = T(rawValue: raw) { target = v }
         }
         option(.signalStyle, &s.signalStyle)
-        option(.sessionViewStyle, &s.sessionViewStyle)
         option(.background, &s.background)
         value(.customBackgroundHex, &s.customBackgroundHex)
         value(.claudeColorHex, &s.claudeColorHex)

@@ -67,7 +67,7 @@ struct ClampedFrame: ViewModifier, Animatable {
 }
 
 extension AnyTransition {
-    /// Inhalt der Notch (Panel, eingeklappte Musik, Kreise, Signale): Beim Aufklappen erscheint er
+    /// Inhalt der Notch (Panel, eingeklappte Musik, Signale): Beim Aufklappen erscheint er
     /// unscharf, wenn die Form schon fast offen ist; beim Zuklappen ist er sofort weg, bevor die Form schrumpft.
     static var notchContent: AnyTransition {
         .asymmetric(

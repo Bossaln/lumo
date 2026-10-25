@@ -111,41 +111,72 @@ struct SettingsIcon: View {
     }
 }
 
-/// Kopf einer Seite: großes Symbol mit farbigem Schein, Titel und Beschreibung.
+/// Kopf einer Seite: großes Symbol mit farbigem Schein, Titel und Beschreibung, linksbündig wie eine Überschrift.
 struct SettingsHero: View {
     let pane: SettingsPane
+    var namespace: Namespace.ID?
 
     var body: some View {
-        VStack(spacing: 10) {
-            SettingsIcon(pane: pane, size: 64)
-                .shadow(color: pane.colors.1.opacity(0.45), radius: 14, x: 0, y: 6)
-            Text(pane.title)
-                .font(.system(size: 22, weight: .bold))
-            Text(pane.subtitle)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 440)
+        HStack(alignment: .center, spacing: 20) {
+            icon
+                .shadow(color: pane.colors.1.opacity(0.55), radius: 22, x: 0, y: 8)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(pane.title)
+                    .font(.system(size: 34, weight: .bold))
+                    .tracking(-0.5)
+                    .foregroundStyle(Lux.primary)
+                Text(pane.subtitle)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Lux.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 520, alignment: .leading)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        if let namespace {
+            SettingsIcon(pane: pane, size: 68).matchedGeometryEffect(id: pane, in: namespace)
+        } else {
+            SettingsIcon(pane: pane, size: 68)
+        }
     }
 }
 
-/// Eine Seite: Kopf und darunter die Abschnitte als gruppiertes Formular.
+/// Eine Seite: Kopf und darunter die Abschnitte als Karten (`LuxSections`).
 struct SettingsPage<Content: View>: View {
     let pane: SettingsPane
     @ViewBuilder let content: () -> Content
+    @Environment(\.settingsNamespace) private var namespace
 
     var body: some View {
-        Form {
-            Section {
-                SettingsHero(pane: pane)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 34) {
+                SettingsHero(pane: pane, namespace: namespace)
+                LuxSections(content: content)
             }
-            content()
+            .padding(.horizontal, 56)
+            .padding(.top, 84)
+            .padding(.bottom, 48)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
         }
-        .formStyle(.grouped)
+        .scrollIndicators(.never)
+        .luxControls()
+    }
+}
+
+/// Namensraum, in dem die Symbol-Kachel von der Startseite in den Kopf der Seite fliegt.
+private struct SettingsNamespaceKey: EnvironmentKey {
+    static let defaultValue: Namespace.ID? = nil
+}
+
+extension EnvironmentValues {
+    var settingsNamespace: Namespace.ID? {
+        get { self[SettingsNamespaceKey.self] }
+        set { self[SettingsNamespaceKey.self] = newValue }
     }
 }
 
@@ -215,30 +246,39 @@ struct MiniNotch<Content: View>: View {
     }
 }
 
-/// Live-Vorschau der Notch: Beim Darüberfahren klappt sie mit dem eingestellten Gummi-Effekt auf,
-/// leuchtet in der Claude-Farbe und zeigt ein Beispiel-Signal.
+/// Live-Vorschau der Notch: Beim Darüberfahren klappt sie mit dem eingestellten Gummi-Effekt in den gewählten
+/// Signalstil auf (Island, Banner oder Vertikal), leuchtet in der Claude-Farbe und zeigt ein Beispiel-Signal.
 struct NotchPreviewCard: View {
     let settings: AppSettings
     @ViewState private var expanded = false
+
+    /// Maße der eingeklappten Notch in der Vorschau.
+    private static let notchWidth: CGFloat = 120
+    private static let notchHeight: CGFloat = 24
 
     var body: some View {
         let spring = NotchSpring(bounce: settings.notchBounce)
         let agent = Color(hex: settings.claudeColorHex)
         let glow = settings.glowEnabled ? min(1, settings.glowIntensity / 0.6) : 0
-        let shape = NotchShape(bottomRadius: expanded ? 24 : 9, topCornerRadius: expanded ? 9 : 0)
+        let style = settings.signalStyle
+        let size = expanded ? Self.size(for: style) : CGSize(width: Self.notchWidth, height: Self.notchHeight)
+        let radii = expanded ? Self.radii(for: style) : (top: 0, bottom: 9)
+        let shape = NotchShape(bottomRadius: radii.bottom, topCornerRadius: radii.top)
         ZStack(alignment: .top) {
             DesktopBackdrop()
             // Menüleiste
             Rectangle()
                 .fill(Color.black.opacity(0.16))
-                .frame(height: 24)
+                .frame(height: Self.notchHeight)
             shape
                 .fill(Color(hex: settings.backgroundHex()))
-                .frame(width: expanded ? 340 : 120, height: expanded ? 104 : 24)
+                .frame(width: size.width, height: size.height)
                 .overlay(alignment: .top) {
                     if expanded {
-                        previewSignal(agent: agent)
+                        previewSignal(style: style, agent: agent)
+                            .frame(width: size.width, height: size.height)
                             .transition(.notchContent)
+                            .id(style)
                     }
                 }
                 .clipShape(shape)
@@ -249,6 +289,7 @@ struct NotchPreviewCard: View {
                         .shadow(color: agent.opacity(expanded ? 0.35 * glow : 0), radius: 3)
                 }
                 .animation(.spring(response: spring.response, dampingFraction: spring.dampingFraction), value: expanded)
+                .animation(.spring(response: spring.response, dampingFraction: spring.dampingFraction), value: style)
         }
         .frame(height: 176)
         .frame(maxWidth: .infinity)
@@ -266,25 +307,107 @@ struct NotchPreviewCard: View {
         .padding(.vertical, 4)
     }
 
-    private func previewSignal(agent: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Spacer().frame(height: 28)
-            HStack(spacing: 8) {
-                Circle().fill(agent).frame(width: 8, height: 8)
-                Text(L("Claude möchte eine Datei bearbeiten"))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                    .lineLimit(1)
-            }
-            HStack(spacing: 8) {
-                Capsule().fill(Color.white.opacity(0.14)).frame(width: 82, height: 22)
-                    .overlay(Text(L("Ablehnen")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white))
-                Capsule().fill(agent).frame(width: 82, height: 22)
-                    .overlay(Text(L("Erlauben")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.white))
-            }
+    /// Form je Stil, im Maßstab der Vorschau (die Notch ist hier 120 statt etwa 190 pt breit).
+    private static func size(for style: SignalStyle) -> CGSize {
+        switch style {
+        case .island: CGSize(width: 300, height: notchHeight)
+        case .banner: CGSize(width: 340, height: notchHeight + 40)
+        case .vertical: CGSize(width: 230, height: notchHeight + 100)
         }
-        .padding(.horizontal, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static func radii(for style: SignalStyle) -> (top: CGFloat, bottom: CGFloat) {
+        switch style {
+        case .island: (5, 11)
+        case .banner: (8, 22)
+        case .vertical: (8, 18)
+        }
+    }
+
+    @ViewBuilder
+    private func previewSignal(style: SignalStyle, agent: Color) -> some View {
+        switch style {
+        case .island:
+            HStack(spacing: 0) {
+                HStack(spacing: 5) {
+                    Circle().fill(agent).frame(width: 6, height: 6).shadow(color: agent, radius: 3)
+                    Text("Claude").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.white)
+                    Text("npm test").font(.system(size: 9.5, design: .monospaced)).foregroundStyle(agent).lineLimit(1)
+                }
+                .padding(.leading, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Color.clear.frame(width: Self.notchWidth)
+                HStack(spacing: 4) {
+                    Circle().fill(Color.white.opacity(0.16)).frame(width: 15, height: 15)
+                        .overlay(Image(systemName: "xmark").font(.system(size: 6.5, weight: .bold)).foregroundStyle(Color.white))
+                    Circle().fill(agent).frame(width: 15, height: 15)
+                        .overlay(Image(systemName: "checkmark").font(.system(size: 6.5, weight: .bold)).foregroundStyle(Color.black))
+                }
+                .padding(.trailing, 14)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        case .banner:
+            HStack(spacing: 8) {
+                AgentIconMini(color: agent)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: "notchai · Claude").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color.white)
+                    Text(L("Möchte ausführen:")).font(.system(size: 9)).foregroundStyle(Color.white.opacity(0.6))
+                        + Text(" npm test").font(.system(size: 9, design: .monospaced)).foregroundStyle(agent)
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+                pill(L("Ablehnen"), fill: Color.white.opacity(0.14), text: .white)
+                pill(L("Erlauben"), fill: agent, text: .black)
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 9)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+        case .vertical:
+            VStack(alignment: .leading, spacing: 7) {
+                Spacer().frame(height: Self.notchHeight)
+                HStack(spacing: 7) {
+                    AgentIconMini(color: agent)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(verbatim: "notchai · Claude").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color.white)
+                        Text(L("Möchte ausführen:")).font(.system(size: 9)).foregroundStyle(Color.white.opacity(0.6))
+                    }
+                }
+                Text("npm test")
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundStyle(agent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.white.opacity(0.06)))
+                HStack(spacing: 5) {
+                    Spacer(minLength: 0)
+                    pill(L("Ablehnen"), fill: Color.white.opacity(0.14), text: .white)
+                    pill(L("Erlauben"), fill: agent, text: .black)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func pill(_ title: String, fill: Color, text: Color) -> some View {
+        Text(title)
+            .font(.system(size: 9.5, weight: .semibold))
+            .foregroundStyle(text)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(fill))
+    }
+}
+
+/// Kleines Agentensymbol für die Vorschau.
+private struct AgentIconMini: View {
+    let color: Color
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 5, style: .continuous)
+            .fill(color)
+            .frame(width: 18, height: 18)
+            .overlay(Image(systemName: "asterisk").font(.system(size: 9, weight: .bold)).foregroundStyle(Color.white))
     }
 }
 

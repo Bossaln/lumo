@@ -7,8 +7,6 @@ struct SessionRowView: View {
     let session: AgentSession
     let now: Date
     let model: AppModel
-    /// Detailkarte der Kreise: Antwortfeld immer offen.
-    var alwaysShowsReply = false
     /// Kopf der Detailansicht: Deren Knöpfe stehen darunter, ein Klick öffnet nichts mehr.
     var isDetail = false
 
@@ -19,7 +17,7 @@ struct SessionRowView: View {
     private var settings: AppSettings { model.settingsStore.settings }
     private var agentColor: Color { SessionPalette.agentColor(session.agent, settings: settings) }
     private var theme: SignalTheme { SignalTheme(agentHex: settings.colorHex(for: session.agent)) }
-    private var isReplying: Bool { alwaysShowsReply || model.replyTargetID == session.id }
+    private var isReplying: Bool { model.replyTargetID == session.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -91,7 +89,7 @@ struct SessionRowView: View {
 
     private var trailing: some View {
         HStack(spacing: 8) {
-            if hovering && !alwaysShowsReply && !isDetail {
+            if hovering && !isDetail {
                 Button { model.dismissSession(session) } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 9, weight: .bold))
@@ -103,7 +101,7 @@ struct SessionRowView: View {
                 .buttonStyle(.plain)
                 .help(L("Aus der Notch entfernen"))
             }
-            if (hovering || isReplying) && !alwaysShowsReply && !isDetail {
+            if (hovering || isReplying) && !isDetail {
                 Button {
                     model.replyTargetID = isReplying ? nil : session.id
                 } label: {

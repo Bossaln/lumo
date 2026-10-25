@@ -5,7 +5,6 @@ import Testing
 @Test func defaultsMatchSpec() {
     let s = AppSettings.default
     #expect(s.signalStyle == .island)
-    #expect(s.sessionViewStyle == .list)
     #expect(s.backgroundHex() == "#000000")
     #expect(s.claudeColorHex == "#E0764A")
     #expect(s.codexColorHex == "#8AA2FF")
@@ -23,7 +22,6 @@ import Testing
     let json = #"{"signalStyle":"banner"}"#.data(using: .utf8)!
     let s = try JSONDecoder().decode(AppSettings.self, from: json)
     #expect(s.signalStyle == .banner)
-    #expect(s.sessionViewStyle == .list)
     #expect(s.claudeColorHex == "#E0764A")
 }
 
@@ -60,7 +58,6 @@ import Testing
 private func everyFieldChanged() -> AppSettings {
     var s = AppSettings()
     s.signalStyle = .vertical
-    s.sessionViewStyle = .circles
     s.background = .custom
     s.customBackgroundHex = "#123456"
     s.claudeColorHex = "#AA0000"
