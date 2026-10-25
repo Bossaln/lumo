@@ -1,13 +1,13 @@
 import Foundation
 
 /// Die Begrüßungsszene nach `brew install`: ein MacBook mit Notch, das Leuchten der Ersteinrichtung, das in die
-/// Notch zieht, ein Signal von Claude Code, das erlaubt wird, Musik neben der Kamera und zum Schluss der pinke
-/// GT-R. Reine Berechnung auf einer Zeichenfläche, damit sich jedes Bild ohne Terminal prüfen lässt.
+/// Notch zieht, ein Signal von Claude Code, das erlaubt wird, und Musik neben der Kamera. Reine Berechnung auf
+/// einer Zeichenfläche, damit sich jedes Bild ohne Terminal prüfen lässt.
 struct WelcomeScene {
     // 256-Farben des Terminals.
     static let orange = 208, orangeBright = 214, orangeDark = 130, orangeDim = 94
     static let screen = 234, lid = 245, body = 250, notch = 16, white = 255, gray = 245, dim = 240
-    static let pink = 205, asphalt = 238, smoke = 240, wheel = 245, button = 238
+    static let pink = 205, button = 238
 
     struct Cell: Equatable {
         var symbol: Character = " "
@@ -78,12 +78,12 @@ struct WelcomeScene {
 
     // MARK: - Geometrie
 
-    static let height = 20
+    static let height = 14
     let width: Int
     let lidX: Int, lidWidth: Int
     let screenX: Int, screenWidth: Int
     static let screenTop = 1, screenRows = 7, lidBottom = 8, baseTop = 9, baseBottom = 10
-    static let carTop = 12, roadRow = 17, textRow = 18, tipRow = 19
+    static let textRow = 12, tipRow = 13
     static let notchWidth = 9
     let notchX: Int
     var notchCenter: Double { Double(notchX) + Double(Self.notchWidth) / 2 }
@@ -107,13 +107,6 @@ struct WelcomeScene {
         static func == (lhs: Island, rhs: Island) -> Bool { lhs.width == rhs.width && lhs.height == rhs.height }
     }
 
-    struct Car: Equatable {
-        var x: Int
-        var spin: Int
-        var exhaust: [(column: Int, row: Int, symbol: Character)] = []
-        static func == (lhs: Car, rhs: Car) -> Bool { lhs.x == rhs.x && lhs.spin == rhs.spin }
-    }
-
     struct State {
         /// Wie viele Zeilen des MacBooks schon stehen (Aufbau).
         var laptopRows = 11
@@ -124,7 +117,8 @@ struct WelcomeScene {
         var island: Island?
         /// Bild der Musikanzeige neben der Kamera.
         var music: Int?
-        var car: Car?
+        /// Lautstärke der Balken 0…1 (zum Ausblenden).
+        var musicLevel = 1.0
         var showText = false
     }
 
@@ -135,8 +129,7 @@ struct WelcomeScene {
         drawLaptop(&c, rows: state.laptopRows)
         if let ring = state.ring { drawRing(&c, radius: ring) }
         if let island = state.island { drawIsland(&c, island) } else { drawNotch(&c, glow: state.glow) }
-        if let music = state.music { drawMusic(&c, frame: music) }
-        if let car = state.car { drawCar(&c, car) }
+        if let music = state.music { drawMusic(&c, frame: music, level: state.musicLevel) }
         if state.showText { drawText(&c) }
         return c
     }
@@ -240,46 +233,16 @@ struct WelcomeScene {
     }
 
     /// Musik neben der Kamera: links Titel, rechts Balken, die zur Musik tanzen.
-    private func drawMusic(_ c: inout Canvas, frame: Int) {
+    private func drawMusic(_ c: inout Canvas, frame: Int, level volume: Double) {
         let y = Self.screenTop
         let title = "♪ One More Time"
         c.text(notchX - 2 - title.count, y, title, fg: Self.body, bg: Self.screen)
         let bars: [Character] = Array("▁▂▃▄▅▆▇█")
         for i in 0..<7 {
-            let level = (sin(Double(frame) * 0.9 + Double(i) * 1.3) + 1) / 2 * (0.6 + 0.4 * sin(Double(i) * 0.7 + Double(frame) * 0.3))
+            let level = volume * (sin(Double(frame) * 0.9 + Double(i) * 1.3) + 1) / 2 * (0.6 + 0.4 * sin(Double(i) * 0.7 + Double(frame) * 0.3))
             let index = min(max(Int((level * Double(bars.count - 1)).rounded()), 0), bars.count - 1)
             c.put(notchX + Self.notchWidth + 2 + i, y, bars[index], fg: Self.orangeBright, bg: Self.screen)
         }
-    }
-
-    static let carArt = [
-        "              ___________________",
-        "   _ ________/  /_______|_____\\  \\_________",
-        "  |_|o  ___                         ___    \\",
-        "  |___ /   \\_______________________/   \\___=|>",
-        "       \\___/                       \\___/",
-    ]
-    private static let spokes: [Character] = ["-", "\\", "|", "/"]
-
-    /// Radkästen „/   \“ in der vierten Zeile: Speichen in der Mitte, das ganze Rad grau.
-    static let wheels: (hubs: Set<Int>, rims: Set<Int>) = {
-        let line = Array(carArt[3])
-        let starts = (0..<(line.count - 4)).filter { String(line[$0..<($0 + 5)]) == "/   \\" }
-        return (Set(starts.map { $0 + 2 }), Set(starts.flatMap { $0...($0 + 4) }))
-    }()
-
-    private func drawCar(_ c: inout Canvas, _ car: Car) {
-        for (row, line) in Self.carArt.enumerated() {
-            for (offset, character) in line.enumerated() where character != " " {
-                let symbol = row == 3 && Self.wheels.hubs.contains(offset) ? Self.spokes[car.spin % Self.spokes.count] : character
-                let isWheel = row == 4 || (row == 3 && Self.wheels.rims.contains(offset))
-                c.put(car.x + offset, Self.carTop + row, symbol, fg: isWheel ? Self.wheel : Self.pink)
-            }
-        }
-        for puff in car.exhaust where c.symbol(puff.column, Self.carTop + puff.row) == " " {
-            c.put(puff.column, Self.carTop + puff.row, puff.symbol, fg: Self.smoke)
-        }
-        for x in 0..<width { c.put(x, Self.roadRow, (x + car.spin * 2) % 8 < 4 ? "-" : " ", fg: Self.asphalt) }
     }
 
     private func drawText(_ c: inout Canvas) {
@@ -339,33 +302,13 @@ struct WelcomeScene {
         state.island = nil
         state.glow = 0.5
 
-        // 4. Musik läuft: Titel links, Balken rechts neben der Kamera.
-        for frame in 0..<14 { state.music = frame; state.glow = 0.4 + 0.2 * sin(Double(frame) * 0.5); add(0.08) }
+        // 4. Musik läuft: Titel links, Balken rechts neben der Kamera; die Notch atmet im Takt.
+        for frame in 0..<28 { state.music = frame; state.glow = 0.4 + 0.2 * sin(Double(frame) * 0.5); add(0.08) }
+        // Die Balken werden leiser, bis nur der Titel bleibt.
+        for step in 1...6 { state.music = 28 + step; state.musicLevel = 1 - Double(step) / 6; add(0.06) }
 
-        // 5. Der GT-R: Motor läuft, dann fährt er los und verschwindet rechts.
-        var music = 14
-        for tick in 0..<10 {
-            let puffs = (1...(tick % 3 + 1)).map { (column: 4 - $0 * 2, row: 3, symbol: $0 == 1 ? Character("~") : ".") }
-            state.car = Car(x: 2, spin: 0, exhaust: puffs)
-            state.music = music; music += 1
-            add(0.07)
-        }
-        var x = 2.0, speed = 0.6, spin = 0
-        while x < Double(width) {
-            x += speed
-            speed = min(speed * 1.12, 6)
-            spin += 1
-            let left = Int(x.rounded())
-            let trail = (1...min(Int((speed * 2).rounded()), 10)).flatMap {
-                [(column: left - $0 * 2, row: 2, symbol: Character("-")), (column: left - $0 * 3, row: 3, symbol: Character("="))]
-            }
-            state.car = Car(x: left, spin: spin, exhaust: trail)
-            state.music = music; music += 1
-            add(0.03)
-        }
-
-        // 6. Der Satz. Das letzte Bild bleibt stehen.
-        state.car = Car(x: width + 5, spin: spin)
+        // 5. Der Satz. Das letzte Bild bleibt stehen.
+        state.glow = 0.5
         state.showText = true
         add(0)
         return frames

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Zeichnet docs/images/install.gif für die README: Terminal, getippter brew-Befehl, Homebrew-Ausgabe, dann die echte
-Begrüßungsszene aus `lumo-welcome` (MacBook, Leuchten, Signal, Musik, GT-R).
+Begrüßungsszene aus `lumo-welcome` (MacBook, Leuchten, Signal, Musik).
 
 Die Szene kommt aus einem Mitschnitt der echten Ausgabe (ANSI-Text) in einem Pseudo-Terminal mit 72 Spalten und
-20 Zeilen (so zeichnet das Programm an Ort und Stelle statt im Vollbild), zum Beispiel mit Pythons `pty`:
+14 Zeilen (so zeichnet das Programm an Ort und Stelle statt im Vollbild), zum Beispiel mit Pythons `pty`:
 
-    LANG=en_US.UTF-8 python3 capture.py /tmp/welcome.txt 72 20 /Applications/lumo.app/Contents/MacOS/lumo-welcome
+    LANG=en_US.UTF-8 python3 capture.py /tmp/welcome.txt 72 14 /Applications/lumo.app/Contents/MacOS/lumo-welcome
 
 Braucht Pillow (`pip install pillow`); Schriften: DejaVu Sans Mono und Inter, sonst Menlo und SF (macOS).
 Aufruf aus dem Projektordner: python3 scripts/install-gif.py /tmp/welcome.txt
@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 capture = sys.argv[1]
 out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(root, "docs", "images", "install.gif")
-W, H = 960, 760
+W, H = 960, 640
 COLS = 72
 BG = (11, 12, 16)
 WINDOW = (22, 24, 29)
@@ -109,8 +109,8 @@ SCENE_COLS = 72
 raw = open(capture, encoding="utf-8", errors="replace", newline="").read()
 term = Term(cols=SCENE_COLS, rows=40)
 term.feed(raw)
-# Jedes Bild: die 20 Zeilen der Szene; sie beginnt nach dem ersten Zeilenumbruch in Zeile 1.
-SCENE_ROWS = 20
+# Jedes Bild: die 14 Zeilen der Szene; sie beginnt nach dem ersten Zeilenumbruch in Zeile 1.
+SCENE_ROWS = 14
 frames_scene = [frame[1:1 + SCENE_ROWS] for frame in term.frames]
 frames_scene = [frame for frame in frames_scene if any(ch != " " for row in frame for ch, *_ in row)]
 
@@ -118,7 +118,7 @@ prompt = "~ % "
 command = "brew install --cask bossaln/tap/lumo"
 brew_lines = [
     [("==> ", BLUE), ("Tapping bossaln/tap", TEXT)],
-    [("==> ", BLUE), ("Downloading lumo-0.8.1.zip", TEXT)],
+    [("==> ", BLUE), ("Downloading lumo-0.8.2.zip", TEXT)],
     [("######################################################### 100.0%", DIM)],
     [("==> ", BLUE), ("Installing Cask ", TEXT), ("lumo", GREEN)],
     [("==> ", BLUE), ("Moving App 'lumo.app' to '/Applications/lumo.app'", TEXT)],
@@ -148,7 +148,7 @@ def text_line(draw, y, parts, font=mono):
 frames, durations = [], []
 
 
-def scene(typed, brew_count, gtr=None, caret=True, done=False):
+def scene(typed, brew_count, picture=None, caret=True, done=False):
     image, draw = base()
     y = TOP
     text_line(draw, y, [(prompt, GREEN), (typed, TEXT)])
@@ -159,9 +159,9 @@ def scene(typed, brew_count, gtr=None, caret=True, done=False):
     for line in brew_lines[:brew_count]:
         text_line(draw, y, line)
         y += LINE_H
-    if gtr is not None:
+    if picture is not None:
         y += LINE_H // 2
-        for row in gtr:
+        for row in picture:
             x = LEFT
             for ch, fg, bg, bold in row[:COLS]:
                 if bg is not None:
@@ -192,7 +192,7 @@ for n in range(1, len(command) + 1):
 frames.append(scene(command, 0, caret=False)); durations.append(450)
 for n in range(1, len(brew_lines) + 1):
     frames.append(scene(command, n)); durations.append(380 if n != 3 else 650)
-# Die Szene: MacBook, Leuchten, Signal, Musik, GT-R. Die Standzeiten entsprechen grob denen im Programm.
+# Die Szene: MacBook, Leuchten, Signal, Musik. Die Standzeiten entsprechen grob denen im Programm.
 for index, picture in enumerate(frames_scene):
     frames.append(scene(command, len(brew_lines), picture)); durations.append(60)
 frames.append(scene(command, len(brew_lines), frames_scene[-1], done=True)); durations.append(4000)

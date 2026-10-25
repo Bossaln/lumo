@@ -21,15 +21,15 @@ private func visibleLines(_ text: String) -> [String] {
     let frames = InstallGreeting.frames(columns: 100).map { visibleLines($0.text).joined(separator: "\n") }
     func first(where part: String) -> Int? { frames.firstIndex { $0.contains(part) } }
     let laptop = first(where: "╰"), ring = first(where: "░"), ask = first(where: L("Möchte ausführen:")),
-        done = first(where: "✓ " + L("Fertig")), music = first(where: "♪"), car = first(where: "|_|o"),
-        text = first(where: InstallGreeting.doneText)
-    #expect(laptop != nil && ring != nil && ask != nil && done != nil && music != nil && car != nil && text != nil)
-    if let laptop, let ring, let ask, let done, let music, let car, let text {
-        #expect(laptop < ring && ring < ask && ask < done && done < music && music < car && car < text)
+        done = first(where: "✓ " + L("Fertig")), music = first(where: "♪"), text = first(where: InstallGreeting.doneText)
+    #expect(laptop != nil && ring != nil && ask != nil && done != nil && music != nil && text != nil)
+    if let laptop, let ring, let ask, let done, let music, let text {
+        #expect(laptop < ring && ring < ask && ask < done && done < music && music < text)
     }
-    // Das MacBook bleibt bis zum Schluss stehen, der Wagen ist am Ende weg.
+    // Das MacBook bleibt bis zum Schluss stehen, die Musik läuft weiter, die Insel ist zu.
     #expect(frames.last?.contains("╰") == true)
-    #expect(frames.last?.contains("|_|o") == false)
+    #expect(frames.last?.contains("♪") == true)
+    #expect(frames.last?.contains("Claude Code") == false)
     #expect(frames.last?.contains(InstallGreeting.tipText) == true)
 }
 
@@ -58,16 +58,17 @@ private func visibleLines(_ text: String) -> [String] {
 }
 
 @Test func narrowTerminalsGetTheSmallestScene() {
-    let road = visibleLines(InstallGreeting.frames(columns: 20).last!.text).first { $0.contains("----") }
-    #expect(road?.count == 49)
+    // Die Unterkante des MacBooks reicht über die ganze kleinste Breite.
+    let base = visibleLines(InstallGreeting.frames(columns: 20).last!.text).first { $0.hasPrefix("╰") }
+    #expect(base?.count == 49)
 }
 
 @Test func fullscreenNeedsEnoughRowsAndRestoresTheScreen() {
-    #expect(InstallGreeting.fullscreenFrames(columns: 100, rows: 12) == nil)
+    #expect(InstallGreeting.fullscreenFrames(columns: 100, rows: InstallGreeting.rows + 1) == nil)
     let fullscreen = InstallGreeting.fullscreenFrames(columns: 100, rows: 40)
     #expect(fullscreen?.frames.first?.text.hasPrefix("\u{1B}[?1049h") == true)
-    // Jedes Bild beginnt mittig auf der Seite: (40 − 20) / 2 + 1 = Zeile 11.
-    #expect(fullscreen?.frames.allSatisfy { $0.text.contains("\u{1B}[11;1H") } == true)
+    // Jedes Bild beginnt mittig auf der Seite: (40 − 14) / 2 + 1 = Zeile 14.
+    #expect(fullscreen?.frames.allSatisfy { $0.text.contains("\u{1B}[\((40 - InstallGreeting.rows) / 2 + 1);1H") } == true)
     #expect(fullscreen?.closing.hasPrefix("\u{1B}[?1049l") == true)
     #expect(fullscreen?.closing.contains(InstallGreeting.doneText) == true)
 }

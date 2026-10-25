@@ -88,7 +88,7 @@ Workflow warnt ebenfalls.
 - **Homebrew 7** (September 2026) warnt bei jedem Cask mit `postflight do … end`: „Calling `postflight` is deprecated!
   Use `postflight_steps` instead.“ `postflight_steps` erlaubt nur feste Schritte ohne eigenen Ruby-Code und läuft in
   einer Sandbox mit eigenem Pseudo-Terminal. Der Cask ruft darin `xattr` und das Programm `lumo-welcome` aus dem
-  App-Bundle auf; das schreibt die Begrüßungsszene (MacBook mit Notch, Signal, Musik, GT-R) direkt nach `/dev/tty` (die Sandbox erlaubt das, Homebrew reicht die
+  App-Bundle auf; das schreibt die Begrüßungsszene (MacBook mit Notch, Signal, Musik) direkt nach `/dev/tty` (die Sandbox erlaubt das, Homebrew reicht die
   Zeichen sofort weiter). Beide Schritte dürfen scheitern (`must_succeed: false`), die Installation bricht dann nicht
   ab. Ältere Homebrew-Versionen ohne `postflight_steps` bekommen weiter den alten `postflight`-Block.
 - **Update über den Knopf in lumo:** `uninstall quit:` im Cask beendet lumo dabei *nicht*. Homebrew meldet

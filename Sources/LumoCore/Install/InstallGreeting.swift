@@ -1,5 +1,5 @@
 /// Begrüßung nach `brew install` und `brew upgrade`: die Szene aus `WelcomeScene` (MacBook, Leuchten, Signal,
-/// Musik, GT-R) und der Satz „lumo ist installiert – los geht's!“. Das Programm `lumo-welcome` schreibt die
+/// Musik) und der Satz „lumo ist installiert – los geht's!“. Das Programm `lumo-welcome` schreibt die
 /// Bilder ins Terminal; hier entstehen sie, damit sie sich ohne Terminal prüfen lassen.
 public enum InstallGreeting {
     /// In der Sprache des Terminals (`lumo-welcome` setzt `Localization.language`).
@@ -15,10 +15,8 @@ public enum InstallGreeting {
     /// Zeilen der Szene (Cursor hoch, um sie neu zu zeichnen).
     public static var rows: Int { WelcomeScene.height }
 
-    /// Ohne Terminal (etwa in einem Protokoll): Wagen und Satz ohne Farben.
-    public static var plain: String {
-        (WelcomeScene.carArt + [doneText, tipText]).joined(separator: "\n")
-    }
+    /// Ohne Terminal (etwa in einem Protokoll): nur der Satz, ohne Farben.
+    public static var plain: String { doneText + "\n" + tipText }
 
     /// Alle Bilder an Ort und Stelle (für Terminals unbekannter Höhe): Das erste blendet den Cursor aus, jedes
     /// weitere springt an den Anfang des vorigen zurück (Cursor hoch und in Spalte 1; kein Wagenrücklauf, den ein
@@ -44,7 +42,7 @@ public enum InstallGreeting {
     }
 
     /// Läuft die Begrüßung unter lumo selbst (Update über den Knopf)? Dann schreibt Homebrew alles ins Protokoll,
-    /// und statt der Fahrt reicht der Satz. `lookup` liefert zu einer Prozess-ID den Elternprozess und den Namen.
+    /// und statt der Szene reicht der Satz. `lookup` liefert zu einer Prozess-ID den Elternprozess und den Namen.
     public static func isRunByLumo(pid: Int32, lookup: (Int32) -> (parent: Int32, name: String)?) -> Bool {
         var current = pid
         var seen: Set<Int32> = []
