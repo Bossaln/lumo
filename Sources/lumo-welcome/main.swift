@@ -7,7 +7,7 @@ import Foundation
 import LumoCore
 
 // Läuft nach `brew install` und `brew upgrade` (Cask: `postflight_steps`). Homebrew reicht die Ausgabe von
-// Programmen nur zeilenweise weiter; damit der Wagen flüssig fährt, schreibt es direkt ins Terminal.
+// Programmen nur zeilenweise weiter; damit die Szene flüssig läuft, schreibt es direkt ins Terminal.
 // Ohne Terminal steht nur der Satz da. Endet immer mit 0, damit die Installation nie daran scheitert.
 
 // Homebrew reicht `LANG` und `LC_ALL` durch; ohne sie zählt die Sprache des Macs.

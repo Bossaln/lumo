@@ -21,8 +21,8 @@ cask "lumo" do
 
   # lumo is signed with its own certificate, not notarized by Apple. Without removing the quarantine flag
   # Gatekeeper would refuse to open it ("Apple could not verify …").
-  # Afterwards a short animation plays: a MacBook whose notch lights up, a signal from Claude Code, music next to
-  # the camera and a pink GT-R driving off – lumo is installed, let's go. It is the small program lumo-welcome
+  # Afterwards a short animation plays: a MacBook whose notch lights up, a signal from Claude Code and music next
+  # to the camera – lumo is installed, let's go. It is the small program lumo-welcome
   # inside the app (Sources/lumo-welcome); it always exits 0.
   if respond_to?(:postflight_steps)
     # Homebrew 7 and later: declarative install steps instead of Ruby code.
