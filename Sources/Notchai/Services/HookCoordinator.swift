@@ -54,7 +54,7 @@ final class HookCoordinator {
             try server.start()
             self.server = server
         } catch {
-            startError = "Hook-Server startet nicht: \(error)"
+            startError = L("Hook-Server startet nicht: {0}", "\(error)")
         }
         let monitor = SessionMonitor(home: home, maxAgeHours: { [weak model] in model?.settingsStore.settings.sessionMaxAgeHours ?? 24 },
                                      onUpdate: { [weak self] summaries, stats in

@@ -167,8 +167,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static func menuTitle(for state: UpdateState) -> String {
         switch state {
-        case .available(let offer): "Update installieren (\(offer.count) neu) …"
-        case .releaseAvailable(let offer): "Update auf \(offer.version) installieren …"
+        case .available(let offer): L("Update installieren ({0} neu) …", offer.count)
+        case .releaseAvailable(let offer): L("Update auf {0} installieren …", offer.version)
         case .checking: L("Suche nach Updates …")
         case .installing: L("Update wird installiert …")
         default: L("Nach Updates suchen …")

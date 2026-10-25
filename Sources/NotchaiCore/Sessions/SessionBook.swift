@@ -90,7 +90,7 @@ public struct SessionBook: Sendable {
                 changes.append(.release(requestId: envelope.requestId))
                 break
             }
-            let tool = e.toolName ?? "Werkzeug"
+            let tool = e.toolName ?? L("Werkzeug")
             extra.pendings.append(PendingRequest(
                 requestId: envelope.requestId, kind: .permission(tool: tool, summary: PermissionText.summary(tool: tool, input: e.toolInput)),
                 toolInput: e.toolInput, createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout)))
@@ -163,7 +163,7 @@ public struct SessionBook: Sendable {
             session.status = .done
             extra.doneAt = now
             if let text = e.lastAssistantMessage.flatMap(Self.firstLine) {
-                session.lastStep = Self.shorten("Fertig: " + text, to: Self.stepLength)
+                session.lastStep = Self.shorten(L("Fertig: {0}", text), to: Self.stepLength)
                 extra.hookStepAt = now
             }
             extra.hookStatusAt = now
@@ -173,7 +173,7 @@ public struct SessionBook: Sendable {
             session.status = .error
             extra.turnFailed = true
             extra.doneAt = now
-            session.lastStep = Self.shorten("Fehler: " + (e.error ?? e.message ?? "unbekannt"), to: Self.stepLength)
+            session.lastStep = Self.shorten(L("Fehler: {0}", e.error ?? e.message ?? L("unbekannt")), to: Self.stepLength)
             extra.hookStepAt = now
             extra.hookStatusAt = now
             if settings.signalOnError { changes.append(.raise(sessionKey: key, trigger: .error)) }
@@ -398,7 +398,7 @@ public struct SessionBook: Sendable {
     }
 
     private static func newSession(key: String, agent: AgentKind, sessionId: String, now: Date) -> AgentSession {
-        AgentSession(id: key, agent: agent, sessionId: sessionId, title: "", projectName: "Unbekannt", cwd: nil,
+        AgentSession(id: key, agent: agent, sessionId: sessionId, title: "", projectName: L("Unbekannt"), cwd: nil,
                      status: .ready, lastStep: nil, errorCount: 0, contextFraction: nil, lastActivity: now,
                      pending: nil, host: SessionHost())
     }

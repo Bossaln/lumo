@@ -61,7 +61,7 @@ final class SetupController {
     }
 
     private func report(_ error: Error) {
-        message = (error as? LocalizedError)?.errorDescription ?? "Fehler: \(error.localizedDescription)"
+        message = (error as? LocalizedError)?.errorDescription ?? L("Fehler: {0}", error.localizedDescription)
         lastActionFailed = true
     }
 }
