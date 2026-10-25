@@ -285,6 +285,21 @@ struct SettingsView: View {
                 }
                 Toggle(L("Töne"), isOn: setting(\.soundsEnabled))
             }
+            Section(L("Externe Bildschirme")) {
+                Toggle(L("Notch auf externen Bildschirmen"), isOn: setting(\.externalNotch))
+                if settings.externalNotch {
+                    Picker(L("In der Mitte"), selection: setting(\.externalNotchCenter)) {
+                        Text(L("Im Wechsel")).tag(ExternalNotchCenter.rotating)
+                        Text(L("Agenten-Status")).tag(ExternalNotchCenter.agents)
+                        Text(L("Letzter Schritt")).tag(ExternalNotchCenter.lastStep)
+                        Text(L("Musik")).tag(ExternalNotchCenter.music)
+                    }
+                    Text(L("Oben mittig, so hoch wie die Menüleiste: links die Uhrzeit, in der Mitte die gewählte Info, rechts Musik oder die Zahl der Sessions. Signale erscheinen auf dem Bildschirm, auf dem gerade der Zeiger ist."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Section(L("Bedienung")) {
                 Picker(L("Beim Aufklappen zeigen"), selection: setting(\.panelOpenBehavior)) {
                     Text(L("Wo gerade etwas passiert")).tag(PanelOpenBehavior.activity)

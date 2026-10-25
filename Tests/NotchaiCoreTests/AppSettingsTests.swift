@@ -58,6 +58,8 @@ import Testing
 private func everyFieldChanged() -> AppSettings {
     var s = AppSettings()
     s.signalStyle = .vertical
+    s.externalNotch = false
+    s.externalNotchCenter = .music
     s.background = .custom
     s.customBackgroundHex = "#123456"
     s.claudeColorHex = "#AA0000"

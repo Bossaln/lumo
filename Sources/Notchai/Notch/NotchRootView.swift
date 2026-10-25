@@ -28,13 +28,16 @@ struct NotchRootView: View {
             ? .spring(response: spring.collapseResponse, dampingFraction: spring.collapseDampingFraction)
             : .spring(response: spring.response, dampingFraction: spring.dampingFraction)
 
+        // Im Ruhezustand zeichnet die ruhende Kopie darunter; die Form bleibt fast durchsichtig da, damit Hover und
+        // Klicks weiter ankommen.
+        let mirrored = model.mirrorsDrawIdle && model.notch.mode == .idle && model.idleSettled && announcement == nil
         shape
-            .fill(backgroundColor)
+            .fill(backgroundColor.opacity(mirrored ? 0.004 : 1))
             .modifier(ClampedFrame(width: size.width, height: size.height, minimum: model.notchSize))
             .overlay(alignment: .top) {
                 ZStack(alignment: .top) {
                     musicBackdrop(size: size)
-                    content(width: size.width, height: size.height)
+                    if !mirrored { content(width: size.width, height: size.height) }
                 }
                 .animation(.easeInOut(duration: 0.28), value: MusicBackdrop.isShown(for: model))
             }
@@ -87,6 +90,11 @@ struct NotchRootView: View {
                     .transition(.notchContent)
             } else if let announcement = model.trackAnnouncement, presentation == .trackBanner {
                 TrackChangeBannerView(model: model, announcement: announcement, bandHeight: notch?.height ?? 0)
+                    .frame(width: width, height: height)
+                    .transition(.notchContent)
+            } else if presentation == .externalIdle {
+                ExternalIdleView(model: model, notchWidth: notchWidth, sideWidth: max(0, (width - notchWidth) / 2),
+                                 height: height)
                     .frame(width: width, height: height)
                     .transition(.notchContent)
             } else if presentation == .compact {
@@ -179,6 +187,7 @@ struct NotchRootView: View {
     static func radii(for presentation: NotchPresentation) -> (top: CGFloat, bottom: CGFloat) {
         switch presentation {
         case .idle: (0, 10)
+        case .externalIdle: (5, 11)
         case .island: (6, 14)
         case .compact: (6, 12)
         case .trackSides: (6, 14)

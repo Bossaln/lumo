@@ -6,12 +6,16 @@ public struct ScreenInfo: Equatable, Sendable {
     public var topInset: CGFloat
     public var leftAuxWidth: CGFloat?
     public var rightAuxWidth: CGFloat?
+    /// Externer Bildschirm ohne echte Notch: Die Notch ist nur gedacht (`ExternalNotch.virtualScreen`), ihre
+    /// Mitte ist also sichtbar.
+    public var isVirtual: Bool
 
-    public init(frame: CGRect, topInset: CGFloat, leftAuxWidth: CGFloat?, rightAuxWidth: CGFloat?) {
+    public init(frame: CGRect, topInset: CGFloat, leftAuxWidth: CGFloat?, rightAuxWidth: CGFloat?, isVirtual: Bool = false) {
         self.frame = frame
         self.topInset = topInset
         self.leftAuxWidth = leftAuxWidth
         self.rightAuxWidth = rightAuxWidth
+        self.isVirtual = isVirtual
     }
 }
 
@@ -21,6 +25,8 @@ public enum NotchPresentation: Equatable, Sendable {
     case verticalCompact
     /// Musik eingeklappt: links Cover, rechts Balken.
     case compact
+    /// Ruhezustand auf einem externen Bildschirm: links Uhrzeit, in der Mitte die gewählte Info, rechts Musik.
+    case externalIdle
     /// Neuer Titel, seitlich ausgefahren: links das Cover, rechts Titel und Interpret (`TrackChangeStyle.island`).
     case trackSides
     /// Neuer Titel, unter der Kamera ausgefahren (`TrackChangeStyle.banner`).
@@ -44,6 +50,11 @@ public enum NotchGeometry {
     /// Island: schwarzer Rand je Seite zusätzlich zur eingestellten Breite (`islandSideWidth`), damit Text und
     /// Knöpfe nicht am Rand der Form kleben.
     public static let islandEdge: CGFloat = 10
+    /// Gedachte Notch auf externen Bildschirmen, etwa so groß wie die eines MacBook Pro.
+    public static let virtualNotchWidth: CGFloat = 200
+    public static let virtualNotchHeight: CGFloat = 24
+    /// Ruhezustand dort: je Seite so viel breiter als die gedachte Notch, für Uhrzeit und Musik.
+    public static let externalIdleSideWidth: CGFloat = 86
     /// Breite je Seite der eingeklappten Musikanzeige.
     public static let compactSideWidth: CGFloat = 46
     /// Neuer Titel, seitlich: Breite je Seite (links Cover und gut 15 Zeichen Titel, rechts der Visualizer).
@@ -84,6 +95,8 @@ public enum NotchGeometry {
             size = CGSize(width: islandWidth(notch: notch, sideWidth: islandSideWidth), height: notch.height)
         case .compact:
             size = CGSize(width: notch.width + 2 * compactSideWidth, height: notch.height)
+        case .externalIdle:
+            size = CGSize(width: notch.width + 2 * externalIdleSideWidth, height: notch.height)
         case .trackSides:
             size = CGSize(width: notch.width + 2 * trackSideWidth, height: notch.height)
         case .trackBanner:

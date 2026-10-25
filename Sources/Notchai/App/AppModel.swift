@@ -17,6 +17,13 @@ final class AppModel {
     var noteDraft = ""
     /// Bildschirm mit Notch; `nil`, wenn keiner angeschlossen oder aufgeklappt ist.
     var screen: ScreenInfo?
+    /// Mehrere Notch-Bildschirme: Den Ruhezustand zeichnen die ruhenden Kopien (`ExternalNotchMirror`), die echte
+    /// Notch erst, wenn sie aufklappt oder ein Signal zeigt. So ändert ein Wechsel des Bildschirms am Bild nichts.
+    var mirrorsDrawIdle = false
+    /// Die Notch ist zu und fertig zugeklappt; erst dann übernimmt die ruhende Kopie, sonst verschwände die Form
+    /// mitten im Zuklappen.
+    private(set) var idleSettled = true
+    @ObservationIgnored private var settleTask: Task<Void, Never>?
     /// Von SwiftUI gemessene Höhe des Panel-Inhalts je Reiter. So klappt das Panel gleich auf die richtige Höhe
     /// auf, statt erst die Höhe des vorigen Reiters anzusteuern und dann nachzufedern.
     private(set) var panelContentHeights: [PanelTab: CGFloat] = [:]
@@ -126,7 +133,19 @@ final class AppModel {
             notch.openTab = PanelTabChoice.tab(behavior: settings.panelOpenBehavior, lastTab: notch.lastTab,
                                                activity: currentActivity)
         }
+        let wasIdle = notch.mode == .idle
         notch.apply(e, style: settings.signalStyle)
+        if notch.mode != .idle {
+            settleTask?.cancel()
+            if idleSettled { idleSettled = false }
+        } else if !wasIdle {
+            settleTask?.cancel()
+            settleTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(550))
+                guard !Task.isCancelled, let self, notch.mode == .idle else { return }
+                idleSettled = true
+            }
+        }
     }
 
     /// Was gerade los ist: Anfrage eines Agenten, laufende Musik, arbeitende Sessions.
@@ -375,7 +394,7 @@ final class AppModel {
     var showsMusicBars: Bool {
         guard displayedMusicPlaying else { return false }
         switch currentPresentation() {
-        case .compact, .trackSides, .trackBanner: return true
+        case .compact, .trackSides, .trackBanner, .externalIdle: return true
         default: return musicTabOpen
         }
     }
@@ -402,6 +421,8 @@ final class AppModel {
         // Ein neuer Titel fährt kurz über alles aus, was im Ruhezustand zu sehen ist.
         case .idle:
             if let presentation = trackAnnouncement?.style.presentation { presentation }
+            // Externer Bildschirm: Die Mitte ist sichtbar und zeigt Uhrzeit, Status und Musik (`ExternalIdleView`).
+            else if screen?.isVirtual == true { .externalIdle }
             else if showsCompactMusic { .compact }
             else { .idle }
         case .signal(.island): .island
