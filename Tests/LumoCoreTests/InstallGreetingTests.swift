@@ -13,22 +13,36 @@ private func visibleLines(_ text: String) -> [String] {
     let frames = InstallGreeting.frames(columns: 100)
     #expect(frames.first?.text.hasPrefix("\u{1B}[?25l") == true)
     #expect(frames.last?.text.hasSuffix("\u{1B}[?25h") == true)
+    // Jedes weitere Bild springt an den Anfang des vorigen zurück.
+    #expect(frames.dropFirst().allSatisfy { $0.text.hasPrefix("\u{1B}[\(InstallGreeting.rows - 1)A\u{1B}[1G") })
 }
 
-@Test func carStartsLeftAndDrivesOffToTheRight() {
-    let frames = InstallGreeting.frames(columns: 100)
-    let first = visibleLines(frames[0].text)
-    // Der Wagen beginnt zwei Spalten vom Rand, sein Dach 14 Zeichen weiter.
-    let roof = first.first { $0.contains("_______") }
-    #expect(roof?.firstIndex(of: "_").map { roof!.distance(from: roof!.startIndex, to: $0) } == 16)
-    // Im letzten Bild ist der Wagen weg, übrig bleiben Straße und Satz.
-    let last = visibleLines(frames[frames.count - 1].text)
-    #expect(!last.contains { $0.contains("___") || $0.contains("|") })
-    #expect(last.contains { $0.contains(InstallGreeting.doneText) })
+@Test func sceneTellsTheStoryInOrder() {
+    let frames = InstallGreeting.frames(columns: 100).map { visibleLines($0.text).joined(separator: "\n") }
+    func first(where part: String) -> Int? { frames.firstIndex { $0.contains(part) } }
+    let laptop = first(where: "╰"), ring = first(where: "░"), ask = first(where: L("Möchte ausführen:")),
+        done = first(where: "✓ " + L("Fertig")), music = first(where: "♪"), car = first(where: "|_|o"),
+        text = first(where: InstallGreeting.doneText)
+    #expect(laptop != nil && ring != nil && ask != nil && done != nil && music != nil && car != nil && text != nil)
+    if let laptop, let ring, let ask, let done, let music, let car, let text {
+        #expect(laptop < ring && ring < ask && ask < done && done < music && music < car && car < text)
+    }
+    // Das MacBook bleibt bis zum Schluss stehen, der Wagen ist am Ende weg.
+    #expect(frames.last?.contains("╰") == true)
+    #expect(frames.last?.contains("|_|o") == false)
+    #expect(frames.last?.contains(InstallGreeting.tipText) == true)
+}
+
+@Test func signalShowsBothButtonsAndTheCommand() {
+    let frames = InstallGreeting.frames(columns: 100).map { visibleLines($0.text).joined(separator: "\n") }
+    let ask = frames.first { $0.contains(L("Möchte ausführen:")) }
+    #expect(ask?.contains("npm test") == true)
+    #expect(ask?.contains(L("Ablehnen")) == true && ask?.contains(L("Erlauben")) == true)
+    #expect(ask?.contains("Claude Code") == true)
 }
 
 @Test func greetingNeverWritesPastTheTerminalEdge() {
-    for columns in [50, 80, 133] {
+    for columns in [50, 72, 80, 133] {
         for frame in InstallGreeting.frames(columns: columns) {
             for line in visibleLines(frame.text) {
                 #expect(line.count <= columns - 1, "Spalten \(columns): \(line)")
@@ -37,14 +51,30 @@ private func visibleLines(_ text: String) -> [String] {
     }
 }
 
-@Test func narrowTerminalsGetTheSmallestRoad() {
-    let road = visibleLines(InstallGreeting.frames(columns: 20)[0].text).first { $0.contains("----") }
+@Test func everyFrameHasTheSameHeight() {
+    for frame in InstallGreeting.frames(columns: 80) {
+        #expect(visibleLines(frame.text).filter { !$0.isEmpty || true }.count >= InstallGreeting.rows)
+    }
+}
+
+@Test func narrowTerminalsGetTheSmallestScene() {
+    let road = visibleLines(InstallGreeting.frames(columns: 20).last!.text).first { $0.contains("----") }
     #expect(road?.count == 49)
 }
 
-@Test func greetingIsShort() {
+@Test func fullscreenNeedsEnoughRowsAndRestoresTheScreen() {
+    #expect(InstallGreeting.fullscreenFrames(columns: 100, rows: 12) == nil)
+    let fullscreen = InstallGreeting.fullscreenFrames(columns: 100, rows: 40)
+    #expect(fullscreen?.frames.first?.text.hasPrefix("\u{1B}[?1049h") == true)
+    // Jedes Bild beginnt mittig auf der Seite: (40 − 20) / 2 + 1 = Zeile 11.
+    #expect(fullscreen?.frames.allSatisfy { $0.text.contains("\u{1B}[11;1H") } == true)
+    #expect(fullscreen?.closing.hasPrefix("\u{1B}[?1049l") == true)
+    #expect(fullscreen?.closing.contains(InstallGreeting.doneText) == true)
+}
+
+@Test func greetingIsNotTooLong() {
     let total = InstallGreeting.frames(columns: 120).map(\.pause).reduce(0, +)
-    #expect(total > 1 && total < 6)
+    #expect(total > 5 && total < 12)
 }
 
 @Test func plainGreetingHasNoEscapeCodes() {
@@ -52,7 +82,7 @@ private func visibleLines(_ text: String) -> [String] {
     #expect(InstallGreeting.plain.contains(InstallGreeting.doneText))
 }
 
-// Beim Update über den Knopf läuft brew in lumo; die Fahrt landete sonst Bild für Bild im Protokoll.
+// Beim Update über den Knopf läuft brew in lumo; die Szene landete sonst Bild für Bild im Protokoll.
 private let processes: [Int32: (parent: Int32, name: String)] = [
     900: (1, "lumo"), 901: (900, "zsh"), 902: (901, "ruby"), 903: (902, "lumo-welcome"),
     800: (1, "Terminal"), 801: (800, "zsh"), 802: (801, "ruby"), 803: (802, "lumo-welcome"),

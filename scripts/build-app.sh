@@ -18,7 +18,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/lumo" "$APP/Contents/MacOS/lumo"
 # Das Hook-Programm reist im Bundle mit; die App kopiert es beim Start an seinen festen Ort.
 cp "$BIN_DIR/lumo-hook" "$APP/Contents/MacOS/lumo-hook"
-# Der fahrende GT-R nach `brew install` (Cask: postflight_steps).
+# Die Begrüßungsszene nach `brew install` (Cask: postflight_steps).
 cp "$BIN_DIR/lumo-welcome" "$APP/Contents/MacOS/lumo-welcome"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
