@@ -91,27 +91,41 @@ signal style, animations, glow, sounds, which tab opens on hover, music sources,
 
 ## Install
 
-### Homebrew (recommended)
-
 ```sh
-brew install --cask bossaln/tap/lumo
+brew install bossaln/tap/lumo
 ```
+
+That is the whole installation. The one command adds the tap [`Bossaln/homebrew-tap`](https://github.com/Bossaln/homebrew-tap),
+installs lumo to `/Applications` and marks the cask as trusted, which Homebrew 6 and later require for anything
+outside its own catalog. (`brew install --cask bossaln/tap/lumo` does the same, `--cask` is optional here.)
 
 <p align="center">
   <img src="docs/images/install.gif" width="720" alt="Installing lumo with Homebrew">
 </p>
 
-This adds the tap [`Bossaln/homebrew-tap`](https://github.com/Bossaln/homebrew-tap) and installs lumo to
-`/Applications`. Afterwards, `brew upgrade --cask lumo` keeps it up to date – or use the update button in
-lumo's settings, which does the same.
+Updates come in two ways, both end with the new version running:
+
+- **In lumo:** the update button in the settings or the menu bar menu. lumo checks GitHub every six hours and offers
+  the new version; one click runs `brew update && brew upgrade --cask bossaln/tap/lumo`, then lumo restarts itself.
+- **In Terminal:** `brew upgrade --cask bossaln/tap/lumo` (or just `brew upgrade`). Homebrew quits lumo, replaces it and
+  opens it again.
 
 <details>
-<summary>Why a tap, and why does the cask remove the quarantine flag?</summary>
+<summary>Why not simply <code>brew install lumo</code>?</summary>
 
-lumo is signed with its own certificate but not notarized by Apple (that needs a paid Apple Developer account).
-Homebrew's main repository only accepts notarized apps, so lumo lives in its own tap. Without notarization,
-macOS Gatekeeper would refuse to open the app, so the cask removes the quarantine flag after installing. Because
-every release is signed with the same certificate, macOS keeps the permissions you grant across updates.
+A bare `brew install lumo` only works for casks in Homebrew's own catalog, and since September 2026 that catalog only
+accepts apps that pass Gatekeeper, which means a Developer ID certificate and notarization from a paid Apple Developer
+account (plus a popularity threshold for new casks). lumo is signed with its own certificate instead. Homebrew's own
+catalog would refuse it, so it lives in its own tap, and the cask removes the quarantine flag after installing –
+otherwise macOS would refuse to open the app. Every release is signed with the same certificate, so the permissions you
+grant survive updates.
+
+If you prefer the short name, trust the tap once and the short form works from then on:
+
+```sh
+brew tap bossaln/tap && brew trust --tap bossaln/tap
+brew install lumo
+```
 
 </details>
 

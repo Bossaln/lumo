@@ -22,10 +22,18 @@ Hooks einer notchai-Installation (`LegacyMigration`, `HookInstaller.migrateLegac
    **Actions › Release › Run workflow**).
 2. Er testet, baut die App mit `scripts/package-release.sh` und signiert sie mit dem eigenen Zertifikat
    „notchai Signing“ (Secrets `NOTCHAI_CERT_P12`, `NOTCHAI_CERT_PASSWORD`).
-3. Er legt das GitHub Release `vX.Y.Z` mit `lumo-X.Y.Z.zip` an (Versionshinweise erzeugt GitHub).
+3. Er legt das GitHub Release `vX.Y.Z` mit `lumo-X.Y.Z.zip` **als Entwurf** an (Versionshinweise erzeugt GitHub).
 4. Er schreibt den Cask aus `packaging/homebrew/lumo.rb` mit Version und Prüfsumme nach
    `Bossaln/homebrew-tap/Casks/lumo.rb` (Secret `TAP_GITHUB_TOKEN`).
-5. Installierte Apps finden die neue Version beim nächsten Update-Check und aktualisieren sich per `brew upgrade`.
+5. Erst dann veröffentlicht er das Release. Scheitert der Tap, bleibt es ein Entwurf, und keine App bekommt eine
+   Version angeboten, die Homebrew nicht installieren kann.
+6. Installierte Apps finden die neue Version beim nächsten Update-Check (alle sechs Stunden, über die
+   GitHub-Schnittstelle; antwortet sie nicht, über die Weiterleitung von `releases/latest`) und aktualisieren sich mit
+   `brew update && brew upgrade --cask bossaln/tap/lumo`. Der voll qualifizierte Name ist wichtig: Seit Homebrew 6
+   lädt Homebrew Casks aus fremden Taps nur, wenn sie als vertrauenswürdig eingetragen sind; `brew install` und
+   `brew upgrade` tragen einen voll qualifizierten Namen dabei selbst ein (`~/.homebrew/trust.json`). brew läuft dabei
+   mit festem `PATH` statt der Login-Shell und wird nach 20 Minuten abgebrochen; alles steht in
+   `~/Library/Logs/lumo/update.log`.
 
 ## Eine neue Version veröffentlichen
 

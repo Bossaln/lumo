@@ -86,20 +86,33 @@ final class UpdateController {
         lastChecked = Date()
     }
 
-    /// Neueste Version auf GitHub; ohne veröffentlichte Version gilt lumo als aktuell.
+    /// Neueste Version auf GitHub; ohne veröffentlichte Version gilt lumo als aktuell. Antwortet die Schnittstelle
+    /// nicht (Abfragelimit, Störung), zählt die Weiterleitung der Versionsseite; sie hat kein Limit.
     private func checkRelease() async -> UpdateState {
+        let viaHomebrew = Self.homebrew != nil
         var request = URLRequest(url: ReleaseCheck.latestURL, timeoutInterval: 15)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("lumo/\(buildInfo.version)", forHTTPHeaderField: "User-Agent")
+        let apiFailure: UpdateState
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             if status == 404 { return .upToDate }
-            guard status == 200 else { return .failed("GitHub antwortet nicht wie erwartet (\(status)).") }
-            return ReleaseCheck.state(currentVersion: buildInfo.version, response: data, viaHomebrew: Self.homebrew != nil)
+            if status == 200 {
+                return ReleaseCheck.state(currentVersion: buildInfo.version, response: data, viaHomebrew: viaHomebrew)
+            }
+            apiFailure = .failed("GitHub antwortet nicht wie erwartet (\(status)).")
         } catch {
-            return .failed("GitHub ist nicht erreichbar: \(error.localizedDescription)")
+            apiFailure = .failed("GitHub ist nicht erreichbar: \(error.localizedDescription)")
         }
+        var page = URLRequest(url: ReleaseCheck.latestPageURL, timeoutInterval: 15)
+        page.setValue("lumo/\(buildInfo.version)", forHTTPHeaderField: "User-Agent")
+        guard let (_, response) = try? await URLSession.shared.data(for: page),
+              (response as? HTTPURLResponse)?.statusCode == 200, let final = response.url,
+              let state = ReleaseCheck.state(currentVersion: buildInfo.version, releasePage: final, viaHomebrew: viaHomebrew) else {
+            return apiFailure
+        }
+        return state
     }
 
     /// Kann der Knopf „Jetzt aktualisieren“ etwas tun?
@@ -153,7 +166,9 @@ final class UpdateController {
                                                         appPID: ProcessInfo.processInfo.processIdentifier)
         let process = Process()
         process.executableURL = URL(filePath: "/bin/zsh")
-        process.arguments = ["-lc", script]
+        process.arguments = ["-c", script]
+        process.environment = ReleaseCheck.homebrewEnvironment(brew: brew, base: ProcessInfo.processInfo.environment)
+        process.standardInput = FileHandle.nullDevice
         process.terminationHandler = { [weak self] process in
             let status = process.terminationStatus
             Task { @MainActor [weak self] in self?.homebrewFinished(status: status, offer: offer) }
@@ -162,6 +177,17 @@ final class UpdateController {
             try process.run()
         } catch {
             state = .failed("Homebrew ließ sich nicht starten: \(error.localizedDescription)")
+            return
+        }
+        // Hängt brew (Netz weg), endet das Update mit Fehler statt für immer mit „aktualisiert …“.
+        let log = Self.logURL
+        DispatchQueue.global().asyncAfter(deadline: .now() + ReleaseCheck.upgradeTimeout) {
+            guard process.isRunning else { return }
+            if let handle = try? FileHandle(forWritingTo: log) {
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: Data("Abgebrochen: Homebrew hat nach \(Int(ReleaseCheck.upgradeTimeout / 60)) Minuten nicht geantwortet.\n".utf8))
+            }
+            process.terminate()
         }
     }
 

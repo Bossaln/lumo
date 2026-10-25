@@ -85,12 +85,13 @@ jobs:
       - name: Show signature
         run: codesign -dv --verbose=2 build/lumo.app 2>&1 | grep -E "^(Identifier|Authority|Signature)" || true
 
-      - name: GitHub release
+      # Erst als Entwurf: Die App sieht eine neue Version erst, wenn Homebrew sie auch installieren kann.
+      - name: GitHub release (draft)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v$VERSION" "build/lumo-$VERSION.zip" \
-            --target "$GITHUB_SHA" --title "lumo $VERSION" --generate-notes
+            --target "$GITHUB_SHA" --title "lumo $VERSION" --generate-notes --draft
 
       - name: Update Homebrew tap
         env:
@@ -113,3 +114,10 @@ jobs:
           git add -A
           git commit -m "lumo $VERSION"
           git push origin HEAD
+
+      # Bleibt der Tap stehen (Schritt davor gescheitert), bleibt die Version ein Entwurf: Niemand bekommt ein
+      # Update angeboten, das Homebrew nicht kennt.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "v$VERSION" --draft=false --latest

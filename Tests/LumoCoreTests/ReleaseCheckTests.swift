@@ -56,7 +56,8 @@ private func latest(tag: String, body: String? = nil) -> Data {
                                                     app: "/Applications/lumo.app", appPID: 4242)
     // Ohne `brew update` kennt Homebrew die neue Version bis zu 24 Stunden lang nicht.
     let update = script.range(of: "/opt/homebrew/bin/brew update")
-    let upgrade = script.range(of: "/opt/homebrew/bin/brew upgrade --cask lumo")
+    // Voll qualifiziert: trägt den Cask als vertrauenswürdig ein (Homebrew 6+) und meint nie einen fremden „lumo“.
+    let upgrade = script.range(of: "/opt/homebrew/bin/brew upgrade --cask bossaln/tap/lumo")
     #expect(update != nil && upgrade != nil)
     if let update, let upgrade { #expect(update.lowerBound < upgrade.lowerBound) }
     // Alles landet im Protokoll, und der Befehl endet mit dem Ergebnis von `brew upgrade`.
@@ -92,7 +93,7 @@ private func latest(tag: String, body: String? = nil) -> Data {
     let outcome = ReleaseCheck.upgradeOutcome(exitStatus: 1, installedVersion: "0.4.0", runningVersion: "0.4.0",
                                               offeredVersion: "0.5.0")
     guard case .failed(let message) = outcome else { Issue.record("erwartet Fehler, war \(outcome)"); return }
-    #expect(message.contains("brew upgrade --cask lumo"))
+    #expect(message.contains("brew update && brew upgrade --cask bossaln/tap/lumo"))
 }
 
 @Test func homebrewThatDoesNotKnowTheVersionYetIsExplained() {
@@ -106,4 +107,31 @@ private func latest(tag: String, body: String? = nil) -> Data {
     let outcome = ReleaseCheck.upgradeOutcome(exitStatus: 0, installedVersion: nil, runningVersion: "0.4.0",
                                               offeredVersion: "0.5.0")
     guard case .failed = outcome else { Issue.record("erwartet Fehler, war \(outcome)"); return }
+}
+
+// MARK: - Versionsseite als Ersatz für die Schnittstelle
+
+@Test func releasePageRedirectNamesTheVersion() {
+    #expect(ReleaseCheck.version(fromReleasePage: URL(string: "https://github.com/Bossaln/lumo/releases/tag/v0.8.0")!) == "0.8.0")
+    #expect(ReleaseCheck.version(fromReleasePage: URL(string: "https://github.com/Bossaln/lumo/releases/tag/0.10.2")!) == "0.10.2")
+    // Ohne einzige Version landet man auf der Übersicht; ein Tag ohne Zahlen ist keine Version.
+    #expect(ReleaseCheck.version(fromReleasePage: URL(string: "https://github.com/Bossaln/lumo/releases")!) == nil)
+    #expect(ReleaseCheck.version(fromReleasePage: URL(string: "https://github.com/Bossaln/lumo/releases/tag/preview")!) == nil)
+}
+
+@Test func releasePageStateMatchesTheApi() {
+    let page = URL(string: "https://github.com/Bossaln/lumo/releases/tag/v0.8.0")!
+    #expect(ReleaseCheck.state(currentVersion: "0.7.0", releasePage: page, viaHomebrew: true)
+            == .releaseAvailable(ReleaseOffer(version: "0.8.0", pageURL: page.absoluteString, notes: [], viaHomebrew: true)))
+    #expect(ReleaseCheck.state(currentVersion: "0.8.0", releasePage: page, viaHomebrew: true) == .upToDate)
+    #expect(ReleaseCheck.state(currentVersion: "0.7.0", releasePage: URL(string: "https://github.com/Bossaln/lumo/releases")!,
+                               viaHomebrew: true) == nil)
+}
+
+@Test func homebrewRunsWithAFixedPathAndWithoutItsOwnAutoUpdate() {
+    let env = ReleaseCheck.homebrewEnvironment(brew: "/opt/homebrew/bin/brew", base: ["HOME": "/Users/x", "PATH": "/weird"])
+    #expect(env["PATH"] == "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+    #expect(env["HOME"] == "/Users/x")
+    #expect(env["HOMEBREW_NO_AUTO_UPDATE"] == "1")
+    #expect(env["HOMEBREW_NO_INSTALL_CLEANUP"] == "1")
 }
