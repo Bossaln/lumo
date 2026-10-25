@@ -146,8 +146,9 @@ struct ExternalIdleView: View {
     }
 }
 
-/// Ruhende Kopie der Notch auf einem externen Bildschirm, auf dem gerade nicht gearbeitet wird. Nimmt keine Klicks
-/// an: Kommt der Zeiger dorthin, wandert die eigentliche Notch auf diesen Bildschirm.
+/// Ruhende Kopie der Notch auf einem Bildschirm, auf dem gerade nicht gearbeitet wird. Nimmt keine Klicks an:
+/// Kommt der Zeiger dorthin, wandert die eigentliche Notch auf diesen Bildschirm. Auf einem externen Bildschirm zeigt
+/// sie Uhrzeit und Info (`ExternalIdleView`), am MacBook die eingeklappte Musik neben der Kamera, falls sie läuft.
 final class ExternalNotchMirror: NSPanel {
     let screenInfo: ScreenInfo
 
@@ -161,30 +162,39 @@ final class ExternalNotchMirror: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         ignoresMouseEvents = true
         isReleasedWhenClosed = false
-        contentView = NSHostingView(rootView: ExternalMirrorView(model: model, screen: screen))
-        if let frame = NotchGeometry.frame(for: .externalIdle, screen: screen, islandSideWidth: 0) {
+        contentView = NSHostingView(rootView: NotchMirrorView(model: model, screen: screen))
+        let presentation: NotchPresentation = screen.isVirtual ? .externalIdle : .compact
+        if let frame = NotchGeometry.frame(for: presentation, screen: screen, islandSideWidth: 0) {
             setFrame(frame, display: false)
         }
     }
 }
 
-private struct ExternalMirrorView: View {
+private struct NotchMirrorView: View {
     let model: AppModel
     let screen: ScreenInfo
 
     var body: some View {
+        let presentation: NotchPresentation = screen.isVirtual ? .externalIdle : .compact
         let notch = NotchGeometry.notchRect(screen) ?? .zero
-        let frame = NotchGeometry.frame(for: .externalIdle, screen: screen, islandSideWidth: 0) ?? .zero
-        let radii = NotchRootView.radii(for: .externalIdle)
+        let frame = NotchGeometry.frame(for: presentation, screen: screen, islandSideWidth: 0) ?? .zero
+        let radii = NotchRootView.radii(for: presentation)
         let shape = NotchShape(bottomRadius: radii.bottom, topCornerRadius: radii.top)
-        shape
-            .fill(Color(hex: model.settingsStore.settings.backgroundHex()))
-            .overlay {
-                ExternalIdleView(model: model, notchWidth: notch.width, sideWidth: max(0, (frame.width - notch.width) / 2),
-                                 height: frame.height)
+        let sideWidth = max(0, (frame.width - notch.width) / 2)
+        Group {
+            if screen.isVirtual {
+                shape
+                    .fill(Color(hex: model.settingsStore.settings.backgroundHex()))
+                    .overlay { ExternalIdleView(model: model, notchWidth: notch.width, sideWidth: sideWidth, height: frame.height) }
+                    .clipShape(shape)
+            } else if model.showsCompactMusic {
+                shape
+                    .fill(Color(hex: model.settingsStore.settings.backgroundHex()))
+                    .overlay { MusicCompactView(model: model, notchWidth: notch.width, sideWidth: sideWidth, ear: radii.top) }
+                    .clipShape(shape)
             }
-            .clipShape(shape)
-            .frame(width: frame.width, height: frame.height)
-            .environment(\.colorScheme, .dark)
+        }
+        .frame(width: frame.width, height: frame.height)
+        .environment(\.colorScheme, .dark)
     }
 }

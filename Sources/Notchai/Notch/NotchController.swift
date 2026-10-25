@@ -1,6 +1,7 @@
 import AppKit
 import NotchaiCore
 import Observation
+import SwiftUI
 
 /// Hält das Notch-Panel auf dem Bildschirm, auf dem gerade gearbeitet wird, und steuert Hover und Klickdurchlass.
 /// Externe Bildschirme bekommen eine gedachte Notch (`ExternalNotch`); die anderen zeigen solange eine ruhende Kopie
@@ -114,23 +115,34 @@ final class NotchController {
             underPointer ?? candidates.first { !$0.isVirtual } ?? candidates.first
         }
         guard force || target != model.screen else { return }
-        model.screen = target
+        if force { rebuildMirrors() }
+        // Beim Wechsel steht die Form sofort fertig da: Aus der Form des anderen Bildschirms heranzuwachsen sähe
+        // wie ein Wackeln aus.
+        var instant = Transaction()
+        instant.disablesAnimations = true
+        withTransaction(instant) { model.screen = target }
         refreshPanelPosition()
-        updateMirrors(active: target)
+        showMirrors(except: target)
     }
 
-    /// Jeder externe Bildschirm ohne die Notch bekommt eine ruhende Kopie; die übrigen Kopien verschwinden.
-    private func updateMirrors(active: ScreenInfo?) {
-        let wanted = candidates.filter { $0.isVirtual && $0.frame != active?.frame }
-        let keys = Set(wanted.map { Self.key($0) })
-        for (key, mirror) in mirrors where !keys.contains(key) || mirror.screenInfo != wanted.first(where: { Self.key($0) == key }) {
-            mirror.orderOut(nil)
-            mirrors[key] = nil
-        }
-        for screen in wanted where mirrors[Self.key(screen)] == nil {
+    /// Eine ruhende Kopie für jeden Notch-Bildschirm. Sie stehen dauerhaft bereit und werden nur ein- und
+    /// ausgeblendet, damit beim Wechsel nichts flackert.
+    private func rebuildMirrors() {
+        for mirror in mirrors.values { mirror.orderOut(nil) }
+        mirrors = [:]
+        for screen in candidates {
             let mirror = ExternalNotchMirror(model: model, screen: screen)
+            mirror.alphaValue = 0
             mirror.orderFrontRegardless()
             mirrors[Self.key(screen)] = mirror
+        }
+    }
+
+    /// Die Kopie des Bildschirms, auf dem die Notch gerade ist, verschwindet; alle anderen sind zu sehen. Am MacBook
+    /// zeigt die Kopie, was im Ruhezustand neben der Kamera steht (eingeklappte Musik), sonst bleibt sie leer.
+    private func showMirrors(except active: ScreenInfo?) {
+        for (key, mirror) in mirrors {
+            mirror.alphaValue = key == active.map(Self.key) ? 0 : 1
         }
     }
 
