@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var music: MusicMonitor?
     private(set) var visualizer: MusicVisualizer?
     private(set) var office: OfficeWindowController?
+    private(set) var system: SystemHUDController?
     private var hotkeys: DoubleTapHotkeys?
     private var setupWindow: SetupWindowController?
     private var updateItem: StatusMenuEntry?
@@ -99,9 +100,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.start()
         self.hotkeys = hotkeys
 
+        // Systemanzeigen von macOS (Lautstärke, Helligkeit, Fokus, Timer …) in der Notch.
+        let system = SystemHUDController(model: model, settingsStore: model.settingsStore, home: home)
+        self.system = system
+        system.start()
+
         settingsWindowController.configure(
             settingsStore: model.settingsStore, shelfStore: model.shelfStore, noteStore: model.noteStore,
-            setup: setup, updates: updates,
+            setup: setup, updates: updates, system: system,
             developer: makeDeveloperTools(model: model, setupWindow: setupWindow),
             openAssistant: { [weak setupWindow] in setupWindow?.show() },
             tryOut: { [weak model] in model?.raiseSignal(SignalDemo.preview) },

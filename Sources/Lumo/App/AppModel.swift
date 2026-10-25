@@ -110,6 +110,15 @@ final class AppModel {
     /// Die Notch leuchtet in wechselnden Farben, solange die Einrichtung offen ist.
     var setupGlow = false
 
+    /// Systemanzeigen (Lautstärke, Fokus, Timer …): kurze und bleibende, geregelt in `SystemHUDState`.
+    private(set) var systemHUD = SystemHUDState()
+    /// Die Systemanzeige, die die Notch gerade zeigt.
+    var systemIndicator: SystemIndicator? { systemHUD.visible }
+    /// Mikrofon bzw. Kamera in Benutzung: Punkte neben der Kamera, solange es dauert.
+    var microphoneInUse = false
+    var cameraInUse = false
+    @ObservationIgnored private var hudTask: Task<Void, Never>?
+
     /// Lagerhalle: Bild und Figuren für Reiter und großes Fenster.
     @ObservationIgnored var officeDirector: OfficeDirector?
     /// Öffnet das große Büro.
@@ -125,7 +134,9 @@ final class AppModel {
         let settings = settingsStore.settings
         // Was der Besitzer selbst öffnet und jedes Signal gehen vor; der neue Titel weicht sofort.
         switch e {
-        case .hoverBegan, .signalRaised, .fileDragEntered, .noteShortcut: endTrackAnnouncement()
+        case .hoverBegan, .signalRaised, .fileDragEntered, .noteShortcut:
+            endTrackAnnouncement()
+            endTransientSystemIndicator()
         default: break
         }
         if e == .hoverBegan, notch.mode == .idle {
@@ -353,6 +364,36 @@ final class AppModel {
         if trackAnnouncement != nil { trackAnnouncement = nil }
     }
 
+    // MARK: - Systemanzeigen
+
+    /// Zeigt eine Systemanzeige; kurze bleiben die eingestellte Zeit, bleibende bis `endSystemIndicator`.
+    func showSystemIndicator(_ indicator: SystemIndicator) {
+        systemHUD.show(indicator, now: .now, hold: .seconds(settingsStore.settings.systemHUDSeconds))
+        if !indicator.sticky { endTrackAnnouncement() }
+        scheduleSystemIndicatorExpiry()
+    }
+
+    func endSystemIndicator(_ kind: SystemIndicatorKind) {
+        systemHUD.endSticky(kind)
+    }
+
+    private func endTransientSystemIndicator() {
+        hudTask?.cancel()
+        hudTask = nil
+        if systemHUD.transient != nil { systemHUD.endTransient() }
+    }
+
+    private func scheduleSystemIndicatorExpiry() {
+        hudTask?.cancel()
+        hudTask = nil
+        guard let deadline = systemHUD.hideAt else { return }
+        hudTask = Task { [weak self] in
+            try? await Task.sleep(until: deadline, clock: .continuous)
+            guard !Task.isCancelled, let self else { return }
+            systemHUD.expire(now: .now)
+        }
+    }
+
     func seekMusic(to position: TimeInterval) {
         guard let item = nowPlaying else { return }
         musicSeek = MusicScrub.Override(position: position, track: item.trackKey, playing: displayedMusicPlaying, at: .now)
@@ -420,7 +461,9 @@ final class AppModel {
         // Laufende Musik zeigt sich eingeklappt; ein Signal verdrängt sie.
         // Ein neuer Titel fährt kurz über alles aus, was im Ruhezustand zu sehen ist.
         case .idle:
-            if let presentation = trackAnnouncement?.style.presentation { presentation }
+            // Eine Systemanzeige geht vor: Sie antwortet auf eine Taste oder ein Ereignis von eben.
+            if let indicator = systemIndicator { .hud(sideWidth: NotchGeometry.hudSideWidth(forText: indicator.value.isText)) }
+            else if let presentation = trackAnnouncement?.style.presentation { presentation }
             // Externer Bildschirm: Die Mitte ist sichtbar und zeigt Uhrzeit, Status und Musik (`ExternalIdleView`).
             else if screen?.isVirtual == true { .externalIdle }
             else if showsCompactMusic { .compact }
@@ -440,7 +483,7 @@ final class AppModel {
         var parts: [String] = []
         switch notch.mode {
         case .idle:
-            parts.append(trackAnnouncement != nil ? L("Notch: neuer Titel")
+            parts.append(systemIndicator != nil ? L("Notch: Systemanzeige") : trackAnnouncement != nil ? L("Notch: neuer Titel")
                 : showsCompactMusic ? L("Notch: Musik eingeklappt") : L("Notch: zu"))
         case .signal(let style): parts.append("Notch: Signal (\(style.rawValue))")
         case .panel(let tab): parts.append("Notch: \(tab.title)")

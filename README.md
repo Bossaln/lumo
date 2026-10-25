@@ -67,8 +67,18 @@ out again later. lumo only remembers where the files are; nothing is copied or m
 and type the next note right away; <kbd>Esc</kbd> closes and keeps an unsaved draft. Your notes live in the notch's
 "Notes" tab – click one to copy it. They stay on your Mac.
 
+**macOS indicators, island style.** Volume, brightness, keyboard backlight, Focus, timers and alarms from the
+Clock app, microphone and camera use, charging and low battery, a new audio output such as AirPods, Caps Lock: all
+of it appears next to the camera like on the iPhone, with the symbol on the left and a bar, the name or the time left
+on the right, in the real colors (a Focus in its own color, timers in orange). lumo can intercept the volume,
+brightness and backlight keys so the gray macOS overlay in the middle of the screen never shows up; it then sets the
+values itself. While an app uses the microphone or camera, an orange or green dot stays beside the camera. Focus,
+timers and alarms need Full Disk Access (lumo reads the files macOS keeps for them); everything else works without
+it. Each indicator can be switched off on its own.
+
 **Almost everything is a setting.** True black background so the notch blends into the camera cutout, agent colors,
-signal style, animations, glow, sounds, which tab opens on hover, music sources, warehouse size and lighting, and more.
+signal style, animations, glow, sounds, which tab opens on hover, music sources, warehouse size and lighting, which
+system indicators the notch shows and whether the macOS overlays stay hidden, and more.
 
 ## Never in the way
 

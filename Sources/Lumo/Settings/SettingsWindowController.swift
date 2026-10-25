@@ -17,16 +17,18 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var developer = DeveloperTools()
     private var tryOut: () -> Void = {}
     private var music = MusicSettingsActions()
+    private var system: SystemHUDController?
     private var window: NSWindow?
     /// Status des Anmeldeobjekts, gelesen beim Öffnen und nach jeder Änderung. Jede Abfrage geht an einen anderen
     /// Prozess; im Rumpf einer Ansicht würde sie bei jedem Neuzeichnen laufen.
     private(set) var loginItemStatus: SMAppService.Status = .notRegistered
 
     func configure(settingsStore: SettingsStore, shelfStore: ShelfStore, noteStore: NoteStore, setup: SetupController,
-                   updates: UpdateController,
+                   updates: UpdateController, system: SystemHUDController,
                    developer: DeveloperTools, openAssistant: @escaping () -> Void, tryOut: @escaping () -> Void,
                    music: MusicSettingsActions) {
         self.settingsStore = settingsStore
+        self.system = system
         self.shelfStore = shelfStore
         self.noteStore = noteStore
         self.setup = setup
@@ -46,7 +48,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     var isVisible: Bool { window?.isVisible == true }
 
     func show() {
-        guard let settingsStore, let shelfStore, let noteStore, let setup, let updates else { return }
+        guard let settingsStore, let shelfStore, let noteStore, let setup, let updates, let system else { return }
         refreshLaunchAtLoginSetting()
 
         if window == nil {
@@ -71,6 +73,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 windowController: self,
                 setup: setup,
                 updates: updates,
+                system: system,
                 openAssistant: openAssistant,
                 developer: developer,
                 tryOut: tryOut,
