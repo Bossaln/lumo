@@ -3,8 +3,8 @@ import NotchaiCore
 import ServiceManagement
 import SwiftUI
 
-/// Einstellungsfenster im Stil der Systemeinstellungen: Seitenleiste mit farbigen Symbolen, rechts je Bereich
-/// ein Kopf mit großem Symbol und darunter die Abschnitte. Alles speichert direkt in `SettingsStore`.
+/// Einstellungsfenster: tiefschwarz wie die Notch. Die Startseite zeigt jeden Bereich als Kachel; ein Klick öffnet
+/// ihn, die Symbol-Kachel fliegt dabei in den Kopf der Seite. Alles speichert direkt in `SettingsStore`.
 struct SettingsView: View {
     let settingsStore: SettingsStore
     let shelfStore: ShelfStore
@@ -18,52 +18,60 @@ struct SettingsView: View {
     let tryOut: () -> Void
     let music: MusicSettingsActions
 
-    @ViewState private var selection: SettingsPane? = .general
+    /// `nil`: die Startseite mit den Kacheln.
+    @ViewState private var selection: SettingsPane? = nil
     @ViewState private var launchAtLoginMessage: String? = nil
+    @Namespace private var tiles
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selection) {
-                sidebarHeader
-                ForEach(Array(SettingsPane.groups(developer: settingsStore.settings.developerOptions).enumerated()),
-                        id: \.offset) { _, group in
-                    Section {
-                        ForEach(group) { pane in
-                            Label {
-                                Text(pane.title)
-                            } icon: {
-                                SettingsIcon(pane: pane, size: 22)
-                            }
-                            .tag(pane)
-                        }
-                    }
+        ZStack(alignment: .topLeading) {
+            LuxBackdrop(colors: backdropColors)
+                .animation(.easeInOut(duration: 0.8), value: selection)
+            if let pane = selection {
+                detail(for: pane)
+                    .environment(\.settingsNamespace, tiles)
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
+                    .id(pane)
+                backButton
+                    .transition(.opacity)
+            } else {
+                SettingsHome(panes: SettingsPane.groups(developer: settingsStore.settings.developerOptions).flatMap { $0 },
+                             version: updates.buildInfo.displayVersion, namespace: tiles) { pane in
+                    withAnimation(Lux.spring) { selection = pane }
                 }
+                .transition(.opacity.combined(with: .scale(scale: 1.02)))
             }
-            .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 210, ideal: 224, max: 280)
-        } detail: {
-            detail(for: selection ?? .general)
         }
         .frame(minWidth: 860, minHeight: 620)
+        .background(Lux.background)
+        .environment(\.colorScheme, .dark)
+        // Escape oder ⌘← führt zurück zur Startseite.
+        .onExitCommand { withAnimation(Lux.spring) { selection = nil } }
         // Neue Sprache: alles neu aufbauen, damit jeder Text sie zeigt.
         .id(settingsStore.settings.language)
     }
 
-    /// Oben in der Seitenleiste, wie das Konto in den Systemeinstellungen: notchai mit Version.
-    private var sidebarHeader: some View {
-        HStack(spacing: 10) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("notchai")
-                    .font(.system(size: 14, weight: .semibold))
-                Text(L("Version {0}", updates.buildInfo.displayVersion))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+    /// Startseite in den Agentenfarben, jeder Bereich in seinen eigenen.
+    private var backdropColors: [Color] {
+        if let pane = selection { return [pane.colors.0, pane.colors.1, Color(hex: settingsStore.settings.claudeColorHex)] }
+        return [Color(hex: settingsStore.settings.claudeColorHex), Color(hex: settingsStore.settings.codexColorHex),
+                Lux.rgb(0.55, 0.35, 1.0)]
+    }
+
+    /// Oben links neben den Fensterknöpfen: zurück zu allen Bereichen.
+    private var backButton: some View {
+        Button {
+            withAnimation(Lux.spring) { selection = nil }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left").font(.system(size: 11, weight: .bold))
+                Text(L("Alle Einstellungen"))
             }
         }
-        .padding(.vertical, 6)
+        .buttonStyle(LuxButtonStyle())
+        .keyboardShortcut("[", modifiers: .command)
+        .padding(.leading, 84)
+        .padding(.top, 14)
     }
 
     @ViewBuilder
@@ -127,7 +135,7 @@ struct SettingsView: View {
             Section(L("Entwickler")) {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle(L("Entwickleroptionen"), isOn: setting(\.developerOptions))
-                    Text(L("Blendet in der Seitenleiste die Seite „Entwickler“ ein: Test-Signale, Rohdaten und Zurücksetzen."))
+                    Text(L("Blendet die Kachel „Entwickler“ ein: Test-Signale, Rohdaten und Zurücksetzen."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -352,13 +360,6 @@ struct SettingsView: View {
     private var sessionsPane: some View {
         SettingsPage(pane: .sessions) {
             Section(L("Ansicht")) {
-                SessionStylePicker(selection: setting(\.sessionViewStyle),
-                                   claude: Color(hex: settingsStore.settings.claudeColorHex),
-                                   codex: Color(hex: settingsStore.settings.codexColorHex))
-                Text(SessionStylePicker.explanation(settingsStore.settings.sessionViewStyle))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
                 Picker(L("Titel"), selection: setting(\.sessionTitleSource)) {
                     Text(L("Letzte Aufgabe")).tag(SessionTitleSource.lastPrompt)
                     Text(L("Session-Titel bevorzugen")).tag(SessionTitleSource.sessionTitle)

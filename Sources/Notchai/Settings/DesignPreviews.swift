@@ -44,42 +44,6 @@ struct SignalStyleThumbnail: View {
     }
 }
 
-/// Miniatur je Sessions-Ansicht.
-struct SessionStyleThumbnail: View {
-    let style: SessionViewStyle
-    let claude: Color
-    let codex: Color
-
-    var body: some View {
-        switch style {
-        case .list:
-            MiniNotch(width: 92, height: 50) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Spacer().frame(height: 8)
-                    ForEach(0..<3, id: \.self) { row in
-                        HStack(spacing: 4) {
-                            Circle().fill(row == 1 ? codex : claude).frame(width: 5, height: 5)
-                            Capsule().fill(Color.white.opacity(0.55)).frame(width: row == 2 ? 38 : 54, height: 3)
-                        }
-                    }
-                }
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        case .circles:
-            MiniNotch(width: 92, height: 12) {
-                HStack(spacing: 3) {
-                    Circle().fill(claude).frame(width: 6, height: 6)
-                    Circle().fill(codex).frame(width: 6, height: 6)
-                    Spacer()
-                    Circle().fill(claude.opacity(0.7)).frame(width: 6, height: 6)
-                }
-                .padding(.horizontal, 8)
-            }
-        }
-    }
-}
-
 /// Auswahl der Signalform als Karten.
 struct SignalStylePicker: View {
     @Binding var selection: SignalStyle
@@ -128,25 +92,6 @@ struct BackgroundPicker: View {
     }
 }
 
-/// Auswahl der Sessions-Ansicht als Karten.
-struct SessionStylePicker: View {
-    @Binding var selection: SessionViewStyle
-    let claude: Color
-    let codex: Color
-
-    var body: some View {
-        ChoiceCards(options: [(SessionViewStyle.list, L("Liste")), (.circles, L("Kreise"))], selection: $selection) { style in
-            SessionStyleThumbnail(style: style, claude: claude, codex: codex)
-        }
-    }
-
-    static func explanation(_ style: SessionViewStyle) -> String {
-        switch style {
-        case .list: L("Beim Darüberfahren klappt eine Liste aller Sessions auf: Titel, Projekt, letzter Schritt.")
-        case .circles: L("Neben der Kamera steht für jede Session ein farbiger Kreis; ein Klick zeigt die Details.")
-        }
-    }
-}
 
 /// Die beiden Agentenfarben als Schildchen, so wie sie in der Notch erscheinen.
 struct AgentColorChips: View {

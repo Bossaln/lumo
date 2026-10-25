@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var office: OfficeWindowController?
     private var hotkeys: DoubleTapHotkeys?
     private var setupWindow: SetupWindowController?
-    private var updateItem: NSMenuItem?
+    private var updateItem: StatusMenuEntry?
     private let responsiveness = ResponsivenessMonitor()
     /// Hält App Nap fern: Agenten warten auf die Antwort der Notch, und ein Klick in die Menüleiste soll sofort wirken.
     private var activity: NSObjectProtocol?
@@ -106,11 +106,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             music: MusicSettingsActions(previewTrackChange: { [weak model] in model?.previewTrackAnnouncement() },
                                         visualizer: visualizer))
 
-        updateItem = statusItemController.addMenuItem({ [weak updates] in Self.menuTitle(for: updates?.state ?? .idle) }) {
-            [weak self] in self?.updateMenuAction()
-        }
-        statusItemController.addMenuItem({ L("Büro öffnen") }) { [weak office] in office?.open() }
-        statusItemController.addMenuItem({ L("Einrichtung …") }) { [weak setupWindow] in setupWindow?.show() }
+        updateItem = statusItemController.addMenuItem({ [weak updates] in Self.menuTitle(for: updates?.state ?? .idle) },
+                                                      symbol: "arrow.down.circle.fill") { [weak self] in self?.updateMenuAction() }
+        statusItemController.addMenuItem({ L("Büro öffnen") }, symbol: "building.2.fill") { [weak office] in office?.open() }
+        statusItemController.addMenuItem({ L("Einrichtung …") }, symbol: "sparkles") { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
 

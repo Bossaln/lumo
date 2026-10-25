@@ -50,17 +50,20 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         refreshLaunchAtLoginSetting()
 
         if window == nil {
-            // Wie die Systemeinstellungen: Die Seitenleiste reicht bis unter die Ampel, ohne sichtbaren Titel.
+            // Randlos schwarz wie die Notch: Der Inhalt reicht bis unter die Ampel, ohne sichtbaren Titel.
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 880, height: 640),
-                styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+                contentRect: NSRect(x: 0, y: 0, width: 980, height: 700),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
             window.title = L("notchai-Einstellungen")
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
-            window.toolbarStyle = .unified
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = .black
+            window.isMovableByWindowBackground = true
+            window.contentMinSize = NSSize(width: 860, height: 620)
             window.contentView = MeasuredHostingView(name: "SettingsView.layout", rootView: SettingsView(
                 settingsStore: settingsStore,
                 shelfStore: shelfStore,

@@ -31,12 +31,15 @@ final class SetupWindowController: NSObject, NSWindowDelegate {
         setup.refresh()
         model.setupGlow = true
         if window == nil {
-            // Wie die Systemeinstellungen: Die farbige Leiste reicht bis unter die Ampel.
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
+            // Randlos schwarz wie die Notch: Der Inhalt reicht bis unter die Ampel.
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 880, height: 660),
                                   styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
             window.title = L("notchai einrichten")
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = .black
+            window.isMovableByWindowBackground = true
             window.isReleasedWhenClosed = false
             window.delegate = self
             self.window = window
