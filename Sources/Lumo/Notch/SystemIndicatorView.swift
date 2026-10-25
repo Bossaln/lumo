@@ -18,12 +18,14 @@ struct SystemIndicatorView: View {
         let tint = Color(indicator.tint)
         HStack(spacing: 0) {
             Color.clear.frame(width: ear)
+            // Ganz links am Rand, wie auf dem iPhone; rechts beginnt der Inhalt direkt neben der Kamera.
             Image(systemName: indicator.symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(tint)
                 .symbolRenderingMode(.hierarchical)
                 .contentTransition(.symbolEffect(.replace))
-                .frame(width: inner)
+                .padding(.leading, 14)
+                .frame(width: inner, alignment: .leading)
             Color.clear.frame(width: notchWidth)
             trailing(tint: tint)
                 .padding(.leading, 10)

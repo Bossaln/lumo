@@ -17,6 +17,14 @@ final class SystemHUDController {
     private(set) var interceptsKeys = false
     var clockProblem: String? { clock.problem }
     var activeFocusName: String? { focus.state?.activeMode?.name }
+    /// Was lumo aus den Fokus-Dateien gelesen hat (Seite „System“).
+    var focusDiagnostics: String {
+        guard focus.access == true else { return focus.problem ?? L("Noch nicht gelesen.") }
+        if let problem = focus.problem { return problem }
+        let count = focus.state?.modes.count ?? 0
+        let names = (focus.state?.modes.values.map(\.name).sorted() ?? []).joined(separator: ", ")
+        return L("{0} Fokus gelesen ({1}); aktiv: {2}", count, names, activeFocusName ?? L("keiner"))
+    }
 
     @ObservationIgnored private let model: AppModel
     @ObservationIgnored private let settingsStore: SettingsStore
@@ -302,6 +310,12 @@ final class SystemHUDController {
         // Zum Ausprobieren bleibt nichts stehen.
         sample.sticky = false
         model.showSystemIndicator(sample)
+    }
+
+    /// Kopiert die Fokus-Dateien, damit sich ein nicht erkannter Fokus nachvollziehen lässt.
+    func copyFocusFiles() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(focus.rawText(), forType: .string)
     }
 
     static func openAccessibilitySettings() {

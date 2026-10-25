@@ -70,8 +70,18 @@ struct SystemSettingsPane: View {
                 if let problem = system.clockProblem {
                     StatusBadge(text: L("Die Uhr-Datenbank sieht anders aus als erwartet: {0}", problem), color: .orange)
                 }
-                if let name = system.activeFocusName {
-                    LabeledContent(L("Aktiver Fokus"), value: name)
+                if system.fullDiskAccess == true, settings.shows(.focus) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(L("Fokus-Dateien"))
+                            Spacer()
+                            Button(L("Rohdaten kopieren"), action: system.copyFocusFiles)
+                        }
+                        Text(system.focusDiagnostics)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Toggle(L("Laufenden Timer stehen lassen"), isOn: setting(\.timerStaysVisible))
                     .disabled(!settings.systemHUD || !settings.shows(.timer))

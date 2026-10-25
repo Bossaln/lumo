@@ -3,8 +3,14 @@ extension Localization {
     /// `everyTextInTheCodeHasAnEnglishTranslation` meldet jeden fehlenden Eintrag, `everyTranslationIsStillUsed`
     /// jeden überflüssigen. Neue Texte: deutsch in den Code schreiben, hier die Übersetzung ergänzen.
     static let english: [String: String] = [
+        "(nicht lesbar)": "(not readable)",
+        "ModeConfigurations.json ist kein lesbares JSON.": "ModeConfigurations.json is not readable JSON.",
+        "Noch nicht gelesen.": "Not read yet.",
+        "{0} Fokus gelesen ({1}); aktiv: {2}": "{0} Focus modes read ({1}); active: {2}",
+        "keiner": "none",
+        "Fokus-Dateien": "Focus files",
+        "Rohdaten kopieren": "Copy raw data",
         "Achtsamkeit": "Mindfulness",
-        "Aktiver Fokus": "Active Focus",
         "Arbeiten": "Work",
         "Audioausgabe": "Audio output",
         "Aufstehen": "Wake up",

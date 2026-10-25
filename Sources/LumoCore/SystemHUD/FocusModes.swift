@@ -69,8 +69,11 @@ public struct FocusModes: Equatable, Sendable {
         }
         var active: String?
         if let assertions, let object = try? JSONSerialization.jsonObject(with: assertions) {
-            // Jede Zusicherung nennt ihren Fokus; die jüngste zählt.
-            active = JSONSearch.values(named: "assertionDetailsModeIdentifier", in: object).compactMap { $0 as? String }.last
+            // Jede Zusicherung nennt ihren Fokus; die jüngste zählt. Der Schlüssel dafür hat sich schon geändert,
+            // deshalb zählt jeder Text, der einen bekannten Fokus nennt, und der bekannte Schlüssel als Rückfall.
+            let strings = JSONSearch.strings(in: object)
+            active = strings.last { modes[$0] != nil }
+                ?? JSONSearch.values(named: "assertionDetailsModeIdentifier", in: object).compactMap { $0 as? String }.last
         }
         return FocusModes(modes: modes, activeIdentifier: active)
     }
@@ -110,5 +113,21 @@ enum JSONSearch {
 
     static func dictionaries(named key: String, in object: Any) -> [[String: Any]] {
         values(named: key, in: object).compactMap { $0 as? [String: Any] }
+    }
+
+    /// Alle Texte im JSON in Lesereihenfolge.
+    static func strings(in object: Any) -> [String] {
+        var found: [String] = []
+        func walk(_ node: Any) {
+            if let string = node as? String {
+                found.append(string)
+            } else if let dictionary = node as? [String: Any] {
+                for key in dictionary.keys.sorted() { walk(dictionary[key]!) }
+            } else if let array = node as? [Any] {
+                for value in array { walk(value) }
+            }
+        }
+        walk(object)
+        return found
     }
 }

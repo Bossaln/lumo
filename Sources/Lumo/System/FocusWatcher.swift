@@ -11,6 +11,8 @@ final class FocusWatcher {
     private(set) var state: FocusModes?
     /// `nil`: noch nicht gelesen.
     private(set) var access: Bool?
+    /// Letzter Lesefehler (Seite „System“ in den Einstellungen).
+    private(set) var problem: String?
 
     private let directory: URL
     private var source: DispatchSourceFileSystemObject?
@@ -25,9 +27,23 @@ final class FocusWatcher {
         guard timer == nil else { return }
         read(initial: true)
         watchDirectory()
-        timer = Timer.scheduledTimer(withTimeInterval: access == true ? 10 : 15, repeats: true) { [weak self] _ in
+        schedule()
+    }
+
+    /// Mit Zugriff alle drei Sekunden (falls die Ordner-Überwachung nichts meldet), ohne alle 15.
+    private func schedule() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: access == true ? 3 : 15, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.read(initial: false) }
         }
+    }
+
+    /// Beide Dateien als Text, zum Kopieren (Seite „System“), falls lumo den Fokus nicht erkennt.
+    func rawText() -> String {
+        ["ModeConfigurations.json", "Assertions.json"].map { name in
+            let text = (try? String(contentsOf: directory.appending(path: name), encoding: .utf8)) ?? L("(nicht lesbar)")
+            return "=== \(name)\n\(text)"
+        }.joined(separator: "\n\n")
     }
 
     func stop() {
@@ -56,15 +72,24 @@ final class FocusWatcher {
         do {
             configurations = try Data(contentsOf: directory.appending(path: "ModeConfigurations.json"))
         } catch {
-            if access != false { access = false }
+            problem = String(describing: error)
+            if access != false {
+                access = false
+                schedule()
+            }
             return
         }
         if access != true {
             access = true
             watchDirectory()
+            schedule()
         }
         let assertions = try? Data(contentsOf: directory.appending(path: "Assertions.json"))
-        guard let next = FocusModes.parse(configurations: configurations, assertions: assertions) else { return }
+        guard let next = FocusModes.parse(configurations: configurations, assertions: assertions) else {
+            problem = L("ModeConfigurations.json ist kein lesbares JSON.")
+            return
+        }
+        problem = nil
         let previous = state
         state = next
         guard known else {

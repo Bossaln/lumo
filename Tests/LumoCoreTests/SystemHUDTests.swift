@@ -179,6 +179,16 @@ private let assertionsJSON = """
     #expect(state.modes["com.apple.donotdisturb.mode.default"]?.name == "Nicht stören")
 }
 
+@Test func activeModeIsFoundEvenUnderAnotherKey() throws {
+    // macOS benennt die Schlüssel um; ein Text, der einen bekannten Fokus nennt, reicht.
+    let assertions = Data("{\"data\":[{\"records\":[{\"details\":{\"mode\":\"com.apple.focus.work\"},\"time\":1}]}]}".utf8)
+    let state = try #require(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: assertions))
+    #expect(state.activeIdentifier == "com.apple.focus.work")
+    // Unbekannte Kennungen zählen nur über den bekannten Schlüssel.
+    let unknown = Data("{\"data\":[{\"storeAssertionRecords\":[{\"assertionDetails\":{\"assertionDetailsModeIdentifier\":\"com.apple.focus.custom\"}}]}]}".utf8)
+    #expect(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: unknown)?.activeIdentifier == "com.apple.focus.custom")
+}
+
 @Test func noAssertionMeansNoFocus() throws {
     let state = try #require(FocusModes.parse(configurations: Data(configurationsJSON.utf8), assertions: Data("{\"data\":[{\"storeAssertionRecords\":[]}]}".utf8)))
     #expect(state.activeIdentifier == nil && state.activeMode == nil)
