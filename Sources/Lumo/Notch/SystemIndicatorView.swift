@@ -46,8 +46,8 @@ struct SystemIndicatorView: View {
                 .frame(width: max(0, leftWidth - ear), alignment: .leading)
             Color.clear.frame(width: notchWidth)
             trailing(tint: tint)
-                .padding(.leading, 10)
-                .padding(.trailing, 14 - ear)
+                .padding(.leading, NotchGeometry.hudInnerPadding)
+                .padding(.trailing, NotchGeometry.hudOuterPadding - ear)
                 .frame(width: max(0, rightWidth - ear), alignment: .leading)
             Color.clear.frame(width: ear)
         }

@@ -62,7 +62,7 @@ import Testing
     #expect(SystemIndicatorValue.countdown(until: .now).isText)
     // Rechts mindestens so breit wie ein Balken, nie breiter als das Maximum.
     #expect(NotchGeometry.hudRightWidth(contentWidth: 10) == NotchGeometry.hudBarWidth + NotchGeometry.hudRightPadding)
-    #expect(NotchGeometry.hudRightWidth(contentWidth: 100) == 124)
+    #expect(NotchGeometry.hudRightWidth(contentWidth: 100) == 100 + NotchGeometry.hudRightPadding)
     #expect(NotchGeometry.hudRightWidth(contentWidth: 900) == NotchGeometry.hudMaxRightWidth)
 }
 

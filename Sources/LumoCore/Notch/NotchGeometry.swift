@@ -67,8 +67,10 @@ public enum NotchGeometry {
     public static let trackBannerExtraHeight: CGFloat = 72
     /// Systemanzeige: links Rand, Symbol und Abstand zur Kamera.
     public static let hudLeftWidth: CGFloat = 44
-    /// Rechts: Abstand zur Kamera und Rand um Balken oder Text.
-    public static let hudRightPadding: CGFloat = 24
+    /// Rechts: Abstand zur Kamera (die Aussparung ist unten gerundet, deshalb großzügig) und Rand außen.
+    public static let hudInnerPadding: CGFloat = 20
+    public static let hudOuterPadding: CGFloat = 14
+    public static let hudRightPadding: CGFloat = hudInnerPadding + hudOuterPadding
     public static let hudBarWidth: CGFloat = 60
     /// Mehr Platz bekommt ein Text rechts nicht; längere werden gekürzt.
     public static let hudMaxRightWidth: CGFloat = 190
