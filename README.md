@@ -217,7 +217,8 @@ Issues and pull requests are welcome. Please add tests for new logic in `LumoCor
 every text has a translation, so another language is mostly one more table. How releases are made is described in
 [`docs/releasing.md`](docs/releasing.md).
 
-If lumo saves you a few window switches, a ⭐ on GitHub helps other people find it.
+If lumo saves you a few window switches, a ⭐ on GitHub helps other people find it. And if you feel like it,
+[buy me a beer 🍺](https://buymeacoffee.com/bossa) – the lumo menu in the menu bar has a "Buy me a Beer" entry too.
 
 ## License
 

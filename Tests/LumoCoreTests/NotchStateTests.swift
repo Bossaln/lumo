@@ -105,3 +105,12 @@ private func typingInClickedIsland() -> NotchState {
     // Der zuletzt gewählte Reiter bleibt, was der Besitzer selbst angeklickt hat.
     #expect(s.lastTab == .sessions)
 }
+
+@Test func buyMeABeerPointsToTheRealLink() {
+    #expect(BuyMeABeer.title == "Buy me a Beer 🍺")
+    #expect(BuyMeABeer.url.absoluteString == "https://buymeacoffee.com/bossa")
+    #expect(InstallGreeting.supportText.contains("https://buymeacoffee.com/bossa"))
+    #expect(InstallGreeting.plain.hasSuffix(InstallGreeting.supportText))
+    // Das Emoji belegt im Terminal zwei Spalten.
+    #expect(WelcomeScene.displayWidth("Beer 🍺") == 7)
+}

@@ -3,9 +3,9 @@
 Begrüßungsszene aus `lumo-welcome` (MacBook, Leuchten, Signal, Musik).
 
 Die Szene kommt aus einem Mitschnitt der echten Ausgabe (ANSI-Text) in einem Pseudo-Terminal mit 72 Spalten und
-14 Zeilen (so zeichnet das Programm an Ort und Stelle statt im Vollbild), zum Beispiel mit Pythons `pty`:
+15 Zeilen (so zeichnet das Programm an Ort und Stelle statt im Vollbild), zum Beispiel mit Pythons `pty`:
 
-    LANG=en_US.UTF-8 python3 capture.py /tmp/welcome.txt 72 14 /Applications/lumo.app/Contents/MacOS/lumo-welcome
+    LANG=en_US.UTF-8 python3 capture.py /tmp/welcome.txt 72 15 /Applications/lumo.app/Contents/MacOS/lumo-welcome
 
 Braucht Pillow (`pip install pillow`); Schriften: DejaVu Sans Mono und Inter, sonst Menlo und SF (macOS).
 Aufruf aus dem Projektordner: python3 scripts/install-gif.py /tmp/welcome.txt
@@ -109,8 +109,8 @@ SCENE_COLS = 72
 raw = open(capture, encoding="utf-8", errors="replace", newline="").read()
 term = Term(cols=SCENE_COLS, rows=40)
 term.feed(raw)
-# Jedes Bild: die 14 Zeilen der Szene; sie beginnt nach dem ersten Zeilenumbruch in Zeile 1.
-SCENE_ROWS = 14
+# Jedes Bild: die 15 Zeilen der Szene; sie beginnt nach dem ersten Zeilenumbruch in Zeile 1.
+SCENE_ROWS = 15
 frames_scene = [frame[1:1 + SCENE_ROWS] for frame in term.frames]
 frames_scene = [frame for frame in frames_scene if any(ch != " " for row in frame for ch, *_ in row)]
 
@@ -118,7 +118,7 @@ prompt = "~ % "
 command = "brew install --cask bossaln/tap/lumo"
 brew_lines = [
     [("==> ", BLUE), ("Tapping bossaln/tap", TEXT)],
-    [("==> ", BLUE), ("Downloading lumo-0.8.2.zip", TEXT)],
+    [("==> ", BLUE), ("Downloading lumo-0.9.1.zip", TEXT)],
     [("######################################################### 100.0%", DIM)],
     [("==> ", BLUE), ("Installing Cask ", TEXT), ("lumo", GREEN)],
     [("==> ", BLUE), ("Moving App 'lumo.app' to '/Applications/lumo.app'", TEXT)],
@@ -136,6 +136,12 @@ def base():
     title = "Install lumo"
     draw.text(((W - draw.textlength(title, font=title_font)) / 2, 41), title, font=title_font, fill=(150, 154, 164))
     return image, draw
+
+
+def mug(draw, mx, y):
+    draw.rectangle((mx, y + 6, mx + 9, y + 17), fill=(240, 176, 60))
+    draw.rectangle((mx, y + 3, mx + 9, y + 6), fill=(245, 245, 240))
+    draw.rectangle((mx + 10, y + 8, mx + 13, y + 14), outline=(240, 176, 60), width=2)
 
 
 def text_line(draw, y, parts, font=mono):
@@ -166,17 +172,18 @@ def scene(typed, brew_count, picture=None, caret=True, done=False):
             for ch, fg, bg, bold in row[:COLS]:
                 if bg is not None:
                     draw.rectangle((x, y, x + CHAR_W - 1, y + LINE_H - 1), fill=xterm(bg))
-                if ch != " ":
+                if ch == "\U0001F37A":
+                    # Das Emoji belegt zwei Spalten; die Monospace-Schrift hat keins, also ein kleiner Bierkrug.
+                    mug(draw, x, y)
+                    x += CHAR_W
+                elif ch != " ":
                     draw.text((x, y), ch, font=mono, fill=xterm(fg) if fg is not None else TEXT)
                 x += CHAR_W
             y += LINE_H
     if done:
         y += LINE_H // 2
         # Kleiner Bierkrug statt Emoji (die Monospace-Schrift hat keins).
-        mx = LEFT + 1
-        draw.rectangle((mx, y + 6, mx + 9, y + 17), fill=(240, 176, 60))
-        draw.rectangle((mx, y + 3, mx + 9, y + 6), fill=(245, 245, 240))
-        draw.rectangle((mx + 10, y + 8, mx + 13, y + 14), outline=(240, 176, 60), width=2)
+        mug(draw, LEFT + 1, y)
         text_line(draw, y, [("   ", TEXT), ("lumo was successfully installed!", TEXT)])
         y += LINE_H
         text_line(draw, y, [(prompt, GREEN)])

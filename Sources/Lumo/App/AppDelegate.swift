@@ -116,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         updateItem = statusItemController.addMenuItem({ [weak updates] in Self.menuTitle(for: updates?.state ?? .idle) },
                                                       symbol: "arrow.down.circle.fill") { [weak self] in self?.updateMenuAction() }
-        statusItemController.addMenuItem({ L("Büro öffnen") }, symbol: "building.2.fill") { [weak office] in office?.open() }
+        statusItemController.addMenuItem({ BuyMeABeer.title }, symbol: "mug.fill") { NSWorkspace.shared.open(BuyMeABeer.url) }
         statusItemController.addMenuItem({ L("Einrichtung …") }, symbol: "sparkles") { [weak setupWindow] in setupWindow?.show() }
         observeUpdateState()
         updates.start()
