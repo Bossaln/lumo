@@ -148,6 +148,11 @@ struct SessionRowView: View {
         switch pending.kind {
         case .permission(_, let summary):
             VStack(alignment: .leading, spacing: 6) {
+                if let subagent = pending.subagent {
+                    Label(L("Von {0}", subagent), systemImage: "person.2.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(SessionPalette.secondary)
+                }
                 if let full = pending.fullCommand {
                     // Das Panel misst seine Höhe am Inhalt; ein Textblock statt einer Scrollansicht wächst mit.
                     Text(full)

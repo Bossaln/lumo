@@ -45,6 +45,8 @@ public struct PendingRequest: Equatable, Sendable {
     public var createdAt: Date
     /// Danach zeigt die Notch die Anfrage nicht mehr; der Agent fragt dann selbst weiter.
     public var deadline: Date
+    /// Die Anfrage kommt von einem Unteragenten dieser Art (`agent_type`, ersatzweise „Unteragent“).
+    public var subagent: String?
     /// Schon gegebene Antworten bei mehreren Fragen (Frage → Antwort); geschickt wird erst, wenn alle da sind.
     public var answers: [String: String] = [:]
 
@@ -184,6 +186,8 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var startedAt: Date?
     public var promptCount = 0
     public var editedFileCount = 0
+    /// Gerade laufende Unteragenten (nach `SubagentStart`/`SubagentStop` mit `agent_id`).
+    public var runningSubagents = 0
 
     public init(id: String, agent: AgentKind, sessionId: String, title: String, projectName: String, cwd: String?,
                 status: SessionStatus, lastStep: String?, errorCount: Int, contextFraction: Double?, lastActivity: Date,

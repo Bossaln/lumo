@@ -206,3 +206,53 @@ private let twoQuestions = try! JSONDecoder().decode(JSONValue.self, from: Data(
     #expect(book.sessions["claude:s1"]?.status == .done)
     #expect(book.sessions["claude:s1"]?.lastStep == "Fertig: Alles erledigt")
 }
+
+// MARK: - Hintergrund- und Unteragenten aus der Claude-App (#27, #28)
+
+@Test func taskNotificationIsNoNewTurn() {
+    // Ein fertiger Hintergrund-Agent kommt als `UserPromptSubmit` mitten im Turn.
+    var book = SessionBook()
+    let id = UUID()
+    _ = book.apply(envelope: event("UserPromptSubmit") { $0.prompt = "los" }, settings: .default, now: t0)
+    _ = book.apply(envelope: event("PostToolUseFailure") { $0.toolName = "Bash"; $0.error = "Exit code 1" }, settings: .default, now: t0)
+    _ = book.apply(envelope: event("PermissionRequest", mode: .decide, id: id) {
+        $0.toolName = "Write"; $0.toolInput = .object(["file_path": .string("/tmp/x.txt")])
+    }, settings: .default, now: t0)
+    let changes = book.apply(envelope: event("UserPromptSubmit") { $0.prompt = "<task-notification>\n<task-id>a1</task-id>" },
+                             settings: .default, now: t0.addingTimeInterval(5))
+    #expect(changes.isEmpty)
+    let s = book.sessions["claude:s1"]
+    #expect(s?.pending?.requestId == id)
+    #expect(s?.status == .waitingApproval)
+    #expect(s?.errorCount == 1)
+    #expect(book.visibleSessions(settings: .default, now: t0.addingTimeInterval(5)).first?.title == "los")
+}
+
+@Test func subagentStepsStayOutOfTheMainSession() {
+    var book = SessionBook()
+    _ = book.apply(envelope: event("PreToolUse") { $0.toolName = "Bash"; $0.toolInput = .object(["command": .string("npm test")]) },
+                   settings: .default, now: t0)
+    _ = book.apply(envelope: event("SubagentStart") { $0.agentId = "a1"; $0.agentType = "Explore" }, settings: .default, now: t0)
+    _ = book.apply(envelope: event("PreToolUse") {
+        $0.toolName = "Bash"; $0.toolInput = .object(["command": .string("sleep 4")]); $0.agentId = "a1"; $0.agentType = "Explore"
+    }, settings: .default, now: t0)
+    #expect(book.sessions["claude:s1"]?.lastStep == "Führt aus: npm test")
+    #expect(book.sessions["claude:s1"]?.runningSubagents == 1)
+    let id = UUID()
+    _ = book.apply(envelope: event("PermissionRequest", mode: .decide, id: id) {
+        $0.toolName = "Bash"; $0.toolInput = .object(["command": .string("rm x")]); $0.agentId = "a1"; $0.agentType = "Explore"
+    }, settings: .default, now: t0)
+    #expect(book.sessions["claude:s1"]?.pending?.subagent == "Explore")
+    // Ein `SubagentStop` ohne bekannte ID (Prompt-Vorschläge nach jedem `Stop`) zählt nicht.
+    _ = book.apply(envelope: event("SubagentStop") { $0.agentId = "zz" }, settings: .default, now: t0)
+    #expect(book.sessions["claude:s1"]?.runningSubagents == 1)
+    _ = book.apply(envelope: event("SubagentStop") { $0.agentId = "a1" }, settings: .default, now: t0)
+    #expect(book.sessions["claude:s1"]?.runningSubagents == 0)
+}
+
+@Test func subagentFieldsAreDecoded() throws {
+    let json = #"{"hook_event_name":"PreToolUse","session_id":"s1","agent_id":"a1","agent_type":"Explore"}"#
+    let e = try JSONDecoder().decode(HookEvent.self, from: Data(json.utf8))
+    #expect(e.agentId == "a1")
+    #expect(e.agentType == "Explore")
+}

@@ -35,6 +35,11 @@ struct SessionDetailView: View {
                 contextFact
                 limitFacts
                 fact(L("Verlauf")) { Text(historyText) }
+                if session.runningSubagents > 0 {
+                    fact(L("Unteragenten")) {
+                        Text(session.runningSubagents == 1 ? L("1 läuft") : L("{0} laufen", session.runningSubagents))
+                    }
+                }
                 if !session.recentErrors.isEmpty {
                     fact(L("Fehler im Turn")) {
                         VStack(alignment: .leading, spacing: 2) {

@@ -52,6 +52,8 @@ public struct SessionBook: Sendable {
         var agentPid: Int32?
         /// Von Hand aus der Notch entfernt; neue Aktivität danach holt die Session zurück.
         var dismissedAt: Date?
+        /// Laufende Unteragenten nach `agent_id`.
+        var subagents: Set<String> = []
     }
 
     public init() {}
@@ -91,9 +93,11 @@ public struct SessionBook: Sendable {
                 break
             }
             let tool = e.toolName ?? L("Werkzeug")
-            extra.pendings.append(PendingRequest(
+            var request = PendingRequest(
                 requestId: envelope.requestId, kind: .permission(tool: tool, summary: PermissionText.summary(tool: tool, input: e.toolInput)),
-                toolInput: e.toolInput, createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout)))
+                toolInput: e.toolInput, createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout))
+            request.subagent = Self.subagentName(e)
+            extra.pendings.append(request)
             extra.hookStatusAt = now
             if settings.signalOnPermission { changes.append(.raise(sessionKey: key, trigger: .permission)) }
         case ("PreToolUse", .decide) where e.toolName == "AskUserQuestion":
@@ -102,9 +106,11 @@ public struct SessionBook: Sendable {
                 changes.append(.release(requestId: envelope.requestId))
                 break
             }
-            extra.pendings.append(PendingRequest(
+            var request = PendingRequest(
                 requestId: envelope.requestId, kind: .question(questions), toolInput: e.toolInput,
-                createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout)))
+                createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout))
+            request.subagent = Self.subagentName(e)
+            extra.pendings.append(request)
             extra.hookStatusAt = now
             if settings.signalOnQuestion { changes.append(.raise(sessionKey: key, trigger: .question)) }
         case (_, .decide):
@@ -112,19 +118,27 @@ public struct SessionBook: Sendable {
             changes.append(.release(requestId: envelope.requestId))
         case ("SessionStart", _):
             extra.hookStatusAt = extra.hookStatusAt ?? now
+            extra.subagents = []
+        case ("UserPromptSubmit", _) where e.prompt?.hasPrefix("<") == true:
+            // Kein Prompt des Besitzers, sondern eine Meldung von Claude Code mitten im Turn, etwa
+            // `<task-notification>`, wenn ein Hintergrund-Agent fertig ist. Offene Anfragen und die Fehler des Turns
+            // bleiben.
+            session.status = session.status.isWaiting ? session.status : .working
+            extra.hookStatusAt = now
         case ("UserPromptSubmit", _):
             changes += releaseAll(&extra, key: key)
             extra.hookErrors = 0
             extra.hookErrorTexts = []
             extra.turnFailed = false
-            if let prompt = e.prompt, !prompt.hasPrefix("<") {
+            if let prompt = e.prompt {
                 extra.firstPrompt = extra.firstPrompt ?? prompt
                 extra.lastPrompt = prompt
             }
             session.status = .working
             extra.hookStatusAt = now
         case ("PreToolUse", _):
-            if let tool = e.toolName {
+            // Schritte von Unteragenten sind nicht der letzte Schritt der Haupt-Session.
+            if let tool = e.toolName, e.agentId == nil {
                 session.lastStep = StepDescriber.describe(tool: tool, input: e.toolInput)
                 extra.hookStepAt = now
             }
@@ -153,6 +167,10 @@ public struct SessionBook: Sendable {
             default:
                 break
             }
+        case ("SubagentStart", _):
+            if let id = e.agentId { extra.subagents.insert(id) }
+        case ("SubagentStop", _):
+            if let id = e.agentId { extra.subagents.remove(id) }
         case ("Stop", _) where extra.turnFailed:
             // Der Fehler dieses Turns bleibt stehen; sein Signal kam schon.
             changes += releaseAll(&extra, key: key)
@@ -414,6 +432,7 @@ public struct SessionBook: Sendable {
         case nil: break
         }
         session.errorCount = max(extra.hookErrors, extra.transcriptErrors)
+        session.runningSubagents = extra.subagents.count
         session.recentErrors = extra.transcriptErrors >= extra.hookErrors ? extra.transcriptErrorTexts : extra.hookErrorTexts
         session.title = Self.title(extra, projectName: session.projectName, source: .lastPrompt)
         sessions[key] = session
@@ -446,6 +465,12 @@ public struct SessionBook: Sendable {
         guard let expected = pending.toolInput?.objectValue else { return pending.toolInput == nil || pending.toolInput == input }
         guard let actual = input?.objectValue else { return false }
         return expected.allSatisfy { actual[$0.key] == $0.value }
+    }
+
+    /// Art des Unteragenten, von dem ein Ereignis kommt; `nil` für die Haupt-Session.
+    private static func subagentName(_ e: HookEvent) -> String? {
+        guard e.agentId != nil || e.agentType != nil else { return nil }
+        return e.agentType.flatMap { $0.isEmpty ? nil : $0 } ?? L("Unteragent")
     }
 
     /// Alle Fragen von `AskUserQuestion`; Fragen ohne Text fallen weg.
