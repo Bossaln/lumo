@@ -13,7 +13,7 @@ let package = Package(
         .target(name: "LumoCore", path: "Sources/LumoCore"),
         // Das Programm, das Claude Code und Codex als Hook aufrufen (siehe `HookClient`).
         .executableTarget(name: "lumo-hook", dependencies: ["LumoCore"], path: "Sources/lumo-hook"),
-        // Der fahrende GT-R nach `brew install` und `brew upgrade` (siehe `InstallGreeting`).
+        // Die Begrüßungsszene nach `brew install` und `brew upgrade` (siehe `InstallGreeting`, `WelcomeScene`).
         .executableTarget(name: "lumo-welcome", dependencies: ["LumoCore"], path: "Sources/lumo-welcome"),
         .executableTarget(
             name: "Lumo",

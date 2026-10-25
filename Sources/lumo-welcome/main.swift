@@ -26,20 +26,31 @@ func put(_ text: String) {
     text.withUTF8 { bytes in _ = write(terminal, bytes.baseAddress, bytes.count) }
 }
 
-// Bricht jemand mitten in der Fahrt ab, kommt der Cursor zurück.
+// Bricht jemand mittendrin ab, kommen Bildschirmseite und Cursor zurück.
 for stop in [SIGINT, SIGTERM, SIGHUP] {
     signal(stop) { _ in
-        put("\u{1B}[0m\u{1B}[?25h\n")
+        put("\u{1B}[0m\u{1B}[?1049l\u{1B}[?25h\n")
         exit(0)
     }
 }
 
 var size = winsize()
-let columns = withUnsafeMutablePointer(to: &size) { ioctl(terminal, UInt(TIOCGWINSZ), $0) } == 0 && size.ws_col > 0
-    ? Int(size.ws_col) : 80
-for frame in InstallGreeting.frames(columns: columns) {
-    put(frame.text)
-    if frame.pause > 0 { usleep(UInt32(frame.pause * 1_000_000)) }
+let known = withUnsafeMutablePointer(to: &size) { ioctl(terminal, UInt(TIOCGWINSZ), $0) } == 0
+let columns = known && size.ws_col > 0 ? Int(size.ws_col) : 80
+// Ist die Höhe bekannt und reicht sie, läuft die Szene im Vollbild auf einer eigenen Seite; sonst an Ort und Stelle
+// (etwa hinter Homebrews Pseudo-Terminal, das keine Größe meldet).
+if known, size.ws_row > 0, let fullscreen = InstallGreeting.fullscreenFrames(columns: columns, rows: Int(size.ws_row)) {
+    for frame in fullscreen.frames {
+        put(frame.text)
+        if frame.pause > 0 { usleep(UInt32(frame.pause * 1_000_000)) }
+    }
+    usleep(1_800_000)
+    put(fullscreen.closing)
+} else {
+    for frame in InstallGreeting.frames(columns: columns) {
+        put(frame.text)
+        if frame.pause > 0 { usleep(UInt32(frame.pause * 1_000_000)) }
+    }
 }
 close(terminal)
 exit(0)

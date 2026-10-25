@@ -343,6 +343,7 @@ extension Localization {
         "lumo entfernt seine Hooks aus Claude Code und Codex, legt Einstellungen, Sicherungen, Protokolle und Caches in den Papierkorb und setzt seine Berechtigungen zurück. Danach startet lumo neu, als wäre es gerade installiert.": "lumo removes its hooks from Claude Code and Codex, moves its settings, backups, logs and caches to the Trash and resets its permissions. Then lumo relaunches as if it had just been installed.",
         "lumo ist aktuell": "lumo is up to date",
         "lumo ist installiert – los geht's!": "lumo is installed – let's go!",
+        "Öffne lumo im Programme-Ordner – die Einrichtung macht den Rest.": "Open lumo from your Applications folder – setup does the rest.",
         "lumo komplett zurücksetzen?": "Reset lumo completely?",
         "lumo läuft. Die Notch hört gleich auf zu leuchten – viel Spaß!": "lumo is running. The notch will stop glowing in a moment – have fun!",
         "lumo merkt sich nur, wo die Dateien liegen; kopiert oder verschoben wird nichts. Wer eine Datei aus der Notch zieht, bekommt eine Kopie. Gelöschte Dateien verschwinden von selbst aus der Ablage.": "lumo only remembers where the files are; nothing is copied or moved. Dragging a file out of the notch gives you a copy. Deleted files disappear from the shelf on their own.",

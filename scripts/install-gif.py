@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Zeichnet docs/images/install.gif für die README: Terminal, getippter brew-Befehl, Homebrew-Ausgabe, dann der echte
-GT-R aus `lumo-welcome`.
+"""Zeichnet docs/images/install.gif für die README: Terminal, getippter brew-Befehl, Homebrew-Ausgabe, dann die echte
+Begrüßungsszene aus `lumo-welcome` (MacBook, Leuchten, Signal, Musik, GT-R).
 
-Der Wagen kommt aus einem Mitschnitt der echten Ausgabe (ANSI-Text), auf dem Mac in einem Terminal mit 72 Spalten:
+Die Szene kommt aus einem Mitschnitt der echten Ausgabe (ANSI-Text) in einem Pseudo-Terminal mit 72 Spalten und
+20 Zeilen (so zeichnet das Programm an Ort und Stelle statt im Vollbild), zum Beispiel mit Pythons `pty`:
 
-    LANG=en_US.UTF-8 script -q /tmp/welcome.txt /Applications/lumo.app/Contents/MacOS/lumo-welcome
+    LANG=en_US.UTF-8 python3 capture.py /tmp/welcome.txt 72 20 /Applications/lumo.app/Contents/MacOS/lumo-welcome
 
 Braucht Pillow (`pip install pillow`); Schriften: DejaVu Sans Mono und Inter, sonst Menlo und SF (macOS).
 Aufruf aus dem Projektordner: python3 scripts/install-gif.py /tmp/welcome.txt
@@ -18,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 capture = sys.argv[1]
 out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(root, "docs", "images", "install.gif")
-W, H = 960, 540
+W, H = 960, 760
 COLS = 72
 BG = (11, 12, 16)
 WINDOW = (22, 24, 29)
@@ -47,43 +48,77 @@ CHAR_W = mono.getlength("M")
 LINE_H = 21
 LEFT, TOP = 56, 92
 
-# GT-R-Bilder aus dem Mitschnitt: jedes Bild beginnt nach „Cursor 6 Zeilen hoch“.
-raw = open(capture, encoding="utf-8", errors="replace").read()
-chunks = raw.split("\x1b[6A")
+# Die Szene aus dem Mitschnitt: ein kleines virtuelles Terminal liest die Steuerzeichen (Farben, Cursor hoch,
+# Zeile löschen) und merkt sich vor jedem Cursorsprung ein Bild.
+def xterm(i):
+    base = [(0,0,0),(205,0,0),(0,205,0),(205,205,0),(0,0,238),(205,0,205),(0,205,205),(229,229,229),
+            (127,127,127),(255,0,0),(0,255,0),(255,255,0),(92,92,255),(255,0,255),(0,255,255),(255,255,255)]
+    if i < 16: return base[i]
+    if i < 232:
+        i -= 16; r, g, b = i // 36, (i // 6) % 6, i % 6
+        return tuple(0 if v == 0 else 55 + v * 40 for v in (r, g, b))
+    v = 8 + (i - 232) * 10
+    return (v, v, v)
+
+class Term:
+    def __init__(self, cols=120, rows=60):
+        self.cols, self.rows = cols, rows
+        self.grid = [[(" ", None, None, False) for _ in range(cols)] for _ in range(rows)]
+        self.x = self.y = 0
+        self.fg = self.bg = None; self.bold = False
+        self.frames = []
+    def snapshot(self):
+        self.frames.append([row[:] for row in self.grid])
+    def feed(self, s):
+        i = 0
+        while i < len(s):
+            c = s[i]
+            if c == "\x1b":
+                m = re.match(r"\x1b\[([0-9;?]*)([A-Za-z])", s[i:])
+                if m:
+                    p, cmd = m.group(1), m.group(2); i += m.end()
+                    if cmd == "m":
+                        parts = [int(v) for v in p.split(";") if v != ""] or [0]
+                        j = 0
+                        while j < len(parts):
+                            v = parts[j]
+                            if v == 0: self.fg = self.bg = None; self.bold = False
+                            elif v == 1: self.bold = True
+                            elif v == 38 and parts[j+1] == 5: self.fg = parts[j+2]; j += 2
+                            elif v == 48 and parts[j+1] == 5: self.bg = parts[j+2]; j += 2
+                            j += 1
+                    elif cmd == "A": self.snapshot(); self.y = max(self.y - int(p or 1), 0)
+                    elif cmd == "H":
+                        if self.frames or any(ch != " " for row in self.grid for ch, *_ in row): self.snapshot()
+                        r, _, col = (p or "1;1").partition(";"); self.y, self.x = int(r or 1) - 1, int(col or 1) - 1
+                    elif cmd == "J": self.grid = [[(" ", None, None, False) for _ in range(self.cols)] for _ in range(self.rows)]
+                    elif cmd == "K":
+                        for k in range(self.x, self.cols): self.grid[self.y][k] = (" ", None, None, False)
+                    continue
+            if c == "\n": self.y += 1; self.x = 0
+            elif c == "\r": self.x = 0
+            elif c >= " ":
+                if self.y < self.rows and self.x < self.cols:
+                    self.grid[self.y][self.x] = (c, self.fg, self.bg, self.bold)
+                self.x += 1
+            i += 1
+        self.snapshot()
 
 
-def parse_frame(chunk):
-    """Zeilen aus (Zeichen, Farbe) eines Bildes."""
-    rows, row, color = [], [], None
-    i = 0
-    while i < len(chunk):
-        c = chunk[i]
-        if c == "\x1b":
-            m = re.match(r"\x1b\[([0-9;?]*)([A-Za-z])", chunk[i:])
-            if m:
-                params, cmd = m.group(1), m.group(2)
-                if cmd == "m":
-                    color = PALETTE.get(int(params.split(";")[-1])) if params.startswith("38;5") else None
-                i += m.end()
-                continue
-        if c == "\n":
-            rows.append(row)
-            row = []
-        elif c != "\r":
-            row.append((c, color))
-        i += 1
-    rows.append(row)
-    return rows[-7:]
-
-
-frames_gtr = [parse_frame(c) for c in chunks]
-frames_gtr[0] = frames_gtr[0][-7:]
+SCENE_COLS = 72
+raw = open(capture, encoding="utf-8", errors="replace", newline="").read()
+term = Term(cols=SCENE_COLS, rows=40)
+term.feed(raw)
+# Jedes Bild: die 20 Zeilen der Szene; sie beginnt nach dem ersten Zeilenumbruch in Zeile 1.
+SCENE_ROWS = 20
+frames_scene = [frame[1:1 + SCENE_ROWS] for frame in term.frames]
+frames_scene = [frame for frame in frames_scene if any(ch != " " for row in frame for ch, *_ in row)]
 
 prompt = "~ % "
 command = "brew install --cask bossaln/tap/lumo"
 brew_lines = [
     [("==> ", BLUE), ("Tapping bossaln/tap", TEXT)],
-    [("==> ", BLUE), ("Downloading lumo-0.8.0.zip", TEXT)],
+    [("==> ", BLUE), ("Downloading lumo-0.8.1.zip", TEXT)],
     [("######################################################### 100.0%", DIM)],
     [("==> ", BLUE), ("Installing Cask ", TEXT), ("lumo", GREEN)],
     [("==> ", BLUE), ("Moving App 'lumo.app' to '/Applications/lumo.app'", TEXT)],
@@ -128,9 +163,11 @@ def scene(typed, brew_count, gtr=None, caret=True, done=False):
         y += LINE_H // 2
         for row in gtr:
             x = LEFT
-            for ch, color in row[:COLS]:
+            for ch, fg, bg, bold in row[:COLS]:
+                if bg is not None:
+                    draw.rectangle((x, y, x + CHAR_W - 1, y + LINE_H - 1), fill=xterm(bg))
                 if ch != " ":
-                    draw.text((x, y), ch, font=mono, fill=color or TEXT)
+                    draw.text((x, y), ch, font=mono, fill=xterm(fg) if fg is not None else TEXT)
                 x += CHAR_W
             y += LINE_H
     if done:
@@ -155,10 +192,10 @@ for n in range(1, len(command) + 1):
 frames.append(scene(command, 0, caret=False)); durations.append(450)
 for n in range(1, len(brew_lines) + 1):
     frames.append(scene(command, n)); durations.append(380 if n != 3 else 650)
-# Der GT-R: Motor läuft (10 Bilder à 70 ms), dann fährt er los (je 30 ms).
-for index, gtr in enumerate(frames_gtr):
-    frames.append(scene(command, len(brew_lines), gtr)); durations.append(70 if index < 10 else 30)
-frames.append(scene(command, len(brew_lines), frames_gtr[-1], done=True)); durations.append(3500)
+# Die Szene: MacBook, Leuchten, Signal, Musik, GT-R. Die Standzeiten entsprechen grob denen im Programm.
+for index, picture in enumerate(frames_scene):
+    frames.append(scene(command, len(brew_lines), picture)); durations.append(60)
+frames.append(scene(command, len(brew_lines), frames_scene[-1], done=True)); durations.append(4000)
 
 frames[0].save(out, save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True, disposal=1)
 print(out, len(frames), "Bilder")
