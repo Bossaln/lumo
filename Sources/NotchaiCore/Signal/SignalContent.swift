@@ -71,15 +71,35 @@ public struct SignalContent: Equatable, Sendable, Identifiable {
     public var subtitle: String
     public var detail: String?
     public var kind: SignalKind
+    /// Bei mehreren Fragen: „1/2“. Steht für sich und wird nie gekürzt.
+    public var progress: String?
+    /// Frage mit Mehrfachauswahl: Optionen schalten um, „Senden“ schickt die Auswahl.
+    public var multiSelect = false
+    /// Die Kurzfassung (`detail`) zeigt nicht alles: der ganze Befehl und ein Hinweis darauf („+1 Zeile“).
+    public var fullDetail: String?
+    public var detailNote: String?
 
     public init(id: UUID = UUID(), agent: SignalAgent, title: String, subtitle: String, detail: String? = nil,
-                kind: SignalKind) {
+                kind: SignalKind, progress: String? = nil, multiSelect: Bool = false, fullDetail: String? = nil,
+                detailNote: String? = nil) {
         self.id = id
         self.agent = agent
         self.title = title
         self.subtitle = subtitle
         self.detail = detail
         self.kind = kind
+        self.progress = progress
+        self.multiSelect = multiSelect
+        self.fullDetail = fullDetail
+        self.detailNote = detailNote
+    }
+
+    /// Antwort einer Mehrfachauswahl: die gewählten Optionen in ihrer Reihenfolge, dahinter getippter Text.
+    public func multiSelectAnswer(selected: Set<String>, typed: String) -> SignalAction? {
+        let options = kind.visibleOptions.filter(selected.contains)
+        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = options + (text.isEmpty ? [] : [text])
+        return parts.isEmpty ? nil : .answer(parts.joined(separator: ", "))
     }
 }
 

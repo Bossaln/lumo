@@ -23,7 +23,7 @@ let air = ScreenInfo(frame: CGRect(x: 0, y: 0, width: 1512, height: 982),
 }
 @Test func islandGrowsSidewaysOnly() {
     let f = NotchGeometry.frame(for: .island, screen: air, islandSideWidth: 120)!
-    #expect(f.width == CGFloat(188 + 240)); #expect(f.height == 32)
+    #expect(f.width == CGFloat(188 + 240) + 2 * NotchGeometry.islandEdge); #expect(f.height == 32)
     #expect(f.midX == 756); #expect(f.maxY == 982)
 }
 @Test func bannerIsWideAndShort() {
@@ -52,7 +52,7 @@ let air = ScreenInfo(frame: CGRect(x: 0, y: 0, width: 1512, height: 982),
 @Test func bannerIsNeverNarrowerThanIsland() {
     // Klappt eine breite Island zum Banner auf, darf die Form nicht schmaler werden.
     let f = NotchGeometry.frame(for: .banner, screen: air, islandSideWidth: 300)!
-    #expect(f.width == CGFloat(188 + 600)); #expect(f.midX == 756)
+    #expect(f.width == CGFloat(188 + 600) + 2 * NotchGeometry.islandEdge); #expect(f.midX == 756)
 }
 @Test func compactIsSlimmerThanIsland() {
     // Musik eingeklappt: so hoch wie die Notch, links Cover, rechts Balken, schmaler als die Island.

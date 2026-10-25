@@ -76,6 +76,9 @@ signal style, animations, glow, sounds, which tab opens on hover, music sources,
 
 - A MacBook with a notch (Apple silicon) running macOS 14 Sonoma or later
 - [Claude Code](https://code.claude.com/docs) and/or [Codex](https://github.com/openai/codex)
+- To reply to sessions in [cmux](https://cmux.com) and jump to their tab: in cmux › Settings › Automation, set the
+  socket control mode to **Automation mode**. With the default ("cmux processes only"), cmux turns notchai away;
+  notchai then puts your reply on the clipboard and brings cmux to the front.
 
 ## Install
 

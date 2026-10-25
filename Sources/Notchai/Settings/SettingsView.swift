@@ -708,10 +708,13 @@ struct SettingsView: View {
                 }
             }
             Section(L("Diagnose")) {
-                LabeledContent(L("Letzte Hook-Ereignisse")) {
+                LabeledContent {
                     Button(L("Kopieren")) {
                         DeveloperTools.copy(developer.hookEventsText(), empty: L("Noch keine Hook-Ereignisse empfangen."))
                     }
+                } label: {
+                    Text(L("Letzte Hook-Ereignisse"))
+                    Text(L("Ereignisse, Felder und Umgebung. Zugangsdaten sind unkenntlich, Prompts und Inhalte auf 80 Zeichen gekürzt."))
                 }
                 LabeledContent(L("Session-Quellen")) {
                     Button(L("Kopieren")) {

@@ -109,6 +109,8 @@ struct NotchRootView: View {
         let id = signal.id
         let act: (SignalAction) -> Void = { model.performSignalAction($0, for: id) }
         let draft = Binding(get: { model.draft(for: id) }, set: { model.setDraft($0, for: id) })
+        let choices = SignalChoices(selection: model.selection(for: id), toggle: { model.toggleOption($0, for: id) },
+                                    submit: { model.submitSelection(for: id) })
         let notch = model.screen.flatMap(NotchGeometry.notchRect)
         let notchWidth = notch?.width ?? 0
         switch style {
@@ -119,9 +121,11 @@ struct NotchRootView: View {
                              reportButtonArea: { model.islandButtonArea = $0 })
         case .banner:
             SignalBannerView(content: signal, theme: theme, notchWidth: notchWidth,
-                             bandHeight: notch?.height ?? 0, draft: draft, act: act)
+                             bandHeight: notch?.height ?? 0, draft: draft, choices: choices,
+                             showFull: { model.showFullRequest() }, act: act)
         case .vertical:
-            SignalVerticalView(content: signal, theme: theme, draft: draft, act: act)
+            SignalVerticalView(content: signal, theme: theme, notchHeight: notch?.height ?? 32, draft: draft,
+                               choices: choices, showFull: { model.showFullRequest() }, act: act)
         }
     }
 
@@ -190,7 +194,7 @@ struct NotchRootView: View {
         case .trackSides: (6, 14)
         case .trackBanner: (10, 26)
         case .banner: (10, 30)
-        case .vertical: (10, 24)
+        case .vertical, .verticalCompact: (10, 24)
         // Oben je Seite eine kleine Wölbung in den Bildschirmrand, unten 22 pt rund.
         case .panel: (NotchGeometry.panelEar, 22)
         }

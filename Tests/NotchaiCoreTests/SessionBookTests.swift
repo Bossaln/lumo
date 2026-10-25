@@ -9,6 +9,8 @@ private func envelope(_ name: String, session: String = "s1", agent: AgentKind =
                       env: [String: String] = [:], id: UUID = UUID(),
                       configure: (inout HookEvent) -> Void = { _ in }) -> HookEnvelope {
     var event = HookEvent(hookEventName: name, sessionId: session)
+    // Echte Sessions haben immer ein Transkript; ohne zeigt die Liste sie nicht.
+    event.transcriptPath = "/Users/test/.claude/projects/notchai/\(session).jsonl"
     event.cwd = cwd
     event.toolName = tool
     event.toolInput = input.map { try! JSONDecoder().decode(JSONValue.self, from: Data($0.utf8)) }
@@ -44,15 +46,17 @@ private let questionInput = #"""
     #expect(s.pending?.deadline == t0.addingTimeInterval(120))
 }
 
-@Test func askUserQuestionParsesFirstQuestion() throws {
+@Test func askUserQuestionParsesAllQuestions() throws {
     var book = SessionBook()
     let changes = book.apply(envelope: envelope("PreToolUse", mode: .decide, tool: "AskUserQuestion", input: questionInput),
                              settings: .default, now: t0)
     #expect(changes == [.raise(sessionKey: "claude:s1", trigger: .question)])
     let s = try #require(book.sessions["claude:s1"])
     #expect(s.status == .waitingAnswer)
-    #expect(s.pending?.kind == .question(QuestionPrompt(question: "Welche Farbe?", header: "Farbe", options: ["Rot", "Blau"],
-                                                         multiSelect: false, moreCount: 1)))
+    #expect(s.pending?.kind == .question([
+        QuestionPrompt(question: "Welche Farbe?", header: "Farbe", options: ["Rot", "Blau"], multiSelect: false),
+        QuestionPrompt(question: "Wie groß?", header: nil, options: ["Klein"], multiSelect: false),
+    ]))
     #expect(s.pending?.toolInput?["questions"]?.arrayValue?.count == 2)
 }
 

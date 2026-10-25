@@ -19,6 +19,17 @@ final class HookCoordinator {
     private var recentEnvelopes: [HookEnvelope] = []
     /// Zu welcher Session das angezeigte Signal gehört (Signal-ID → Session-Schlüssel).
     private var signalSessions: [UUID: String] = [:]
+    /// Wartende Shell-Freigaben: Startet ihr Befehl unter dem Agenten, wurde sie im Terminal erlaubt.
+    private var commandWatches: [UUID: CommandWatch] = [:]
+    /// Zu diesem Signal kam schon der Ton (dieselbe Anfrage wird beim Weiterblättern neu gezeigt).
+    private var soundedSignal: UUID?
+
+    private struct CommandWatch {
+        let agentPid: Int32
+        let needle: String
+        /// Kinder des Agenten, die schon vor der Anfrage liefen (MCP-Server, Hintergrund-Shells).
+        let known: Set<Int32>
+    }
     /// Meldet, ob irgendeine Session auf den Besitzer wartet (Menüleisten-Punkt).
     var onWaitingChange: ((Bool) -> Void)?
     /// Fehler beim Start des Servers, für den Bereich „Allgemein“.
@@ -89,7 +100,34 @@ final class HookCoordinator {
             closeSignal(shown.id)
         }
         process(book.apply(envelope: envelope, settings: settings, now: Date()))
+        watchCommand(of: envelope)
         refreshSessions()
+    }
+
+    /// Merkt sich eine wartende Shell-Freigabe, um eine Entscheidung im Terminal zu erkennen (`checkCommands`).
+    private func watchCommand(of envelope: HookEnvelope) {
+        let e = envelope.event
+        guard envelope.mode == .decide, e.hookEventName == "PermissionRequest", let pid = envelope.agentPid,
+              let needle = PermissionText.processNeedle(tool: e.toolName ?? "", input: e.toolInput),
+              isPending(envelope.requestId) else { return }
+        commandWatches[envelope.requestId] = CommandWatch(agentPid: pid, needle: needle,
+                                                          known: Set(ProcessTree.systemChildren(pid)))
+    }
+
+    /// Claude Code meldet nicht, wenn eine Freigabe im Terminal erlaubt wird. Der Befehl startet dann aber als Kind
+    /// des Agenten; ab da ist die Anfrage in der Notch überholt.
+    private func checkCommands() {
+        guard !commandWatches.isEmpty else { return }
+        for (id, watch) in commandWatches {
+            guard isPending(id) else {
+                commandWatches[id] = nil
+                continue
+            }
+            if ProcessTree.startedChild(of: watch.agentPid, containing: watch.needle, except: watch.known) {
+                commandWatches[id] = nil
+                process(book.answeredElsewhere(requestId: id))
+            }
+        }
     }
 
     private func apply(_ summaries: [TranscriptSummary], stats: DailyStats) {
@@ -107,6 +145,7 @@ final class HookCoordinator {
             server?.reply(HookReply(requestId: id, stdout: HookOutput.noDecision))
         }
         process(changes)
+        checkCommands()
         // Terminal oder App geschlossen, ohne dass `SessionEnd` kam: Der Agent-Prozess ist weg, die Session auch.
         process(book.removeEnded(isAlive: ProcessTree.isAlive))
         refreshSessions()
@@ -134,7 +173,8 @@ final class HookCoordinator {
                 }
                 showNextRequest()
             case .raise(let key, let trigger):
-                sounds.play(trigger, settings: settings)
+                // Der Ton kommt mit dem Signal (`show`), nicht schon hier: Wartet es hinter einem anderen,
+                // passte er sonst nicht zu dem, was zu sehen ist.
                 switch trigger {
                 case .permission, .question:
                     if !showNextRequest(), book.sessions[key]?.pending == nil, let content = attentionSignal(key) {
@@ -171,7 +211,20 @@ final class HookCoordinator {
         }
         // Es ist immer nur ein Signal zu sehen; ältere Zuordnungen (auch von selbst geschlossenen) verfallen.
         signalSessions = [content.id: key]
+        if soundedSignal != content.id {
+            soundedSignal = content.id
+            sounds.play(Self.trigger(of: content.kind), settings: settings)
+        }
         model.raiseSignal(content)
+    }
+
+    private static func trigger(of kind: SignalKind) -> SignalTrigger {
+        switch kind {
+        case .permission: .permission
+        case .question: .question
+        case .done: .done
+        case .error: .error
+        }
     }
 
     private func closeSignal(_ id: UUID) {
@@ -193,16 +246,21 @@ final class HookCoordinator {
 
     private func requestSignal(_ entry: PendingEntry) -> SignalContent? {
         guard let session = book.sessions[entry.sessionKey] else { return nil }
-        switch entry.request.kind {
+        let request = entry.request
+        switch request.kind {
         case .permission(let tool, let summary):
             let isShell = ["Bash", "exec_command", "shell"].contains(tool)
-            return SignalContent(id: entry.request.requestId, agent: session.agent, title: title(session),
+            let full = request.fullCommand
+            return SignalContent(id: request.requestId, agent: session.agent, title: title(session),
                                  subtitle: isShell ? L("Möchte ausführen:") : L("Möchte {0} verwenden:", tool),
-                                 detail: summary, kind: .permission)
-        case .question(let question):
-            let more = question.moreCount > 0 ? " (+\(question.moreCount) weitere)" : ""
-            return SignalContent(id: entry.request.requestId, agent: session.agent, title: title(session),
-                                 subtitle: question.question + more, kind: .question(options: question.options))
+                                 detail: summary, kind: .permission, fullDetail: full,
+                                 detailNote: full.map(PermissionText.note))
+        case .question(let questions):
+            guard let current = request.currentQuestion else { return nil }
+            let progress = questions.count > 1 ? "\(current.index + 1)/\(questions.count)" : nil
+            return SignalContent(id: request.requestId, agent: session.agent, title: title(session),
+                                 subtitle: current.prompt.question, kind: .question(options: current.prompt.options),
+                                 progress: progress, multiSelect: current.prompt.multiSelect)
         }
     }
 
@@ -229,9 +287,17 @@ final class HookCoordinator {
             switch (entry.request.kind, action) {
             case (.permission, .allow): output = HookOutput.permissionAllow()
             case (.permission, .deny): output = HookOutput.permissionDeny(message: L("In notchai abgelehnt"))
-            case (.question(let question), .answer(let text)):
-                output = HookOutput.questionAnswer(toolInput: entry.request.toolInput ?? .object([:]),
-                                                   answers: [question.question: text])
+            case (.question, .answer(let text)):
+                // Mehrere Fragen: erst mit der letzten Antwort geht alles zusammen zurück, vorher die nächste Frage.
+                guard let answers = book.recordAnswer(requestId: id, answer: text) else {
+                    if let next = book.pendingRequests().first(where: { $0.request.requestId == id }),
+                       let content = requestSignal(next) {
+                        show(content, for: next.sessionKey)
+                    }
+                    refreshSessions()
+                    return
+                }
+                output = HookOutput.questionAnswer(toolInput: entry.request.toolInput ?? .object([:]), answers: answers)
             case (_, .dismiss): output = HookOutput.noDecision
             default: return
             }
@@ -278,8 +344,9 @@ final class HookCoordinator {
     }
 
     /// Die letzten Hook-Ereignisse als JSON-Zeilen (Entwickler-Seite der Einstellungen; hilft bei den offenen Mac-Prüfungen).
+    /// Zugangsdaten sind unkenntlich, lange Texte gekürzt (`HookExport`): Der Text landet in Issues und Chats.
     func recentEventsText() -> String {
-        recentEnvelopes.compactMap { try? HookWire.encodeLine($0) }
+        recentEnvelopes.map(HookExport.redacted).compactMap { try? HookWire.encodeLine($0) }
             .map { String(decoding: $0, as: UTF8.self) }
             .joined()
     }

@@ -13,6 +13,8 @@ struct SessionRowView: View {
     var isDetail = false
 
     @ViewState private var hovering = false
+    /// Gewählte Optionen einer Frage mit Mehrfachauswahl (je Frage neu).
+    @ViewState private var selection: Set<String> = []
 
     private var settings: AppSettings { model.settingsStore.settings }
     private var agentColor: Color { SessionPalette.agentColor(session.agent, settings: settings) }
@@ -140,32 +142,68 @@ struct SessionRowView: View {
         }
     }
 
-    /// Freigabe: Ablehnen/Erlauben. Frage: bis zu vier Optionen und „Im Terminal antworten“.
+    /// Freigabe: Ablehnen/Erlauben, bei gekürzten Befehlen darüber der ganze Befehl. Frage: die gerade offene
+    /// (bei mehreren „1/2“), bis zu vier Optionen und „Im Terminal antworten“.
     @ViewBuilder
     private func pendingButtons(_ pending: PendingRequest) -> some View {
         let id = pending.requestId
-        HStack(spacing: 6) {
-            switch pending.kind {
-            case .permission(_, let summary):
-                Text(summary)
-                    .font(SignalTheme.monoFont)
-                    .foregroundStyle(theme.detailColor)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                SignalPillButton(title: L("Ablehnen"), compact: true, theme: theme) { model.onDecide?(id, .deny) }
-                SignalPillButton(title: L("Erlauben"), prominent: true, compact: true, theme: theme) { model.onDecide?(id, .allow) }
-            case .question(let question):
-                Text(question.question)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(SessionPalette.title)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                ForEach(Array(question.options.prefix(4)), id: \.self) { option in
-                    SignalPillButton(title: option, compact: true, theme: theme) { model.onDecide?(id, .answer(option)) }
+        switch pending.kind {
+        case .permission(_, let summary):
+            VStack(alignment: .leading, spacing: 6) {
+                if let full = pending.fullCommand {
+                    // Das Panel misst seine Höhe am Inhalt; ein Textblock statt einer Scrollansicht wächst mit.
+                    Text(full)
+                        .font(SignalTheme.monoFont)
+                        .foregroundStyle(theme.detailColor)
+                        .lineLimit(8)
+                        .truncationMode(.tail)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(SignalTheme.codeFill))
                 }
-                SignalPillButton(title: L("Im Terminal antworten"), compact: true, theme: theme) { model.onDecide?(id, .dismiss) }
+                HStack(spacing: 6) {
+                    Text(pending.fullCommand == nil ? summary : PermissionText.note(for: pending.fullCommand ?? ""))
+                        .font(pending.fullCommand == nil ? SignalTheme.monoFont : .system(size: 11.5))
+                        .foregroundStyle(pending.fullCommand == nil ? theme.detailColor : SessionPalette.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    SignalPillButton(title: L("Ablehnen"), compact: true, theme: theme) { model.onDecide?(id, .deny) }
+                    SignalPillButton(title: L("Erlauben"), prominent: true, compact: true, theme: theme) { model.onDecide?(id, .allow) }
+                }
+            }
+        case .question(let questions):
+            if let current = pending.currentQuestion {
+                HStack(spacing: 6) {
+                    if questions.count > 1 { SignalProgressBadge(progress: "\(current.index + 1)/\(questions.count)") }
+                    Text(current.prompt.question)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(SessionPalette.title)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(Array(current.prompt.options.prefix(4)), id: \.self) { option in
+                        if current.prompt.multiSelect {
+                            SignalPillButton(title: option, compact: true, selected: selection.contains(option), theme: theme) {
+                                if selection.contains(option) { selection.remove(option) } else { selection.insert(option) }
+                            }
+                        } else {
+                            SignalPillButton(title: option, compact: true, theme: theme) { model.onDecide?(id, .answer(option)) }
+                        }
+                    }
+                    if current.prompt.multiSelect {
+                        SignalPillButton(title: L("Senden"), prominent: true, compact: true, theme: theme) {
+                            let chosen = current.prompt.options.filter(selection.contains)
+                            guard !chosen.isEmpty else { return }
+                            selection = []
+                            model.onDecide?(id, .answer(chosen.joined(separator: ", ")))
+                        }
+                    }
+                    SignalPillButton(title: L("Im Terminal antworten"), compact: true, theme: theme) { model.onDecide?(id, .dismiss) }
+                }
+                .onChange(of: current.index) { selection = [] }
             }
         }
     }

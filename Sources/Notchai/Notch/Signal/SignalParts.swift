@@ -95,22 +95,104 @@ struct SignalPillButton: View {
     var prominent = false
     /// Flacher für die zweizeilige Frage im Banner.
     var compact = false
+    /// Gewählte Option einer Mehrfachauswahl: Haken davor und Rand in Agentenfarbe.
+    var selected = false
     let theme: SignalTheme
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .padding(.horizontal, compact ? 11 : 13)
-                .padding(.vertical, compact ? 4.5 : 6)
-                .foregroundStyle(prominent ? Color.black : SignalTheme.buttonText)
-                .background(Capsule().fill(prominent ? theme.agentColor : SignalTheme.buttonFill))
-                .contentShape(Capsule())
+            HStack(spacing: 4) {
+                if selected { Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)) }
+                Text(title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, compact ? 11 : 13)
+            .padding(.vertical, compact ? 4.5 : 6)
+            .foregroundStyle(prominent ? Color.black : selected ? theme.detailColor : SignalTheme.buttonText)
+            .background(Capsule().fill(prominent ? theme.agentColor : SignalTheme.buttonFill))
+            .overlay(Capsule().strokeBorder(selected ? theme.agentColor : .clear, lineWidth: 1))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// „1/2“ bei mehreren Fragen; steht für sich, damit es nie mit der Frage abgeschnitten wird.
+struct SignalProgressBadge: View {
+    let progress: String?
+
+    var body: some View {
+        if let progress {
+            Text(progress)
+                .font(.system(size: 10.5, weight: .semibold).monospacedDigit())
+                .foregroundStyle(SignalTheme.buttonText)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1.5)
+                .background(Capsule().fill(SignalTheme.buttonFill))
+                .fixedSize()
+        }
+    }
+}
+
+/// „+1 Zeile ›“: Die Kurzfassung zeigt nicht den ganzen Befehl. Ein Klick öffnet die Sessions, dort steht er ganz.
+struct SignalDetailNote: View {
+    let note: String?
+    let theme: SignalTheme
+    let open: () -> Void
+
+    var body: some View {
+        if let note {
+            Button(action: open) {
+                HStack(spacing: 2) {
+                    Text(note)
+                    Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold))
+                }
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(theme.agentColor)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1.5)
+                .background(Capsule().strokeBorder(theme.agentColor.opacity(0.6), lineWidth: 1))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .help(L("Ganzen Befehl ansehen"))
+        }
+    }
+}
+
+/// Was die Knöpfe einer Frage über die Mehrfachauswahl wissen müssen.
+struct SignalChoices {
+    var selection: Set<String> = []
+    var toggle: (String) -> Void = { _ in }
+    var submit: () -> Void = {}
+}
+
+/// Auswahl-Knöpfe einer Frage: Einzelauswahl schickt sofort ab, Mehrfachauswahl schaltet um und hat „Senden“.
+struct SignalOptionButtons: View {
+    let content: SignalContent
+    let theme: SignalTheme
+    var compact = false
+    let choices: SignalChoices
+    let act: (SignalAction) -> Void
+
+    var body: some View {
+        ForEach(content.kind.visibleOptions, id: \.self) { option in
+            if content.multiSelect {
+                SignalPillButton(title: option, compact: compact, selected: choices.selection.contains(option), theme: theme) {
+                    choices.toggle(option)
+                }
+            } else {
+                SignalPillButton(title: option, compact: compact, theme: theme) { act(.answer(option)) }
+            }
+        }
+        if content.multiSelect {
+            SignalPillButton(title: L("Senden"), prominent: true, compact: compact, theme: theme, action: choices.submit)
+                .layoutPriority(2)
+        }
     }
 }
 
@@ -141,6 +223,8 @@ struct SignalAnswerField: View {
     let act: (SignalAction) -> Void
     /// Flacher für die zweizeilige Frage im Banner.
     var compact = false
+    /// Mehrfachauswahl: Return schickt Auswahl und Text zusammen (`SignalChoices.submit`).
+    var submit: (() -> Void)?
 
     var body: some View {
         TextField(L("Antworten …"), text: $text)
@@ -151,7 +235,7 @@ struct SignalAnswerField: View {
             .padding(.vertical, compact ? 4.5 : 6)
             .background(Capsule().fill(SignalTheme.buttonFill))
             .onSubmit {
-                if let answer = SignalAction.typedAnswer(text) { act(answer) }
+                if let submit { submit() } else if let answer = SignalAction.typedAnswer(text) { act(answer) }
             }
     }
 }
@@ -161,6 +245,7 @@ struct SignalActionRow: View {
     let content: SignalContent
     let theme: SignalTheme
     var showsStatus = true
+    var choices = SignalChoices()
     let act: (SignalAction) -> Void
 
     var body: some View {
@@ -170,9 +255,7 @@ struct SignalActionRow: View {
                 SignalPillButton(title: L("Ablehnen"), theme: theme) { act(.deny) }
                 SignalPillButton(title: L("Erlauben"), prominent: true, theme: theme) { act(.allow) }
             case .question:
-                ForEach(content.kind.visibleOptions, id: \.self) { option in
-                    SignalPillButton(title: option, theme: theme) { act(.answer(option)) }
-                }
+                SignalOptionButtons(content: content, theme: theme, choices: choices, act: act)
                 // Schließen: Der Agent fragt dann selbst im Terminal bzw. in der App.
                 SignalRoundButton(symbol: "xmark", theme: theme) { act(.dismiss) }
             case .done:

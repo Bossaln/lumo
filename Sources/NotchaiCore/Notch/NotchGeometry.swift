@@ -17,6 +17,8 @@ public struct ScreenInfo: Equatable, Sendable {
 
 public enum NotchPresentation: Equatable, Sendable {
     case idle, island, banner, vertical
+    /// Vertikal, nur Kopfzeile: „Fertig“ und „Fehler“ brauchen keinen Platz für Befehl und Knöpfe.
+    case verticalCompact
     /// Musik eingeklappt: links Cover, rechts Balken.
     case compact
     /// Neuer Titel, seitlich ausgefahren: links das Cover, rechts Titel und Interpret (`TrackChangeStyle.island`).
@@ -31,12 +33,17 @@ public enum NotchGeometry {
     public static let bannerExtraHeight: CGFloat = 52
     public static let verticalWidth: CGFloat = 360
     public static let verticalExtraHeight: CGFloat = 150
+    /// Kopfzeile (bis zu zwei Zeilen Text) mit gleichem Rand oben und unten.
+    public static let verticalCompactExtraHeight: CGFloat = 70
     /// Wölbung je Seite oben am aufgeklappten Panel, die in den Bildschirmrand übergeht.
     public static let panelEar: CGFloat = 7
     /// Körper 512 pt breit plus die beiden Wölbungen.
     public static let panelWidth: CGFloat = 512 + 2 * panelEar
     public static let panelMaxHeight: CGFloat = 420
     public static let screenMargin: CGFloat = 20
+    /// Island: schwarzer Rand je Seite zusätzlich zur eingestellten Breite (`islandSideWidth`), damit Text und
+    /// Knöpfe nicht am Rand der Form kleben.
+    public static let islandEdge: CGFloat = 10
     /// Breite je Seite der eingeklappten Musikanzeige.
     public static let compactSideWidth: CGFloat = 46
     /// Neuer Titel, seitlich: Breite je Seite (links Cover und gut 15 Zeichen Titel, rechts der Visualizer).
@@ -44,6 +51,11 @@ public enum NotchGeometry {
     /// Neuer Titel, ausgefahren: Breite und Höhe unter der Kamera.
     public static let trackBannerWidth: CGFloat = 400
     public static let trackBannerExtraHeight: CGFloat = 72
+
+    /// Breite der Island: Notch, je Seite die eingestellte Breite und der Rand `islandEdge`.
+    public static func islandWidth(notch: CGRect, sideWidth: CGFloat) -> CGFloat {
+        notch.width + 2 * (sideWidth + islandEdge)
+    }
 
     /// Hardware-Notch in Bildschirmkoordinaten; `nil` ohne Notch.
     public static func notchRect(_ s: ScreenInfo) -> CGRect? {
@@ -69,7 +81,7 @@ public enum NotchGeometry {
         case .idle:
             return notch
         case .island:
-            size = CGSize(width: notch.width + 2 * islandSideWidth, height: notch.height)
+            size = CGSize(width: islandWidth(notch: notch, sideWidth: islandSideWidth), height: notch.height)
         case .compact:
             size = CGSize(width: notch.width + 2 * compactSideWidth, height: notch.height)
         case .trackSides:
@@ -79,10 +91,12 @@ public enum NotchGeometry {
                           height: notch.height + trackBannerExtraHeight)
         case .banner:
             // Nie schmaler als die Island, aus der das Banner aufklappt.
-            size = CGSize(width: max(bannerMaxWidth, notch.width + 2 * islandSideWidth),
+            size = CGSize(width: max(bannerMaxWidth, islandWidth(notch: notch, sideWidth: islandSideWidth)),
                           height: notch.height + bannerExtraHeight)
         case .vertical:
             size = CGSize(width: verticalWidth, height: notch.height + verticalExtraHeight)
+        case .verticalCompact:
+            size = CGSize(width: verticalWidth, height: notch.height + verticalCompactExtraHeight)
         case .panel(let height):
             size = CGSize(width: panelWidth, height: min(height, panelMaxHeight))
         }

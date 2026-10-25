@@ -10,15 +10,24 @@ import Glibc
 public enum HookClient {
     /// Umgebungsvariablen, aus denen die App erkennt, wo eine Session läuft (`SessionHost`).
     /// Das Messaging-Token bleibt draußen: notchai nutzt den Nachrichten-Socket nicht (`docs/hooks.md`).
+    /// Von cmux nur die IDs der Fläche und des Tabs; cmux setzt daneben Zugangsdaten für seinen Socket
+    /// (`CMUX_CUA_SOCKET_AUTH_TOKEN`, `CMUX_SOCKET_CAPABILITY` …), die notchai nichts angehen.
     private static let forwardedKeys: Set<String> = [
         "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_MESSAGING_SOCKET", "TERM_PROGRAM", "__CFBundleIdentifier",
+        "CMUX_SURFACE_ID", "CMUX_PANEL_ID", "CMUX_WORKSPACE_ID", "CMUX_TAB_ID",
     ]
 
     /// Größte Antwort, die gelesen wird (eine Entscheidungs-JSON ist wenige hundert Bytes groß).
     private static let replyLimit = 1 << 20
 
     public static func forwardedEnvironment(_ env: [String: String]) -> [String: String] {
-        env.filter { forwardedKeys.contains($0.key) || $0.key.hasPrefix("CMUX_") }
+        env.filter { forwardedKeys.contains($0.key) || isSurfaceKey($0.key) }
+    }
+
+    /// Ältere cmux-Versionen nennen die Fläche anders; jede `CMUX_…SURFACE…_ID` zählt, solange der Name nicht
+    /// nach Zugangsdaten klingt.
+    private static func isSurfaceKey(_ key: String) -> Bool {
+        key.hasPrefix("CMUX_") && key.contains("SURFACE") && key.hasSuffix("_ID") && !HookExport.isSecretName(key)
     }
 
     /// Aufruf als `notchai-hook <claude|codex> <event|decide>`; gibt den Text für stdout zurück (meist leer).

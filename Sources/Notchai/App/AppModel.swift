@@ -187,6 +187,20 @@ final class AppModel {
         }
     }
 
+    /// Gewählte Optionen einer Mehrfachauswahl im Signal `id`.
+    func selection(for id: UUID) -> Set<String> { signals.selection(for: id) }
+    func toggleOption(_ option: String, for id: UUID) { signals.toggle(option, for: id) }
+
+    /// Mehrfachauswahl abschicken: gewählte Optionen und getippter Text zusammen.
+    func submitSelection(for id: UUID) {
+        guard let content = activeSignal, content.id == id,
+              let answer = content.multiSelectAnswer(selected: selection(for: id), typed: draft(for: id)) else { return }
+        performSignalAction(answer, for: id)
+    }
+
+    /// Hinweis „+1 Zeile“ im Signal: die Sessions zeigen die Anfrage mit dem ganzen Befehl.
+    func showFullRequest() { send(.openPanel(.sessions)) }
+
     /// Antwort-Entwurf des Signals `id`; übersteht Zu- und Aufklappen.
     func draft(for id: UUID) -> String { signals.draft(for: id) }
     func setDraft(_ text: String, for id: UUID) {
@@ -400,7 +414,8 @@ final class AppModel {
             else { .idle }
         case .signal(.island): .island
         case .signal(.banner): .banner
-        case .signal(.vertical): .vertical
+        // „Fertig“ und „Fehler“ zeigen nur die Kopfzeile; der Kasten wird so hoch wie nötig.
+        case .signal(.vertical): activeSignal?.kind.isAwaitingOwner == false ? .verticalCompact : .vertical
         // Nie kleiner als die Notch, auch bevor der Inhalt gemessen ist.
         case .panel(let tab):
             .panel(height: max(panelContentHeights[tab] ?? Self.estimatedPanelHeight(tab), screen?.topInset ?? 0))

@@ -14,6 +14,14 @@ struct SignalIslandView: View {
     /// Meldet den Knopfbereich rechts in Panel-Koordinaten (`nil`, wenn die Island verschwindet).
     let reportButtonArea: (CGRect?) -> Void
 
+    /// Abstand zum äußeren Rand, auf beiden Seiten gleich: 12 pt, damit ✓ ganz in der unteren Rundung liegt, plus
+    /// der zusätzliche Rand der Form (`NotchGeometry.islandEdge`).
+    private static let outerPadding: CGFloat = 12 + NotchGeometry.islandEdge
+    /// Abstand zur Kamera-Aussparung, auf beiden Seiten gleich.
+    private static let innerPadding: CGFloat = 6
+    /// Abstand zwischen den Teilen innerhalb einer Seite.
+    private static let spacing: CGFloat = 6
+
     var body: some View {
         HStack(spacing: 0) {
             leading
@@ -32,19 +40,20 @@ struct SignalIslandView: View {
         .onTapGesture(perform: expand)
     }
 
-    /// Punkt, Agentname und Detail; das Detail bekommt den Rest und wird mit „…“ gekürzt.
+    /// Punkt, Agentname und Detail; das Detail bekommt den Rest und wird mit „…“ gekürzt. Ein Hinweis auf einen
+    /// gekürzten Befehl („+1 Zeile“) bleibt dabei immer stehen.
     private var leading: some View {
         ViewThatFits(in: .horizontal) {
             leadingRow(showsDetail: true)
             leadingRow(showsDetail: false)
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 4)
+        .padding(.leading, Self.outerPadding)
+        .padding(.trailing, Self.innerPadding)
         .frame(maxHeight: .infinity)
     }
 
     private func leadingRow(showsDetail: Bool) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Self.spacing) {
             PulseDot(color: theme.agentColor)
             Text(content.agent.displayName)
                 .font(.system(size: 12.5, weight: .semibold))
@@ -59,18 +68,24 @@ struct SignalIslandView: View {
                     // Erst ab etwa vier Zeichen zeigen, sonst bliebe nur ein abgeschnittener Buchstabe.
                     .frame(minWidth: 28, idealWidth: 28, maxWidth: .infinity, alignment: .leading)
             }
+            if let note = content.detailNote {
+                Text(note)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(theme.agentColor)
+                    .fixedSize()
+            }
         }
     }
 
-    /// „Erlauben?“/„Frage“ und die runden Knöpfe; über diesem Bereich klappt Hover nicht auf.
+    /// „Erlauben?“/„Frage“ und die runden Knöpfe. Bei Freigaben klappt Hover über diesem Bereich nicht auf, damit
+    /// ✕/✓ unter dem Zeiger bleiben; eine Frage klappt überall zum Banner mit den Antworten auf.
     private var trailingArea: some View {
         ViewThatFits(in: .horizontal) {
             trailing(withPrompt: true)
             trailing(withPrompt: false)
         }
-        .padding(.leading, 3)
-        // 8 pt reichen, damit der runde ✓-Knopf ganz innerhalb der unteren Rundung liegt.
-        .padding(.trailing, 8)
+        .padding(.leading, Self.innerPadding)
+        .padding(.trailing, Self.outerPadding)
         .frame(maxHeight: .infinity)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { reportButtonArea($0) }
         .onDisappear { reportButtonArea(nil) }
@@ -78,14 +93,14 @@ struct SignalIslandView: View {
 
     @ViewBuilder
     private func trailing(withPrompt: Bool) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Self.spacing) {
             if withPrompt {
                 Text(content.kind.islandPrompt)
                     .font(.system(size: 11.5))
                     .foregroundStyle(SignalTheme.muted)
                     .fixedSize()
-                    .padding(.trailing, 1)
             }
+            SignalProgressBadge(progress: content.progress)
             switch content.kind {
             case .permission:
                 SignalRoundButton(symbol: "xmark", theme: theme) { act(.deny) }

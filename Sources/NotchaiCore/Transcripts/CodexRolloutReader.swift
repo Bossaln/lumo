@@ -46,7 +46,7 @@ public struct CodexRolloutReader: Sendable {
             if let tokens = info["last_token_usage"]?["total_tokens"]?.intValue { summary.contextTokens = tokens }
             if let window = info["model_context_window"]?.intValue { summary.contextWindow = window }
         case "error":
-            summary.errorCount += 1
+            summary.noteError(payload["message"]?.stringValue)
         default:
             break
         }

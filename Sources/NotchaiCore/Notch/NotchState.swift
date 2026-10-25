@@ -31,6 +31,8 @@ public enum NotchEvent: Equatable, Sendable {
     case noteShortcut(pointerInside: Bool)
     /// Das Notizfeld im Reiter „Notizen“ hat den Fokus bekommen bzw. verloren.
     case noteFieldFocused(Bool)
+    /// Aus einem Signal heraus einen Reiter öffnen (Hinweis „+1 Zeile“: die Sessions mit dem ganzen Befehl).
+    case openPanel(PanelTab)
 }
 
 /// Reiner Zustandsautomat der Notch. Nicht genannte Kombinationen lassen den Modus unverändert.
@@ -114,6 +116,12 @@ public struct NotchState: Equatable, Sendable {
             } else if !focused {
                 endNote(style: style)
             }
+        case .openPanel(let tab):
+            // Eine halb getippte Antwort oder Notiz geht vor.
+            guard !isEditing, !isWritingNote else { break }
+            collapseAfterEditing = false
+            mode = .panel(tab)
+            lastTab = tab
         case .noteShortcut(let pointerInside):
             // Eine halb getippte Antwort an einen Agenten geht vor.
             guard !isEditing else { break }
