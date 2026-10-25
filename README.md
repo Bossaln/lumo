@@ -35,6 +35,12 @@ runs, folder, model, context in tokens and, for Codex, how much of your 5-hour a
 its window to the front, reply to it or remove it from the notch. Sessions disappear by themselves when you close
 them. Works with the terminal, VS Code, Cursor, cmux and Claude Code sessions in the Claude and Codex apps.
 
+**External displays, too.** Every external display gets a notch of its own, top center and as tall as the menu bar.
+Since there is no camera, its middle is free for something useful: your agents at a glance (a dot per session,
+orange when one is waiting), what the last one is doing, or the song that is playing – one of them or all in turn.
+The time sits on the left, music or the number of sessions on the right. Signals show up on the display you are
+working on. You can turn it off in the settings.
+
 **Now playing.** Spotify, Apple Music and most other players: cover art, title, a progress bar you can scrub,
 playback controls, a backdrop in the colors of the cover and a soft glow. While music plays, a compact view sits right
 next to the camera, with bars that move to the actual audio. When the next track starts, the notch briefly pops out
