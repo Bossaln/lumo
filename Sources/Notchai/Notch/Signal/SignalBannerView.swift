@@ -13,6 +13,9 @@ struct SignalBannerView: View {
     let bandHeight: CGFloat
     /// Antwort-Entwurf dieses Signals (liegt im `AppModel`, übersteht Zu- und Aufklappen).
     let draft: Binding<String>
+    var choices = SignalChoices()
+    /// Hinweis „+1 Zeile“: die Anfrage mit dem ganzen Befehl zeigen.
+    var showFull: () -> Void = {}
     let act: (SignalAction) -> Void
 
     /// 16 pt Rand wie im Entwurf plus die gewölbten oberen Ecken (10 pt).
@@ -38,8 +41,12 @@ struct SignalBannerView: View {
                 Text(content.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(SignalTheme.primary)
-                signalSubtitleText(content, theme: theme, includeDetail: true)
-                    .font(.system(size: 11.5))
+                HStack(spacing: 6) {
+                    signalSubtitleText(content, theme: theme, includeDetail: true)
+                        .font(.system(size: 11.5))
+                    // Gekürzter Befehl: Der Hinweis steht für sich und wird nie mit abgeschnitten.
+                    SignalDetailNote(note: content.detailNote, theme: theme, open: showFull)
+                }
             }
             .lineLimit(1)
             .truncationMode(.tail)
@@ -63,6 +70,7 @@ struct SignalBannerView: View {
                         .foregroundStyle(SignalTheme.primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                    SignalProgressBadge(progress: content.progress)
                 }
                 .padding(.leading, Self.sidePadding)
                 .padding(.trailing, 6)
@@ -83,14 +91,12 @@ struct SignalBannerView: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
-                    SignalAnswerField(text: draft, act: act, compact: true)
+                    SignalAnswerField(text: draft, act: act, compact: true, submit: content.multiSelect ? choices.submit : nil)
                         .id(content.id)
                         .frame(minWidth: 110, maxWidth: .infinity)
                     // Lange Auswahl-Texte werden mit „…“ gekürzt, statt aus dem Banner zu laufen.
-                    ForEach(content.kind.visibleOptions, id: \.self) { option in
-                        SignalPillButton(title: option, compact: true, theme: theme) { act(.answer(option)) }
-                            .layoutPriority(1)
-                    }
+                    SignalOptionButtons(content: content, theme: theme, compact: true, choices: choices, act: act)
+                        .layoutPriority(1)
                     // Schließen: Der Agent fragt dann selbst im Terminal bzw. in der App.
                     SignalRoundButton(symbol: "xmark", theme: theme) { act(.dismiss) }
                         .layoutPriority(2)

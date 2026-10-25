@@ -8,26 +8,25 @@ public enum SessionStatus: Equatable, Sendable {
     }
 }
 
-/// Eine Frage von `AskUserQuestion`. Gezeigt wird nur die erste; `moreCount` zählt die übrigen.
+/// Eine Frage von `AskUserQuestion`. Ein Aufruf kann mehrere stellen; die Notch zeigt sie nacheinander.
 public struct QuestionPrompt: Equatable, Sendable {
     public var question: String
     public var header: String?
     public var options: [String]
     public var multiSelect: Bool
-    public var moreCount: Int
 
-    public init(question: String, header: String?, options: [String], multiSelect: Bool, moreCount: Int) {
+    public init(question: String, header: String?, options: [String], multiSelect: Bool) {
         self.question = question
         self.header = header
         self.options = options
         self.multiSelect = multiSelect
-        self.moreCount = moreCount
     }
 }
 
 public enum PendingKind: Equatable, Sendable {
     case permission(tool: String, summary: String)
-    case question(QuestionPrompt)
+    /// Alle Fragen eines Aufrufs, in der Reihenfolge des Agenten (nie leer).
+    case question([QuestionPrompt])
 
     /// Werkzeug, dessen Aufruf auf die Entscheidung wartet.
     public var toolName: String {
@@ -46,6 +45,8 @@ public struct PendingRequest: Equatable, Sendable {
     public var createdAt: Date
     /// Danach zeigt die Notch die Anfrage nicht mehr; der Agent fragt dann selbst weiter.
     public var deadline: Date
+    /// Schon gegebene Antworten bei mehreren Fragen (Frage → Antwort); geschickt wird erst, wenn alle da sind.
+    public var answers: [String: String] = [:]
 
     public init(requestId: UUID, kind: PendingKind, toolInput: JSONValue?, createdAt: Date, deadline: Date) {
         self.requestId = requestId
@@ -53,6 +54,23 @@ public struct PendingRequest: Equatable, Sendable {
         self.toolInput = toolInput
         self.createdAt = createdAt
         self.deadline = deadline
+    }
+
+    /// Alle Fragen der Anfrage; leer bei Freigaben.
+    public var questions: [QuestionPrompt] {
+        if case .question(let questions) = kind { questions } else { [] }
+    }
+
+    /// Die nächste noch offene Frage und ihre Stelle (0-basiert); `nil`, wenn alle beantwortet sind.
+    public var currentQuestion: (index: Int, prompt: QuestionPrompt)? {
+        questions.enumerated().first { answers[$0.element.question] == nil }.map { ($0.offset, $0.element) }
+    }
+
+    /// Der volle Befehl bzw. die volle Eingabe einer Freigabe, wenn die Kurzfassung nicht alles zeigt
+    /// (mehrere Zeilen oder länger als `PermissionText.shortLength`).
+    public var fullCommand: String? {
+        guard case .permission(let tool, _) = kind else { return nil }
+        return PermissionText.fullCommand(tool: tool, input: toolInput)
     }
 }
 
@@ -62,15 +80,19 @@ public struct SessionHost: Equatable, Sendable {
     public var bundleId: String?
     public var termProgram: String?
     public var cmuxSurface: String?
+    /// cmux-Workspace (Tab) der Session, um genau ihn nach vorn zu holen (`cmux select-workspace`).
+    public var cmuxWorkspace: String?
     public var messagingSocket: String?
     public var originator: String?
 
     public init(entrypoint: String? = nil, bundleId: String? = nil, termProgram: String? = nil,
-                cmuxSurface: String? = nil, messagingSocket: String? = nil, originator: String? = nil) {
+                cmuxSurface: String? = nil, cmuxWorkspace: String? = nil, messagingSocket: String? = nil,
+                originator: String? = nil) {
         self.entrypoint = entrypoint
         self.bundleId = bundleId
         self.termProgram = termProgram
         self.cmuxSurface = cmuxSurface
+        self.cmuxWorkspace = cmuxWorkspace
         self.messagingSocket = messagingSocket
         self.originator = originator
     }
@@ -84,6 +106,7 @@ public struct SessionHost: Equatable, Sendable {
         let surfaceKey = env["CMUX_SURFACE_ID"] != nil ? "CMUX_SURFACE_ID"
             : env.keys.filter { $0.hasPrefix("CMUX_") && $0.contains("SURFACE") }.sorted().first
         if let surfaceKey, let surface = env[surfaceKey] { cmuxSurface = surface }
+        cmuxWorkspace = env["CMUX_WORKSPACE_ID"] ?? env["CMUX_TAB_ID"] ?? cmuxWorkspace
     }
 
     /// Wo die Session läuft, für die Detailansicht. Die Apps zuerst: Sie setzen teils auch `TERM_PROGRAM`.
@@ -141,7 +164,10 @@ public struct AgentSession: Identifiable, Equatable, Sendable {
     public var cwd: String?
     public var status: SessionStatus
     public var lastStep: String?
+    /// Fehlgeschlagene Werkzeugaufrufe im aktuellen bzw. letzten Turn (ohne Ablehnungen).
     public var errorCount: Int
+    /// Kurztexte der letzten Fehler dieses Turns, neueste zuletzt (für die Detailansicht).
+    public var recentErrors: [String] = []
     /// Wie voll das Kontextfenster ist (0…1); `nil`, solange unbekannt.
     public var contextFraction: Double?
     public var lastActivity: Date

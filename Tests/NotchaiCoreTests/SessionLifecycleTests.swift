@@ -7,6 +7,7 @@ private let t0 = Date(timeIntervalSince1970: 1_792_900_000)
 private func hook(_ name: String, session: String = "s1", agent: AgentKind = .claude, pid: Int32? = nil,
                   mode: HookMode = .event, tool: String? = nil, id: UUID = UUID()) -> HookEnvelope {
     var event = HookEvent(hookEventName: name, sessionId: session)
+    event.transcriptPath = "/Users/test/.claude/projects/notchai/x.jsonl"
     event.cwd = "/Users/test/Developer/notchai"
     event.toolName = tool
     return HookEnvelope(requestId: id, agent: agent, mode: mode, event: event, env: [:], sentAt: t0, agentPid: pid)
@@ -98,6 +99,7 @@ private let tree: [Int32: (parent: Int32, name: String)] = [
 @Test func sessionInTheClaudeAppFadesWhenIdle() {
     // Ob ein Chat in der App noch offen ist, verrät kein Prozess.
     var event = HookEvent(hookEventName: "Stop", sessionId: "s1")
+    event.transcriptPath = "/Users/test/.claude/projects/notchai/x.jsonl"
     event.cwd = "/Users/test/Developer/notchai"
     let envelope = HookEnvelope(requestId: UUID(), agent: .claude, mode: .event, event: event,
                                 env: ["CLAUDE_CODE_ENTRYPOINT": "claude-desktop"], sentAt: t0, agentPid: 4242)
@@ -132,6 +134,7 @@ private let tree: [Int32: (parent: Int32, name: String)] = [
 
 @Test func diagnosisNamesSourceProcessAndVisibility() {
     var event = HookEvent(hookEventName: "Stop", sessionId: "t1")
+    event.transcriptPath = "/Users/test/.claude/projects/notchai/x.jsonl"
     event.cwd = "/Users/test/Developer/notchai"
     let envelope = HookEnvelope(requestId: UUID(), agent: .codex, mode: .event, event: event,
                                 env: ["__CFBundleIdentifier": "com.openai.codex"], sentAt: t0, agentPid: 777)

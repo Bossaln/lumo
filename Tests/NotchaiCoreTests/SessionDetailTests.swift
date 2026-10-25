@@ -88,6 +88,7 @@ private func tokenCount(at time: String, limits: String) -> String {
 
 @Test func hookTellsTheModelBeforeTheTranscriptDoes() {
     var event = HookEvent(hookEventName: "SessionStart", sessionId: "s1")
+    event.transcriptPath = "/Users/test/.claude/projects/notchai/x.jsonl"
     event.model = "claude-opus-5-5"
     let envelope = HookEnvelope(requestId: UUID(), agent: .claude, mode: .event, event: event, env: [:], sentAt: t0)
     var book = SessionBook()

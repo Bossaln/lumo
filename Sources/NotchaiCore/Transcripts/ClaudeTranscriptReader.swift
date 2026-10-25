@@ -38,12 +38,21 @@ public struct ClaudeTranscriptReader: Sendable {
     private mutating func consumeUser(_ row: JSONValue, at date: Date?) {
         let content = row["message"]?["content"]
         let blocks = content?.arrayValue ?? []
-        summary.errorCount += blocks.filter { $0["type"]?.stringValue == "tool_result" && $0["is_error"]?.boolValue == true }.count
+        for block in blocks where block["type"]?.stringValue == "tool_result" && block["is_error"]?.boolValue == true {
+            summary.noteError(Self.resultText(block["content"]))
+        }
         guard row["isMeta"]?.boolValue != true, row["toolUseResult"] == nil, let date else { return }
         let texts = content?.stringValue.map { [$0] } ?? blocks.filter { $0["type"]?.stringValue == "text" }.compactMap { $0["text"]?.stringValue }
         // Befehls-Ausgaben, Erinnerungen usw. beginnen mit einem Tag und sind keine Prompts.
         guard let prompt = texts.first(where: { !$0.hasPrefix("<") && !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { return }
         summary.beginTurn(prompt: prompt, at: date)
+    }
+
+    /// Text eines `tool_result`: eine Zeichenkette oder Textblöcke.
+    private static func resultText(_ content: JSONValue?) -> String? {
+        if let text = content?.stringValue { return text }
+        let texts = (content?.arrayValue ?? []).compactMap { $0["text"]?.stringValue }
+        return texts.isEmpty ? nil : texts.joined(separator: "\n")
     }
 
     private mutating func consumeAssistant(_ row: JSONValue, at date: Date?) {

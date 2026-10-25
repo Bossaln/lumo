@@ -30,11 +30,23 @@ struct SessionDetailView: View {
                     }
                 }
                 if let name = session.model {
-                    fact(L("Modell")) { Text(name).font(SignalTheme.monoFont) }
+                    fact(L("Modell")) { Text(ModelName.display(name)).help(name) }
                 }
                 contextFact
                 limitFacts
                 fact(L("Verlauf")) { Text(historyText) }
+                if !session.recentErrors.isEmpty {
+                    fact(L("Fehler im Turn")) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(Array(session.recentErrors.enumerated()), id: \.offset) { _, text in
+                                Text(text)
+                                    .font(SignalTheme.monoFont)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                            }
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 26)
             .padding(.vertical, 8)

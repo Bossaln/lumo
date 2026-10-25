@@ -42,7 +42,10 @@ public struct TranscriptSummary: Equatable, Sendable {
     /// Nur Codex: Nutzungslimits des Abos aus der letzten `token_count`-Meldung.
     public var usageLimits: UsageLimits?
     public var lastStep: String?
+    /// Fehlgeschlagene Werkzeugaufrufe im letzten Turn, ohne Ablehnungen (`ToolFailure.isDenial`).
     public var errorCount = 0
+    /// Kurztexte dieser Fehler, neueste zuletzt, höchstens `ToolFailure.keptCount`.
+    public var recentErrors: [String] = []
     public var lastActivity: Date?
     public var turnInProgress = false
     public var lastFinishedAt: Date?
@@ -68,11 +71,20 @@ public struct TranscriptSummary: Equatable, Sendable {
         prompts.append(date)
     }
 
-    /// Beendet einen noch offenen Turn (unterbrochen) und startet den nächsten.
+    /// Beendet einen noch offenen Turn (unterbrochen) und startet den nächsten. Fehler zählen je Turn.
     mutating func startTurn(at date: Date) {
         if let last = turns.indices.last, turns[last].end == nil { turns[last].end = date }
         turns.append(TurnSpan(start: date, end: nil))
         turnInProgress = true
+        errorCount = 0
+        recentErrors = []
+    }
+
+    /// Ein fehlgeschlagener Werkzeugaufruf; Ablehnungen durch den Besitzer zählen nicht.
+    mutating func noteError(_ text: String?) {
+        if let text, ToolFailure.isDenial(text) { return }
+        errorCount += 1
+        recentErrors = ToolFailure.appending(text, to: recentErrors)
     }
 
     mutating func endTurn(at date: Date, text: String?) {

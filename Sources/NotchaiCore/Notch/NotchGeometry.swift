@@ -17,6 +17,8 @@ public struct ScreenInfo: Equatable, Sendable {
 
 public enum NotchPresentation: Equatable, Sendable {
     case idle, island, banner, vertical
+    /// Vertikal, nur Kopfzeile: „Fertig“ und „Fehler“ brauchen keinen Platz für Befehl und Knöpfe.
+    case verticalCompact
     /// Musik eingeklappt: links Cover, rechts Balken.
     case compact
     /// Neuer Titel, seitlich ausgefahren: links das Cover, rechts Titel und Interpret (`TrackChangeStyle.island`).
@@ -31,6 +33,8 @@ public enum NotchGeometry {
     public static let bannerExtraHeight: CGFloat = 52
     public static let verticalWidth: CGFloat = 360
     public static let verticalExtraHeight: CGFloat = 150
+    /// Kopfzeile (bis zu zwei Zeilen Text) mit gleichem Rand oben und unten.
+    public static let verticalCompactExtraHeight: CGFloat = 70
     /// Wölbung je Seite oben am aufgeklappten Panel, die in den Bildschirmrand übergeht.
     public static let panelEar: CGFloat = 7
     /// Körper 512 pt breit plus die beiden Wölbungen.
@@ -83,6 +87,8 @@ public enum NotchGeometry {
                           height: notch.height + bannerExtraHeight)
         case .vertical:
             size = CGSize(width: verticalWidth, height: notch.height + verticalExtraHeight)
+        case .verticalCompact:
+            size = CGSize(width: verticalWidth, height: notch.height + verticalCompactExtraHeight)
         case .panel(let height):
             size = CGSize(width: panelWidth, height: min(height, panelMaxHeight))
         }

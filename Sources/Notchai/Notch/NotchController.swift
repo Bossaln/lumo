@@ -282,10 +282,10 @@ final class NotchController {
         return nil
     }
 
-    /// Liegt der Zeiger über dem Knopfbereich einer sichtbaren Island?
+    /// Liegt der Zeiger über ✕/✓ einer sichtbaren Freigabe in der Island? Eine Frage hat dort nur den Pfeil zum
+    /// Aufklappen; über ihm klappt Hover direkt zum Banner mit den Antworten auf.
     private func isOverIslandButtons(_ point: CGPoint) -> Bool {
-        // Knöpfe zeigt die Island nur, wenn der Agent auf den Besitzer wartet (Freigabe, Frage).
-        guard model.notch.mode == .signal(.island), model.activeSignal?.kind.isAwaitingOwner == true,
+        guard model.notch.mode == .signal(.island), model.activeSignal?.kind == .permission,
               let area = model.islandButtonArea else { return false }
         // Panel-Koordinaten (oben links) in Bildschirmkoordinaten (unten links) umrechnen.
         let frame = panel.frame

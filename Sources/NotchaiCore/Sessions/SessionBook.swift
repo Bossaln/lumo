@@ -36,9 +36,18 @@ public struct SessionBook: Sendable {
         /// Transkript für den Status nicht mehr.
         var hookStatusAt: Date?
         var hookStepAt: Date?
+        /// Fehler des laufenden Turns aus Hooks bzw. Transkript, je mit Kurztexten.
         var hookErrors = 0
+        var hookErrorTexts: [String] = []
         var transcriptErrors = 0
+        var transcriptErrorTexts: [String] = []
+        /// Der laufende Turn endete mit `StopFailure`; ein späteres `Stop` überdeckt das nicht.
+        var turnFailed = false
+        /// Fertig oder Fehler seit diesem Zeitpunkt; danach wird die Session wieder „bereit“.
         var doneAt: Date?
+        /// Ein Transkript gehört dazu (`transcript_path` im Hook oder vom Transkript-Leser). Echte Sessions haben
+        /// immer eins; Ereignisse ohne (von Hand an `notchai-hook` geschickt) ergeben keine Session in der Liste.
+        var hasTranscript = false
         /// Prozess des Agenten aus dem letzten Hook; endet er, ist die Session vorbei (`removeEnded`).
         var agentPid: Int32?
         /// Von Hand aus der Notch entfernt; neue Aktivität danach holt die Session zurück.
@@ -67,6 +76,7 @@ public struct SessionBook: Sendable {
         var extra = extras[key] ?? Extras()
         session.host.merge(env: envelope.env)
         if let pid = envelope.agentPid { extra.agentPid = pid }
+        if e.transcriptPath != nil { extra.hasTranscript = true }
         if let cwd = e.cwd { session.cwd = cwd; session.projectName = Self.projectName(cwd) }
         session.lastActivity = max(session.lastActivity, now)
         extra.hookTitle = e.sessionTitle ?? extra.hookTitle
@@ -82,17 +92,18 @@ public struct SessionBook: Sendable {
             }
             let tool = e.toolName ?? "Werkzeug"
             extra.pendings.append(PendingRequest(
-                requestId: envelope.requestId, kind: .permission(tool: tool, summary: Self.permissionSummary(tool, e.toolInput)),
+                requestId: envelope.requestId, kind: .permission(tool: tool, summary: PermissionText.summary(tool: tool, input: e.toolInput)),
                 toolInput: e.toolInput, createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout)))
             extra.hookStatusAt = now
             if settings.signalOnPermission { changes.append(.raise(sessionKey: key, trigger: .permission)) }
         case ("PreToolUse", .decide) where e.toolName == "AskUserQuestion":
-            guard settings.watches(envelope.agent), let question = Self.question(from: e.toolInput) else {
+            let questions = Self.questions(from: e.toolInput)
+            guard settings.watches(envelope.agent), !questions.isEmpty else {
                 changes.append(.release(requestId: envelope.requestId))
                 break
             }
             extra.pendings.append(PendingRequest(
-                requestId: envelope.requestId, kind: .question(question), toolInput: e.toolInput,
+                requestId: envelope.requestId, kind: .question(questions), toolInput: e.toolInput,
                 createdAt: now, deadline: now.addingTimeInterval(settings.clampedApprovalTimeout)))
             extra.hookStatusAt = now
             if settings.signalOnQuestion { changes.append(.raise(sessionKey: key, trigger: .question)) }
@@ -103,6 +114,9 @@ public struct SessionBook: Sendable {
             extra.hookStatusAt = extra.hookStatusAt ?? now
         case ("UserPromptSubmit", _):
             changes += releaseAll(&extra, key: key)
+            extra.hookErrors = 0
+            extra.hookErrorTexts = []
+            extra.turnFailed = false
             if let prompt = e.prompt, !prompt.hasPrefix("<") {
                 extra.firstPrompt = extra.firstPrompt ?? prompt
                 extra.lastPrompt = prompt
@@ -117,7 +131,10 @@ public struct SessionBook: Sendable {
             session.status = .working
             extra.hookStatusAt = now
         case ("PostToolUse", _), ("PostToolUseFailure", _):
-            if e.hookEventName == "PostToolUseFailure" { extra.hookErrors += 1 }
+            if e.hookEventName == "PostToolUseFailure", !(e.error.map(ToolFailure.isDenial) ?? false) {
+                extra.hookErrors += 1
+                extra.hookErrorTexts = ToolFailure.appending(e.error, to: extra.hookErrorTexts)
+            }
             changes += release(&extra, key: key) { Self.matches($0, tool: e.toolName, input: e.toolInput) }
             session.status = .working
             extra.hookStatusAt = now
@@ -136,6 +153,11 @@ public struct SessionBook: Sendable {
             default:
                 break
             }
+        case ("Stop", _) where extra.turnFailed:
+            // Der Fehler dieses Turns bleibt stehen; sein Signal kam schon.
+            changes += releaseAll(&extra, key: key)
+            session.status = .error
+            extra.hookStatusAt = now
         case ("Stop", _):
             changes += releaseAll(&extra, key: key)
             session.status = .done
@@ -149,6 +171,8 @@ public struct SessionBook: Sendable {
         case ("StopFailure", _):
             changes += releaseAll(&extra, key: key)
             session.status = .error
+            extra.turnFailed = true
+            extra.doneAt = now
             session.lastStep = Self.shorten("Fehler: " + (e.error ?? e.message ?? "unbekannt"), to: Self.stepLength)
             extra.hookStepAt = now
             extra.hookStatusAt = now
@@ -169,6 +193,7 @@ public struct SessionBook: Sendable {
         var session = sessions[key]
             ?? Self.newSession(key: key, agent: summary.agent, sessionId: sessionId, now: summary.lastActivity ?? now)
         var extra = extras[key] ?? Extras()
+        extra.hasTranscript = true
 
         if let cwd = summary.cwd { session.cwd = cwd; session.projectName = Self.projectName(cwd) }
         extra.customTitle = summary.customTitle ?? extra.customTitle
@@ -182,11 +207,12 @@ public struct SessionBook: Sendable {
         session.usageLimits = summary.usageLimits ?? session.usageLimits
         session.startedAt = [summary.prompts.first, summary.turns.first?.start].compactMap { $0 }.min() ?? session.startedAt
         session.promptCount = summary.prompts.count
-        session.editedFileCount = Set(summary.editedFiles.map(\.path)).count
+        session.editedFileCount = Self.projectFiles(summary.editedFiles, cwd: session.cwd).count
         if let step = summary.lastStep, extra.hookStepAt.map({ (summary.lastActivity ?? .distantPast) > $0 }) ?? true {
             session.lastStep = step
         }
         extra.transcriptErrors = summary.errorCount
+        extra.transcriptErrorTexts = summary.recentErrors
         if let activity = summary.lastActivity { session.lastActivity = max(session.lastActivity, activity) }
         session.host.originator = summary.originator ?? session.host.originator
         session.host.entrypoint = session.host.entrypoint ?? summary.entrypoint
@@ -219,6 +245,30 @@ public struct SessionBook: Sendable {
         return [.clear(sessionKey: key)]
     }
 
+    /// Eine Antwort auf die gerade offene Frage der Anfrage `requestId`. Sind damit alle Fragen beantwortet, kommen
+    /// alle Antworten zurück (zum Abschicken); sonst `nil`, und die Notch zeigt die nächste Frage.
+    public mutating func recordAnswer(requestId: UUID, answer: String) -> [String: String]? {
+        guard let key = extras.first(where: { $0.value.pendings.contains { $0.requestId == requestId } })?.key,
+              var extra = extras[key], var session = sessions[key],
+              let index = extra.pendings.firstIndex(where: { $0.requestId == requestId }),
+              let current = extra.pendings[index].currentQuestion else { return nil }
+        extra.pendings[index].answers[current.prompt.question] = answer
+        let request = extra.pendings[index]
+        store(&session, extra, key: key)
+        return request.currentQuestion == nil ? request.answers : nil
+    }
+
+    /// Die Anfrage ist anderswo entschieden worden (im Terminal erlaubt, der Befehl läuft schon): aus der Notch
+    /// nehmen und den wartenden Hook beenden.
+    public mutating func answeredElsewhere(requestId: UUID) -> [SessionChange] {
+        guard let key = extras.first(where: { $0.value.pendings.contains { $0.requestId == requestId } })?.key,
+              var extra = extras[key], var session = sessions[key] else { return [] }
+        let changes = release(&extra, key: key) { $0.requestId == requestId }
+        session.status = .working
+        store(&session, extra, key: key)
+        return changes
+    }
+
     /// Läuft regelmäßig: abgelaufene Anfragen verschwinden aus der Notch, „fertig“ wird zu „bereit“.
     public mutating func tick(now: Date) -> (changes: [SessionChange], expired: [UUID]) {
         var changes: [SessionChange] = []
@@ -232,7 +282,8 @@ public struct SessionBook: Sendable {
                 expired += gone.map(\.requestId)
                 changes.append(.clear(sessionKey: key))
             }
-            if session.status == .done, let doneAt = extra.doneAt, now.timeIntervalSince(doneAt) >= Self.doneLifetime {
+            if session.status == .done || session.status == .error, let doneAt = extra.doneAt,
+               now.timeIntervalSince(doneAt) >= Self.doneLifetime {
                 session.status = .ready
             }
             store(&session, extra, key: key)
@@ -318,16 +369,23 @@ public struct SessionBook: Sendable {
     private func isShown(_ session: AgentSession, now: Date) -> Bool {
         guard let extra = extras[session.id] else { return true }
         if let dismissed = extra.dismissedAt, session.lastActivity <= dismissed { return false }
-        if !provesOpen(extra, host: session.host), session.pending == nil,
+        if !extra.hasTranscript, session.pending == nil { return false }
+        if !provesOpen(session, extra), session.pending == nil,
            now.timeIntervalSince(session.lastActivity) > Self.unconfirmedLifetime { return false }
         return true
     }
 
-    /// Ein Agent-Prozess nur für diese Session, außerhalb der Apps: Solange er läuft, ist die Session offen. Die
-    /// Codex-App führt alle Threads über einen Prozess, und in beiden Apps läuft der Prozess weiter, wenn der Chat zu ist.
-    private func provesOpen(_ extra: Extras, host: SessionHost) -> Bool {
-        guard let pid = extra.agentPid, host.source != .claudeApp, host.source != .codexApp else { return false }
-        return extras.values.filter { $0.agentPid == pid }.count == 1
+    /// Ein Agent-Prozess außerhalb der Apps: Solange er läuft, ist die Session offen. Teilen sich mehrere
+    /// Claude-Sessions einen Prozess (`/resume`, `/clear`), gehört er der zuletzt aktiven; die älteren gelten nicht
+    /// mehr als offen. Codex führt dagegen mehrere Threads über einen Prozess (App, App-Server), auch wenn die App
+    /// nicht erkennbar ist; dann beweist er für keinen etwas. In beiden Apps läuft der Prozess weiter, wenn der Chat
+    /// zu ist.
+    private func provesOpen(_ session: AgentSession, _ extra: Extras) -> Bool {
+        guard let pid = extra.agentPid, session.host.source != .claudeApp, session.host.source != .codexApp else { return false }
+        let sharing = sessions.values.filter { extras[$0.id]?.agentPid == pid }
+        if session.agent == .codex { return sharing.count == 1 }
+        let owner = sharing.max { ($0.lastActivity, $0.id) < ($1.lastActivity, $1.id) }
+        return owner?.id == session.id
     }
 
     private static func rank(_ status: SessionStatus) -> Int {
@@ -356,6 +414,7 @@ public struct SessionBook: Sendable {
         case nil: break
         }
         session.errorCount = max(extra.hookErrors, extra.transcriptErrors)
+        session.recentErrors = extra.transcriptErrors >= extra.hookErrors ? extra.transcriptErrorTexts : extra.hookErrorTexts
         session.title = Self.title(extra, projectName: session.projectName, source: .lastPrompt)
         sessions[key] = session
         extras[key] = extra
@@ -389,24 +448,22 @@ public struct SessionBook: Sendable {
         return expected.allSatisfy { actual[$0.key] == $0.value }
     }
 
-    private static func permissionSummary(_ tool: String, _ input: JSONValue?) -> String {
-        switch tool {
-        case "Bash", "exec_command", "shell":
-            let command = input?["command"]?.stringValue ?? input?["cmd"]?.stringValue
-            return command.flatMap(firstLine).map { shorten($0, to: 200) } ?? StepDescriber.describe(tool: tool, input: input)
-        case "WebFetch":
-            return input?["url"]?.stringValue ?? StepDescriber.describe(tool: tool, input: input)
-        default:
-            return StepDescriber.describe(tool: tool, input: input)
+    /// Alle Fragen von `AskUserQuestion`; Fragen ohne Text fallen weg.
+    private static func questions(from input: JSONValue?) -> [QuestionPrompt] {
+        (input?["questions"]?.arrayValue ?? []).compactMap { item in
+            guard let text = item["question"]?.stringValue, !text.isEmpty else { return nil }
+            return QuestionPrompt(question: text, header: item["header"]?.stringValue,
+                                  options: (item["options"]?.arrayValue ?? []).compactMap { $0["label"]?.stringValue },
+                                  multiSelect: item["multiSelect"]?.boolValue ?? false)
         }
     }
 
-    private static func question(from input: JSONValue?) -> QuestionPrompt? {
-        guard let questions = input?["questions"]?.arrayValue, let first = questions.first,
-              let text = first["question"]?.stringValue, !text.isEmpty else { return nil }
-        return QuestionPrompt(question: text, header: first["header"]?.stringValue,
-                              options: (first["options"]?.arrayValue ?? []).compactMap { $0["label"]?.stringValue },
-                              multiSelect: first["multiSelect"]?.boolValue ?? false, moreCount: questions.count - 1)
+    /// Geänderte Dateien im Projektordner; Notizen, Pläne oder Zwischenablagen des Agenten anderswo zählen nicht.
+    static func projectFiles(_ files: [EditedFile], cwd: String?) -> Set<String> {
+        let paths = Set(files.map(\.path))
+        guard let cwd, !cwd.isEmpty else { return paths }
+        let root = cwd.hasSuffix("/") ? cwd : cwd + "/"
+        return paths.filter { $0.hasPrefix(root) || !$0.hasPrefix("/") }
     }
 
     private static func title(_ extra: Extras, projectName: String, source: SessionTitleSource) -> String {

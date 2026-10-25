@@ -33,6 +33,8 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 - „Nie blockieren“ ist durch Claude Code selbst garantiert. Die Wartezeit (`approvalTimeoutSeconds`) begrenzt nur noch, wie lange die Notch eine Anfrage zeigt.
 - Kommt für dieselbe Session ein weiteres Ereignis, während eine Anfrage offen ist (`PostToolUse`, `PostToolUseFailure`, `PreToolUse`, `UserPromptSubmit`, `Stop`, `StopFailure`, `SessionEnd`), wurde sie anderswo beantwortet. Das Session-Buch entfernt sie dann und meldet ihre ID, damit die App dem wartenden Hook sofort „keine Entscheidung“ schickt. `Notification` mit `permission_prompt` gehört zur selben Anfrage und räumt nichts auf.
 - Hook-Eingabe bei `PermissionRequest` enthält zusätzlich `prompt_id`, `effort` und `permission_suggestions`. Unbekannte Felder ignoriert `HookEvent` ohnehin.
+- **Im Terminal erlaubt:** Claude Code meldet die Entscheidung nicht, und das erste Ereignis danach (`PostToolUse`) kommt erst, wenn das Werkzeug fertig ist. Bei langen Befehlen stünde die Anfrage minutenlang in der Notch, und ein Klick dort bewirkte nichts mehr. Auf dem Mac (2.1.310) startet Claude Code einen Shell-Befehl als Kind des Agenten: `/bin/zsh -c source <snapshot> … && eval '<befehl>' < /dev/null && pwd -P >| /tmp/claude-…`, `'` im Befehl als `'\''`. Das Transkript schreibt vor dem `tool_result` nichts zur Entscheidung. notchai sieht deshalb jede Sekunde nach, ob unter dem Agenten ein neuer Prozess läuft, dessen Befehlszeile den Anfang des Befehls (bis zum ersten `'`, mindestens 6 Zeichen) enthält (`PermissionText.processNeedle`, `ProcessTree.startedChild`). Dann ist die Anfrage überholt und verschwindet. Abgelehnt im Terminal startet nichts; die Anfrage bleibt bis zum nächsten Ereignis der Session oder zum Ablauf.
+- **Ganzer Befehl:** Die Signale zeigen nur die erste Zeile. Hat der Befehl mehrere Zeilen oder mehr als 60 Zeichen, steht daneben ein Hinweis („+1 Zeile“, „ganzer Befehl“), der nie mit abgeschnitten wird. Ein Klick öffnet die Sessions, dort steht der ganze Befehl über „Erlauben“ (`PermissionText`).
 
 ## 2. Fragen beantworten (`AskUserQuestion` über `PreToolUse`)
 
@@ -52,6 +54,9 @@ Offen bleibt nur, was es ausschließlich auf dem Mac gibt (Claude-App, Codex-App
 **Beleg:** Interaktiver Lauf: In der Sitzung steht „User answered Claude's questions: · Welche Farbe? → Blau“, beim Modell kommt `Your questions have been answered: "Welche Farbe?"="Blau"` an. Doku: https://code.claude.com/docs/en/hooks („For `AskUserQuestion`, echo back the original `questions` array and add an `answers` object …“). Schema im Programm: `answers: record<string, string | string[]>`, Arrays werden mit `", "` verbunden.
 
 **Folgen für notchai:** `HookOutput.questionAnswer(toolInput:answers:)` setzt `answers` in die unveränderte Eingabe. Option **und** Freitext gehen über diesen Weg, `ReplySender` ist für Fragen nicht nötig.
+
+- **Mehrere Fragen:** Claude Code nimmt auch unvollständige `answers` an, ohne nachzufragen (auf dem Mac mit 2.1.310 geprüft); eine fehlende Frage ginge also still verloren. Die Notch zeigt die Fragen deshalb nacheinander („1/2“) und schickt erst nach der letzten alle Antworten zusammen (`SessionBook.recordAnswer`).
+- **Mehrfachauswahl:** Optionen schalten um, „Senden“ schickt die gewählten Beschriftungen mit „, “ verbunden; getippter Text kommt dahinter.
 
 ## 3. Nachrichten in eine laufende Claude-Session (`CLAUDE_CODE_MESSAGING_SOCKET`)
 
@@ -137,12 +142,25 @@ Gegengeprüft an einem Transkript aus dem Versuch (2.1.308):
 
 `CLAUDE_CODE_ENTRYPOINT` ist interaktiv `cli` und bei `-p` `sdk-cli`. Außerdem kommen `CLAUDE_CODE_MESSAGING_SOCKET` und `CLAUDE_CODE_MESSAGING_TOKEN` an.
 
+## Beobachtungen auf dem Mac (Claude Code 2.1.310, cmux 0.65.2, macOS 27.0.1, Oktober 2026)
+
+- **cmux:** Die Fläche steht in `CMUX_SURFACE_ID` (gleicher Wert wie `CMUX_PANEL_ID`), der Tab in `CMUX_WORKSPACE_ID` (gleicher Wert wie `CMUX_TAB_ID`). `__CFBundleIdentifier` ist `com.cmuxterm.app`, `TERM_PROGRAM` ist `ghostty`, `CLAUDE_CODE_ENTRYPOINT` ist `cli`. cmux setzt außerdem `CMUX_CLAUDE_PID` (gleich der `agentPid`, die `ProcessTree.agent` findet) und Zugangsdaten für seinen Socket (`CMUX_CUA_SOCKET_AUTH_TOKEN`, `CMUX_SOCKET_CAPABILITY`, Pfade zu Token-Dateien). `notchai-hook` gibt nur die vier IDs weiter (`HookClient.forwardedEnvironment`); „Letzte Hook-Ereignisse kopieren“ macht Werte mit `TOKEN`, `AUTH`, `CAPABILITY`, `SECRET`, `PASSWORD` oder `KEY` im Namen unkenntlich und kürzt Prompts, Antworten und Werkzeug-Eingaben auf 80 Zeichen (`HookExport`).
+- **cmux-Socket:** In der Standardeinstellung („Nur cmux-Prozesse“, `cmuxOnly`) nimmt cmux nur Befehle von Prozessen an, die in cmux gestartet wurden. notchai läuft außerhalb: `cmux paste` endet dann mit „failed to write to socket (Broken pipe, errno 32)“, `cmux ping` mit „Zugriff verweigert – nur innerhalb von cmux gestartete Prozesse können eine Verbindung herstellen“. `cmux socket-status --json` nennt den Modus (`effective_mode`), ohne sich mit dem Socket zu verbinden. Antworten und das Wählen des Tabs gehen nur mit „Automatisierungsmodus“ (`automation`, alle lokalen Programme dieses Benutzers), „Passwortmodus“ (`password`, das CLI liest das gespeicherte Passwort selbst) oder „Uneingeschränkter Zugriff“ (`allowAll`, unsicher); einstellbar in cmux › Einstellungen › Automatisierung. Sonst legt notchai den Text in die Zwischenablage, holt cmux nach vorn und sagt das (`CmuxSocketMode`).
+- **Tab wählen:** `cmux select-workspace --workspace <CMUX_WORKSPACE_ID>` und `cmux focus-panel --panel <CMUX_SURFACE_ID> --workspace …`. `NSRunningApplication.activate` allein holt weder ein minimiertes Fenster zurück noch den richtigen Tab.
+- **Freigaben kommen nacheinander:** Bei zwei parallelen Bash-Aufrufen, die beide eine Freigabe brauchen, kommt `PreToolUse`/`PermissionRequest` des zweiten erst nach `PostToolUse` des ersten. Einen Hinweis „weitere Anfrage folgt“ kann notchai nicht geben. (Unteragenten nicht geprüft.)
+- **`Notification` `permission_prompt`** kommt auch auf dem Mac etwa 6 s nach `PermissionRequest`.
+- **`SubagentStop` nach `Stop`:** Etwa 2 s nach jedem `Stop` kommt ein `SubagentStop` derselben Session. Sein `last_assistant_message` ist ein vorgeschlagener nächster Prompt des Nutzers, nicht die Antwort des Agenten. `SessionBook` ignoriert `SubagentStop` (Test `subagentStopNeverBecomesTheLastStep`).
+- **`permission_mode` wechselt mitten im Turn:** `PreToolUse` kann `default` melden und `PostToolUse` desselben Aufrufs `auto`, wenn der Nutzer umschaltet.
+- **Abgelehnt ist kein Fehler:** Eine Ablehnung kommt beim Modell als `tool_result` mit `is_error: true` an („In notchai abgelehnt“, „The user doesn't want to proceed …“). Der Fehlerzähler lässt sie weg und zählt je Turn (`ToolFailure`).
+- **Sessions ohne Transkript:** Echte Sessions schicken immer `transcript_path`. Ereignisse ohne (von Hand an `notchai-hook` geschickt) ergeben keine Session in der Liste. Teilen sich mehrere Claude-Sessions einen Prozess (`/resume`), gehört er der zuletzt aktiven.
+
 ## Offene Punkte
 
 - `CLAUDE_CODE_ENTRYPOINT` und `__CFBundleIdentifier` für Sessions in der Claude-App (erwartet `claude-desktop` bzw. `com.anthropic.claudefordesktop`) und im VS-Code-Terminal (`TERM_PROGRAM=vscode`).
 - `originator` von Sessions aus der Codex-App (erwartet `Codex Desktop`, siehe oben).
 - Ob die Codex-App die Hook-Freigabe genauso abfragt wie die Kommandozeile.
 - Ob `rate_limits` in echten Rollouts genau so aussieht wie oben.
-- cmux: Name der `CMUX_*`-Variable mit der Surface-ID.
+- Ob Claude Code bei `/clear` und `/resume` ein `SessionEnd` für die alte Session schickt.
+- Ob Freigaben von Unteragenten ebenfalls nacheinander kommen.
 
 Am einfachsten geht das, sobald notchai die Hooks eingerichtet hat: Die Entwickler-Seite der Einstellungen zeigt die zuletzt empfangenen Ereignisse mit Umgebung („Letzte Hook-Ereignisse kopieren“) und jede bekannte Session mit Herkunft und Prozess („Session-Quellen kopieren“).
